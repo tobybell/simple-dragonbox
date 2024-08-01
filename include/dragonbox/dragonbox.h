@@ -176,12 +176,6 @@
     #define JKJ_FORCEINLINE inline
 #endif
 
-#if defined(__has_builtin)
-    #define JKJ_HAS_BUILTIN(x) __has_builtin(x)
-#else
-    #define JKJ_HAS_BUILTIN(x) false
-#endif
-
 #if defined(_MSC_VER)
     #include <intrin.h>
 #elif defined(__INTEL_COMPILER)
@@ -4067,7 +4061,6 @@ namespace jkj {
     }
 }
 
-#undef JKJ_HAS_BUILTIN
 #undef JKJ_FORCEINLINE
 #undef JKJ_SAFEBUFFERS
 #undef JKJ_CONSTEXPR20
