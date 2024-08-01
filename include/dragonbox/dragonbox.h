@@ -1,23 +1,15 @@
 #pragma once
 
-// To use the library with toolchains without standard C++ headers, the users may define this macro
-// into their custom namespace which contains the defintions of all the standard C++ library
-// features used in this header. (The list can be found below.)
-#ifndef JKJ_STD_REPLACEMENT_NAMESPACE
-    #define JKJ_STD_REPLACEMENT_NAMESPACE std
-    #include <cassert>
-    #include <cstdint>
-    #include <cstring>
-    #include <limits>
-    #include <type_traits>
+#include <cassert>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+#include <type_traits>
 
-    #ifdef __has_include
-        #if __has_include(<version>)
-            #include <version>
-        #endif
+#ifdef __has_include
+    #if __has_include(<version>)
+        #include <version>
     #endif
-#else
-    #define JKJ_STD_REPLACEMENT_NAMESPACE_DEFINED 1
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +84,7 @@
     #define JKJ_IF_NOT_CONSTEVAL if !consteval
     #define JKJ_CAN_BRANCH_ON_CONSTEVAL 1
     #define JKJ_USE_IS_CONSTANT_EVALUATED 0
-#elif JKJ_STD_REPLACEMENT_NAMESPACE_DEFINED
+#elif std_DEFINED
     #if JKJ_STD_REPLACEMENT_HAS_IS_CONSTANT_EVALUATED
         #define JKJ_IF_CONSTEVAL if (stdr::is_constant_evaluated())
         #define JKJ_IF_NOT_CONSTEVAL if (!stdr::is_constant_evaluated())
@@ -165,48 +157,48 @@ namespace jkj {
                 // We need assert() macro, but it is not namespaced anyway, so nothing to do here.
 
                 // <cstdint>
-                using JKJ_STD_REPLACEMENT_NAMESPACE::int_least8_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::int_least16_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::int_least32_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::int_fast8_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::int_fast16_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::int_fast32_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::uint_least8_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::uint_least16_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::uint_least32_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::uint_least64_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::uint_fast8_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::uint_fast16_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::uint_fast32_t;
+                using std::int_least8_t;
+                using std::int_least16_t;
+                using std::int_least32_t;
+                using std::int_fast8_t;
+                using std::int_fast16_t;
+                using std::int_fast32_t;
+                using std::uint_least8_t;
+                using std::uint_least16_t;
+                using std::uint_least32_t;
+                using std::uint_least64_t;
+                using std::uint_fast8_t;
+                using std::uint_fast16_t;
+                using std::uint_fast32_t;
                 // We need INT32_C, UINT32_C and UINT64_C macros too, but again there is nothing to do
                 // here.
 
                 // <cstring>
-                using JKJ_STD_REPLACEMENT_NAMESPACE::size_t;
-                using JKJ_STD_REPLACEMENT_NAMESPACE::memcpy;
+                using std::size_t;
+                using std::memcpy;
 
                 // <limits>
                 template <class T>
-                using numeric_limits = JKJ_STD_REPLACEMENT_NAMESPACE::numeric_limits<T>;
+                using numeric_limits = std::numeric_limits<T>;
 
                 // <type_traits>
                 template <bool cond, class T = void>
-                using enable_if = JKJ_STD_REPLACEMENT_NAMESPACE::enable_if<cond, T>;
+                using enable_if = std::enable_if<cond, T>;
                 template <class T>
-                using add_rvalue_reference = JKJ_STD_REPLACEMENT_NAMESPACE::add_rvalue_reference<T>;
+                using add_rvalue_reference = std::add_rvalue_reference<T>;
                 template <bool cond, class T_true, class T_false>
-                using conditional = JKJ_STD_REPLACEMENT_NAMESPACE::conditional<cond, T_true, T_false>;
+                using conditional = std::conditional<cond, T_true, T_false>;
 #if JKJ_USE_IS_CONSTANT_EVALUATED
-                using JKJ_STD_REPLACEMENT_NAMESPACE::is_constant_evaluated;
+                using std::is_constant_evaluated;
 #endif
                 template <class T1, class T2>
-                using is_same = JKJ_STD_REPLACEMENT_NAMESPACE::is_same<T1, T2>;
+                using is_same = std::is_same<T1, T2>;
                 template <class T>
-                using is_integral = JKJ_STD_REPLACEMENT_NAMESPACE::is_integral<T>;
+                using is_integral = std::is_integral<T>;
                 template <class T>
-                using is_signed = JKJ_STD_REPLACEMENT_NAMESPACE::is_signed<T>;
+                using is_signed = std::is_signed<T>;
                 template <class T>
-                using is_unsigned = JKJ_STD_REPLACEMENT_NAMESPACE::is_unsigned<T>;
+                using is_unsigned = std::is_unsigned<T>;
             }
         }
 
@@ -4047,8 +4039,3 @@ namespace jkj {
 #undef JKJ_HAS_CONSTEXPR17
 #undef JKJ_CONSTEXPR14
 #undef JKJ_HAS_CONSTEXPR14
-#if JKJ_STD_REPLACEMENT_NAMESPACE_DEFINED
-    #undef JKJ_STD_REPLACEMENT_NAMESPACE_DEFINED
-#else
-    #undef JKJ_STD_REPLACEMENT_NAMESPACE
-#endif
