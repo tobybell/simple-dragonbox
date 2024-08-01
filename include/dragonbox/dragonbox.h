@@ -114,20 +114,6 @@
     #define JKJ_IF_CONSTEXPR if
 #endif
 
-// C++20 std::bit_cast
-#if JKJ_STD_REPLACEMENT_NAMESPACE_DEFINED
-    #if JKJ_STD_REPLACEMENT_HAS_BIT_CAST
-        #define JKJ_HAS_BIT_CAST 1
-    #else
-        #define JKJ_HAS_BIT_CAST 0
-    #endif
-#elif defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
-    #include <bit>
-    #define JKJ_HAS_BIT_CAST 1
-#else
-    #define JKJ_HAS_BIT_CAST 0
-#endif
-
 // C++23 if consteval or C++20 std::is_constant_evaluated
 #if defined(__cpp_if_consteval) && __cpp_is_consteval >= 202106L
     #define JKJ_IF_CONSTEVAL if consteval
@@ -170,7 +156,7 @@
     #endif
 #endif
 
-#if JKJ_CAN_BRANCH_ON_CONSTEVAL && JKJ_HAS_BIT_CAST
+#if JKJ_CAN_BRANCH_ON_CONSTEVAL
     #define JKJ_CONSTEXPR20 constexpr
 #else
     #define JKJ_CONSTEXPR20
@@ -209,11 +195,6 @@ namespace jkj {
         ////////////////////////////////////////////////////////////////////////////////////////
         namespace detail {
             namespace stdr {
-                // <bit>
-#if JKJ_HAS_BIT_CAST
-                using JKJ_STD_REPLACEMENT_NAMESPACE::bit_cast;
-#endif
-
                 // <cassert>
                 // We need assert() macro, but it is not namespaced anyway, so nothing to do here.
 
@@ -254,10 +235,6 @@ namespace jkj {
 #endif
                 template <class T1, class T2>
                 using is_same = JKJ_STD_REPLACEMENT_NAMESPACE::is_same<T1, T2>;
-#if !JKJ_HAS_BIT_CAST
-                template <class T>
-                using is_trivially_copyable = JKJ_STD_REPLACEMENT_NAMESPACE::is_trivially_copyable<T>;
-#endif
                 template <class T>
                 using is_integral = JKJ_STD_REPLACEMENT_NAMESPACE::is_integral<T>;
                 template <class T>
@@ -321,17 +298,11 @@ namespace jkj {
             };
 
             template <typename To, typename From>
-            JKJ_CONSTEXPR20 To bit_cast(const From& from) {
-#if JKJ_HAS_BIT_CAST
-                return stdr::bit_cast<To>(from);
-#else
-                static_assert(sizeof(From) == sizeof(To), "");
-                static_assert(stdr::is_trivially_copyable<To>::value, "");
-                static_assert(stdr::is_trivially_copyable<From>::value, "");
+            To bit_cast(const From& from) {
+                static_assert(sizeof(From) == sizeof(To));
                 To to;
                 stdr::memcpy(&to, &from, sizeof(To));
                 return to;
-#endif
             }
         }
 
@@ -4177,7 +4148,6 @@ namespace jkj {
 #undef JKJ_CAN_BRANCH_ON_CONSTEVAL
 #undef JKJ_IF_NOT_CONSTEVAL
 #undef JKJ_IF_CONSTEVAL
-#undef JKJ_HAS_BIT_CAST
 #undef JKJ_IF_CONSTEXPR
 #undef JKJ_HAS_IF_CONSTEXPR
 #undef JKJ_INLINE_VARIABLE
