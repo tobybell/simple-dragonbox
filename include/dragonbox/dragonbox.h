@@ -245,10 +245,8 @@ namespace jkj {
         ////////////////////////////////////////////////////////////////////////////////////////
         namespace detail {
             template <class T>
-            struct physical_bits {
-                static constexpr stdr::size_t value =
-                    sizeof(T) * stdr::numeric_limits<unsigned char>::digits;
-            };
+            static constexpr std::size_t physical_bits = sizeof(T) * 8;
+
             template <class T>
             struct value_bits {
                 static constexpr stdr::size_t value = stdr::numeric_limits<
@@ -394,18 +392,18 @@ namespace jkj {
             // remove this static sanity check in order to make Dragonbox work for Float.
             static_assert(detail::stdr::numeric_limits<Float>::is_iec559 &&
                               detail::stdr::numeric_limits<Float>::radix == 2 &&
-                              (detail::physical_bits<Float>::value == 32 ||
-                               detail::physical_bits<Float>::value == 64),
+                              (detail::physical_bits<Float> == 32 ||
+                               detail::physical_bits<Float> == 64),
                           "jkj::dragonbox: Float may not be of IEEE-754 binary32/binary64");
 
             // Specifies the unsigned integer type to hold bitwise value of Float.
             using carrier_uint =
-                typename detail::stdr::conditional<detail::physical_bits<Float>::value == 32,
+                typename detail::stdr::conditional<detail::physical_bits<Float> == 32,
                                                    detail::stdr::uint_least32_t,
                                                    detail::stdr::uint_least64_t>::type;
 
             // Specifies the floating-point format.
-            using format = typename detail::stdr::conditional<detail::physical_bits<Float>::value == 32,
+            using format = typename detail::stdr::conditional<detail::physical_bits<Float> == 32,
                                                               ieee754_binary32, ieee754_binary64>::type;
 
             // Converts the floating-point type into the bit-carrier unsigned integer type.
@@ -863,14 +861,12 @@ namespace jkj {
                     static constexpr stdr::int_least32_t min_exponent = -2620;
                     static constexpr stdr::int_least32_t max_exponent = 2620;
                 };
-                template <stdr::int_least32_t min_exponent = -2620,
-                          stdr::int_least32_t max_exponent = 2620,
-                          class ReturnType = typename compute_impl<floor_log10_pow2_info, min_exponent,
-                                                                   max_exponent>::default_return_type,
+                template <class ReturnType = typename compute_impl<floor_log10_pow2_info, -2620,
+                                                                   2620>::default_return_type,
                           class Int>
                 constexpr ReturnType floor_log10_pow2(Int e) noexcept {
-                    return compute_impl<floor_log10_pow2_info, min_exponent,
-                                        max_exponent>::template compute<ReturnType>(e);
+                    return compute_impl<floor_log10_pow2_info, -2620,
+                                        2620>::template compute<ReturnType>(e);
                 }
 
                 template <stdr::size_t tier>
@@ -3250,9 +3246,7 @@ namespace jkj {
 
                     // Compute k and beta.
                     auto const minus_k = decimal_exponent_type_(
-                        log::floor_log10_pow2<min_exponent - format::significand_bits,
-                                              max_exponent - format::significand_bits,
-                                              decimal_exponent_type_>(binary_exponent) -
+                        log::floor_log10_pow2<decimal_exponent_type_>(binary_exponent) -
                         kappa);
                     auto const cache = CachePolicy::template get_cache<format, shift_amount_type>(
                         decimal_exponent_type_(-minus_k));
@@ -3445,9 +3439,7 @@ namespace jkj {
 
                     // Compute k and beta.
                     auto const minus_k = decimal_exponent_type_(
-                        log::floor_log10_pow2<format::min_exponent - format::significand_bits,
-                                              format::max_exponent - format::significand_bits,
-                                              decimal_exponent_type_>(binary_exponent) -
+                        log::floor_log10_pow2<decimal_exponent_type_>(binary_exponent) -
                         kappa);
                     auto const cache = CachePolicy::template get_cache<format, shift_amount_type>(
                         decimal_exponent_type_(-minus_k));
@@ -3589,9 +3581,7 @@ namespace jkj {
 
                     // Compute k and beta.
                     auto const minus_k = decimal_exponent_type_(
-                        log::floor_log10_pow2<format::min_exponent - format::significand_bits,
-                                              format::max_exponent - format::significand_bits,
-                                              decimal_exponent_type_>(
+                        log::floor_log10_pow2<decimal_exponent_type_>(
                             exponent_int(binary_exponent - (shorter_interval ? 1 : 0))) -
                         kappa);
                     auto const cache = CachePolicy::template get_cache<format, shift_amount_type>(
