@@ -613,83 +613,10 @@ namespace jkj {
                     constexpr stdr::uint_least64_t high() const noexcept { return high_; }
                     constexpr stdr::uint_least64_t low() const noexcept { return low_; }
 
-                    JKJ_CONSTEXPR20 uint128& operator+=(stdr::uint_least64_t n) & noexcept {
-                        auto const generic_impl = [&] {
-                            auto const sum = (low_ + n) & UINT64_C(0xffffffffffffffff);
-                            high_ += (sum < low_ ? 1 : 0);
-                            low_ = sum;
-                        };
-                        // To suppress warning.
-                        static_cast<void>(generic_impl);
-
-                        JKJ_IF_CONSTEXPR(value_bits<stdr::uint_least64_t>::value > 64) {
-                            generic_impl();
-                            return *this;
-                        }
-
-                        JKJ_IF_CONSTEVAL {
-                            generic_impl();
-                            return *this;
-                        }
-
-                        // See https://github.com/fmtlib/fmt/pull/2985.
-#if JKJ_HAS_BUILTIN(__builtin_addcll) && !defined(__ibmxl__)
-                        JKJ_IF_CONSTEXPR(
-                            stdr::is_same<stdr::uint_least64_t, unsigned long long>::value) {
-                            unsigned long long carry{};
-                            low_ = stdr::uint_least64_t(__builtin_addcll(low_, n, 0, &carry));
-                            high_ = stdr::uint_least64_t(__builtin_addcll(high_, 0, carry, &carry));
-                            return *this;
-                        }
-#endif
-#if JKJ_HAS_BUILTIN(__builtin_addcl) && !defined(__ibmxl__)
-                        JKJ_IF_CONSTEXPR(stdr::is_same<stdr::uint_least64_t, unsigned long>::value) {
-                            unsigned long carry{};
-                            low_ = stdr::uint_least64_t(
-                                __builtin_addcl(static_cast<unsigned long>(low_),
-                                                static_cast<unsigned long>(n), 0, &carry));
-                            high_ = stdr::uint_least64_t(
-                                __builtin_addcl(static_cast<unsigned long>(high_), 0, carry, &carry));
-                            return *this;
-                        }
-#endif
-#if JKJ_HAS_BUILTIN(__builtin_addc) && !defined(__ibmxl__)
-                        JKJ_IF_CONSTEXPR(stdr::is_same<stdr::uint_least64_t, unsigned int>::value) {
-                            unsigned int carry{};
-                            low_ = stdr::uint_least64_t(__builtin_addc(static_cast<unsigned int>(low_),
-                                                                       static_cast<unsigned int>(n), 0,
-                                                                       &carry));
-                            high_ = stdr::uint_least64_t(
-                                __builtin_addc(static_cast<unsigned int>(high_), 0, carry, &carry));
-                            return *this;
-                        }
-#endif
-
-#if JKJ_HAS_BUILTIN(__builtin_ia32_addcarry_u64)
-                        // __builtin_ia32_addcarry_u64 is not documented, but it seems it takes unsigned
-                        // long long arguments.
-                        unsigned long long result{};
-                        auto const carry = __builtin_ia32_addcarry_u64(0, low_, n, &result);
-                        low_ = stdr::uint_least64_t(result);
-                        __builtin_ia32_addcarry_u64(carry, high_, 0, &result);
-                        high_ = stdr::uint_least64_t(result);
-#elif defined(_MSC_VER) && defined(_M_X64)
-                        // On MSVC, uint_least64_t and __int64 must be unsigned long long; see
-                        // https://learn.microsoft.com/en-us/cpp/c-runtime-library/standard-types
-                        // and https://learn.microsoft.com/en-us/cpp/cpp/int8-int16-int32-int64.
-                        static_assert(stdr::is_same<unsigned long long, stdr::uint_least64_t>::value,
-                                      "");
-                        auto const carry = _addcarry_u64(0, low_, n, &low_);
-                        _addcarry_u64(carry, high_, 0, &high_);
-#elif defined(__INTEL_COMPILER) && (defined(_M_X64) || defined(__x86_64))
-                        // Cannot find any documentation on how things are defined, but hopefully this
-                        // is always true...
-                        static_assert(stdr::is_same<unsigned __int64, stdr::uint_least64_t>::value, "");
-                        auto const carry = _addcarry_u64(0, low_, n, &low_);
-                        _addcarry_u64(carry, high_, 0, &high_);
-#else
-                        generic_impl();
-#endif
+                    void operator+=(stdr::uint_least64_t n) noexcept {
+                        auto const sum = (low_ + n) & UINT64_C(0xffffffffffffffff);
+                        high_ += (sum < low_ ? 1 : 0);
+                        low_ = sum;
                         return *this;
                     }
                 };
