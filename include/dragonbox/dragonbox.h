@@ -829,85 +829,31 @@ namespace jkj {
                     }
                 };
 
-                template <stdr::size_t tier>
-                struct floor_log10_pow2_info;
-                template <>
-                struct floor_log10_pow2_info<0> {
-                    using default_return_type = stdr::int_fast8_t;
-                    static constexpr stdr::int_fast16_t multiply = 77;
-                    static constexpr stdr::int_fast16_t subtract = 0;
-                    static constexpr stdr::size_t shift = 8;
-                    static constexpr stdr::int_least32_t min_exponent = -102;
-                    static constexpr stdr::int_least32_t max_exponent = 102;
-                };
-                template <>
-                struct floor_log10_pow2_info<1> {
-                    using default_return_type = stdr::int_fast8_t;
-                    // 24-bits are enough in fact.
-                    static constexpr stdr::int_fast32_t multiply = 1233;
-                    static constexpr stdr::int_fast32_t subtract = 0;
-                    static constexpr stdr::size_t shift = 12;
-                    // Formula itself holds on [-680,680]; [-425,425] is to ensure that the output is
-                    // within [-127,127].
-                    static constexpr stdr::int_least32_t min_exponent = -425;
-                    static constexpr stdr::int_least32_t max_exponent = 425;
-                };
-                template <>
-                struct floor_log10_pow2_info<2> {
-                    using default_return_type = stdr::int_fast16_t;
-                    static constexpr stdr::int_fast32_t multiply = INT32_C(315653);
-                    static constexpr stdr::int_fast32_t subtract = 0;
-                    static constexpr stdr::size_t shift = 20;
-                    static constexpr stdr::int_least32_t min_exponent = -2620;
-                    static constexpr stdr::int_least32_t max_exponent = 2620;
-                };
-                template <class ReturnType = typename compute_impl<floor_log10_pow2_info, -2620,
-                                                                   2620>::default_return_type,
-                          class Int>
-                constexpr ReturnType floor_log10_pow2(Int e) noexcept {
-                    return compute_impl<floor_log10_pow2_info, -2620,
-                                        2620>::template compute<ReturnType>(e);
+                template <class Return = stdr::int_fast16_t, class Int>
+                constexpr Return floor_log10_pow2(Int e) noexcept {
+                    constexpr stdr::int_fast32_t multiply = 315653;
+                    constexpr stdr::int_fast32_t subtract = 0;
+                    constexpr stdr::size_t shift = 20;
+                    constexpr stdr::int_least32_t min_exponent = -2620;
+                    constexpr stdr::int_least32_t max_exponent = 2620;
+
+                    assert(min_exponent <= e && e <= max_exponent);
+                    static_assert(multiply >= 0 && subtract >= 0);
+                    return static_cast<Return>((e * multiply - subtract) >> shift);
                 }
 
-                template <stdr::size_t tier>
-                struct floor_log2_pow10_info;
-                template <>
-                struct floor_log2_pow10_info<0> {
-                    using default_return_type = stdr::int_fast8_t;
-                    static constexpr stdr::int_fast16_t multiply = 53;
-                    static constexpr stdr::int_fast16_t subtract = 0;
-                    static constexpr stdr::size_t shift = 4;
-                    static constexpr stdr::int_least32_t min_exponent = -15;
-                    static constexpr stdr::int_least32_t max_exponent = 18;
-                };
-                template <>
-                struct floor_log2_pow10_info<1> {
-                    using default_return_type = stdr::int_fast16_t;
-                    // 24-bits are enough in fact.
-                    static constexpr stdr::int_fast32_t multiply = 1701;
-                    static constexpr stdr::int_fast32_t subtract = 0;
-                    static constexpr stdr::size_t shift = 9;
-                    static constexpr stdr::int_least32_t min_exponent = -58;
-                    static constexpr stdr::int_least32_t max_exponent = 58;
-                };
-                template <>
-                struct floor_log2_pow10_info<2> {
-                    using default_return_type = stdr::int_fast16_t;
-                    static constexpr stdr::int_fast32_t multiply = INT32_C(1741647);
-                    static constexpr stdr::int_fast32_t subtract = 0;
-                    static constexpr stdr::size_t shift = 19;
+                template <class Return = stdr::int_fast16_t, class Int>
+                constexpr Return floor_log2_pow10(Int e) noexcept {
+                    constexpr stdr::int_fast32_t multiply = 1741647;
+                    constexpr stdr::int_fast32_t subtract = 0;
+                    constexpr stdr::size_t shift = 19;
                     // Formula itself holds on [-4003,4003]; [-1233,1233] is to ensure no overflow.
-                    static constexpr stdr::int_least32_t min_exponent = -1233;
-                    static constexpr stdr::int_least32_t max_exponent = 1233;
-                };
-                template <stdr::int_least32_t min_exponent = -1233,
-                          stdr::int_least32_t max_exponent = 1233,
-                          class ReturnType = typename compute_impl<floor_log2_pow10_info, min_exponent,
-                                                                   max_exponent>::default_return_type,
-                          class Int>
-                constexpr ReturnType floor_log2_pow10(Int e) noexcept {
-                    return compute_impl<floor_log2_pow10_info, min_exponent,
-                                        max_exponent>::template compute<ReturnType>(e);
+                    constexpr stdr::int_least32_t min_exponent = -1233;
+                    constexpr stdr::int_least32_t max_exponent = 1233;
+
+                    assert(min_exponent <= e && e <= max_exponent);
+                    static_assert(multiply >= 0 && subtract >= 0);
+                    return static_cast<Return>((e * multiply - subtract) >> shift);
                 }
 
                 template <stdr::size_t tier>
@@ -1969,8 +1915,8 @@ namespace jkj {
                 else {
                     // Compute the required amount of bit-shift.
                     auto const alpha =
-                        ShiftAmountType(detail::log::floor_log2_pow10<min_k, max_k>(k) -
-                                        detail::log::floor_log2_pow10<min_k, max_k>(kb) - offset);
+                        ShiftAmountType(detail::log::floor_log2_pow10(k) -
+                                        detail::log::floor_log2_pow10(kb) - offset);
                     assert(alpha > 0 && alpha < 64);
 
                     // Try to recover the real cache.
@@ -2071,8 +2017,8 @@ namespace jkj {
                 else {
                     // Compute the required amount of bit-shift.
                     auto const alpha =
-                        ShiftAmountType(detail::log::floor_log2_pow10<min_k, max_k>(k) -
-                                        detail::log::floor_log2_pow10<min_k, max_k>(kb) - offset);
+                        ShiftAmountType(detail::log::floor_log2_pow10(k) -
+                                        detail::log::floor_log2_pow10(kb) - offset);
                     assert(alpha > 0 && alpha < 64);
 
                     // Try to recover the real cache.
@@ -3166,7 +3112,7 @@ namespace jkj {
                                 binary_exponent);
                             auto const beta = shift_amount_type(
                                 binary_exponent +
-                                log::floor_log2_pow10<min_k, max_k>(decimal_exponent_type_(-minus_k)));
+                                log::floor_log2_pow10(decimal_exponent_type_(-minus_k)));
 
                             // Compute xi and zi.
                             auto const cache =
@@ -3251,7 +3197,7 @@ namespace jkj {
                     auto const cache = CachePolicy::template get_cache<format, shift_amount_type>(
                         decimal_exponent_type_(-minus_k));
                     auto const beta =
-                        shift_amount_type(binary_exponent + log::floor_log2_pow10<min_k, max_k>(
+                        shift_amount_type(binary_exponent + log::floor_log2_pow10(
                                                                 decimal_exponent_type_(-minus_k)));
 
                     // Compute zi and deltai.
@@ -3444,7 +3390,7 @@ namespace jkj {
                     auto const cache = CachePolicy::template get_cache<format, shift_amount_type>(
                         decimal_exponent_type_(-minus_k));
                     auto const beta =
-                        shift_amount_type(binary_exponent + log::floor_log2_pow10<min_k, max_k>(
+                        shift_amount_type(binary_exponent + log::floor_log2_pow10(
                                                                 decimal_exponent_type_(-minus_k)));
 
                     // Compute xi and deltai.
