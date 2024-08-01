@@ -836,9 +836,7 @@ namespace jkj {
                     constexpr stdr::size_t shift = 20;
                     constexpr stdr::int_least32_t min_exponent = -2620;
                     constexpr stdr::int_least32_t max_exponent = 2620;
-
                     assert(min_exponent <= e && e <= max_exponent);
-                    static_assert(multiply >= 0 && subtract >= 0);
                     return static_cast<Return>((e * multiply - subtract) >> shift);
                 }
 
@@ -850,96 +848,41 @@ namespace jkj {
                     // Formula itself holds on [-4003,4003]; [-1233,1233] is to ensure no overflow.
                     constexpr stdr::int_least32_t min_exponent = -1233;
                     constexpr stdr::int_least32_t max_exponent = 1233;
-
                     assert(min_exponent <= e && e <= max_exponent);
-                    static_assert(multiply >= 0 && subtract >= 0);
                     return static_cast<Return>((e * multiply - subtract) >> shift);
                 }
 
-                template <stdr::size_t tier>
-                struct floor_log10_pow2_minus_log10_4_over_3_info;
-                template <>
-                struct floor_log10_pow2_minus_log10_4_over_3_info<0> {
-                    using default_return_type = stdr::int_fast8_t;
-                    static constexpr stdr::int_fast16_t multiply = 77;
-                    static constexpr stdr::int_fast16_t subtract = 31;
-                    static constexpr stdr::size_t shift = 8;
-                    static constexpr stdr::int_least32_t min_exponent = -75;
-                    static constexpr stdr::int_least32_t max_exponent = 129;
-                };
-                template <>
-                struct floor_log10_pow2_minus_log10_4_over_3_info<1> {
-                    using default_return_type = stdr::int_fast8_t;
-                    // 24-bits are enough in fact.
-                    static constexpr stdr::int_fast32_t multiply = 19728;
-                    static constexpr stdr::int_fast32_t subtract = 8241;
-                    static constexpr stdr::size_t shift = 16;
-                    // Formula itself holds on [-849,315]; [-424,315] is to ensure that the output is
-                    // within [-127,127].
-                    static constexpr stdr::int_least32_t min_exponent = -424;
-                    static constexpr stdr::int_least32_t max_exponent = 315;
-                };
-                template <>
-                struct floor_log10_pow2_minus_log10_4_over_3_info<2> {
-                    using default_return_type = stdr::int_fast16_t;
-                    static constexpr stdr::int_fast32_t multiply = INT32_C(631305);
-                    static constexpr stdr::int_fast32_t subtract = INT32_C(261663);
-                    static constexpr stdr::size_t shift = 21;
-                    static constexpr stdr::int_least32_t min_exponent = -2985;
-                    static constexpr stdr::int_least32_t max_exponent = 2936;
-                };
-                template <stdr::int_least32_t min_exponent = -2985,
-                          stdr::int_least32_t max_exponent = 2936,
-                          class ReturnType =
-                              typename compute_impl<floor_log10_pow2_minus_log10_4_over_3_info,
-                                                    min_exponent, max_exponent>::default_return_type,
-                          class Int>
-                constexpr ReturnType floor_log10_pow2_minus_log10_4_over_3(Int e) noexcept {
-                    return compute_impl<floor_log10_pow2_minus_log10_4_over_3_info, min_exponent,
-                                        max_exponent>::template compute<ReturnType>(e);
+                template <class Return = stdr::int_fast16_t, class Int>
+                constexpr Return floor_log10_pow2_minus_log10_4_over_3(Int e) noexcept {
+                    constexpr stdr::int_fast32_t multiply = 631305;
+                    constexpr stdr::int_fast32_t subtract = 261663;
+                    constexpr stdr::size_t shift = 21;
+                    constexpr stdr::int_least32_t min_exponent = -2985;
+                    constexpr stdr::int_least32_t max_exponent = 2936;
+                    assert(min_exponent <= e && e <= max_exponent);
+                    return static_cast<Return>((e * multiply - subtract) >> shift);
                 }
 
-                template <stdr::size_t tier>
-                struct floor_log5_pow2_info;
-                template <>
-                struct floor_log5_pow2_info<0> {
-                    using default_return_type = stdr::int_fast32_t;
-                    static constexpr stdr::int_fast32_t multiply = INT32_C(225799);
-                    static constexpr stdr::int_fast32_t subtract = 0;
-                    static constexpr stdr::size_t shift = 19;
-                    static constexpr stdr::int_least32_t min_exponent = -1831;
-                    static constexpr stdr::int_least32_t max_exponent = 1831;
-                };
-                template <stdr::int_least32_t min_exponent = -1831,
-                          stdr::int_least32_t max_exponent = 1831,
-                          class ReturnType = typename compute_impl<floor_log5_pow2_info, min_exponent,
-                                                                   max_exponent>::default_return_type,
-                          class Int>
-                constexpr ReturnType floor_log5_pow2(Int e) noexcept {
-                    return compute_impl<floor_log5_pow2_info, min_exponent,
-                                        max_exponent>::template compute<ReturnType>(e);
+                template <class Return = stdr::int_fast32_t, class Int>
+                constexpr Return floor_log5_pow2(Int e) noexcept {
+                    constexpr stdr::int_fast32_t multiply = 225799;
+                    constexpr stdr::int_fast32_t subtract = 0;
+                    constexpr stdr::size_t shift = 19;
+                    constexpr stdr::int_least32_t min_exponent = -1831;
+                    constexpr stdr::int_least32_t max_exponent = 1831;
+                    assert(min_exponent <= e && e <= max_exponent);
+                    return static_cast<Return>((e * multiply - subtract) >> shift);
                 }
 
-                template <stdr::size_t tier>
-                struct floor_log5_pow2_minus_log5_3_info;
-                template <>
-                struct floor_log5_pow2_minus_log5_3_info<0> {
-                    using default_return_type = stdr::int_fast32_t;
-                    static constexpr stdr::int_fast32_t multiply = INT32_C(451597);
-                    static constexpr stdr::int_fast32_t subtract = INT32_C(715764);
-                    static constexpr stdr::size_t shift = 20;
-                    static constexpr stdr::int_least32_t min_exponent = -3543;
-                    static constexpr stdr::int_least32_t max_exponent = 2427;
-                };
-                template <stdr::int_least32_t min_exponent = -3543,
-                          stdr::int_least32_t max_exponent = 2427,
-                          class ReturnType =
-                              typename compute_impl<floor_log5_pow2_minus_log5_3_info, min_exponent,
-                                                    max_exponent>::default_return_type,
-                          class Int>
-                constexpr ReturnType floor_log5_pow2_minus_log5_3(Int e) noexcept {
-                    return compute_impl<floor_log5_pow2_minus_log5_3_info, min_exponent,
-                                        max_exponent>::template compute<ReturnType>(e);
+                template <class Return = stdr::int_fast32_t, class Int>
+                constexpr Return floor_log5_pow2_minus_log5_3(Int e) noexcept {
+                    constexpr stdr::int_fast32_t multiply = 451597;
+                    constexpr stdr::int_fast32_t subtract = 715764;
+                    constexpr stdr::size_t shift = 20;
+                    constexpr stdr::int_least32_t min_exponent = -3543;
+                    constexpr stdr::int_least32_t max_exponent = 2427;
+                    assert(min_exponent <= e && e <= max_exponent);
+                    return static_cast<Return>((e * multiply - subtract) >> shift);
                 }
             }
 
@@ -3107,8 +3050,7 @@ namespace jkj {
 
                             // Compute k and beta.
                             auto const minus_k = log::floor_log10_pow2_minus_log10_4_over_3<
-                                min_exponent - format::significand_bits,
-                                max_exponent - format::significand_bits, decimal_exponent_type_>(
+                                decimal_exponent_type_>(
                                 binary_exponent);
                             auto const beta = shift_amount_type(
                                 binary_exponent +
