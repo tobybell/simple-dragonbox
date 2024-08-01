@@ -766,123 +766,43 @@ namespace jkj {
                 // Returns -1 when n = 0.
                 template <class UInt>
                 constexpr int floor_log2(UInt n) noexcept {
-#if JKJ_HAS_CONSTEXPR14
                     int count = -1;
                     while (n != 0) {
                         ++count;
                         n >>= 1;
                     }
                     return count;
-#else
-                    return n == 0 ? -1 : floor_log2<UInt>(n / 2) + 1;
-#endif
                 }
-
-                template <template <stdr::size_t> class Info, stdr::int_least32_t min_exponent,
-                          stdr::int_least32_t max_exponent, stdr::size_t current_tier,
-                          stdr::int_least32_t supported_min_exponent = Info<current_tier>::min_exponent,
-                          stdr::int_least32_t supported_max_exponent = Info<current_tier>::max_exponent>
-                constexpr bool is_in_range(int) noexcept {
-                    return min_exponent >= supported_min_exponent &&
-                           max_exponent <= supported_max_exponent;
-                }
-                template <template <stdr::size_t> class Info, stdr::int_least32_t min_exponent,
-                          stdr::int_least32_t max_exponent, stdr::size_t current_tier>
-                constexpr bool is_in_range(...) noexcept {
-                    // Supposed to be always false, but formally dependent on the template parameters.
-                    static_assert(min_exponent > max_exponent,
-                                  "jkj::dragonbox: exponent range is too wide");
-                    return false;
-                }
-
-                template <template <stdr::size_t> class Info, stdr::int_least32_t min_exponent,
-                          stdr::int_least32_t max_exponent, stdr::size_t current_tier = 0,
-                          bool = is_in_range<Info, min_exponent, max_exponent, current_tier>(0)>
-                struct compute_impl;
-
-                template <template <stdr::size_t> class Info, stdr::int_least32_t min_exponent,
-                          stdr::int_least32_t max_exponent, stdr::size_t current_tier>
-                struct compute_impl<Info, min_exponent, max_exponent, current_tier, true> {
-                    using info = Info<current_tier>;
-                    using default_return_type = typename info::default_return_type;
-                    template <class ReturnType, class Int>
-                    static constexpr ReturnType compute(Int e) noexcept {
-#if JKJ_HAS_CONSTEXPR14
-                        assert(min_exponent <= e && e <= max_exponent);
-#endif
-                        // The sign is irrelevant for the mathematical validity of the formula, but
-                        // assuming positivity makes the overflow analysis simpler.
-                        static_assert(info::multiply >= 0 && info::subtract >= 0, "");
-                        return static_cast<ReturnType>((e * info::multiply - info::subtract) >>
-                                                       info::shift);
-                    }
-                };
-
-                template <template <stdr::size_t> class Info, stdr::int_least32_t min_exponent,
-                          stdr::int_least32_t max_exponent, stdr::size_t current_tier>
-                struct compute_impl<Info, min_exponent, max_exponent, current_tier, false> {
-                    using next_tier = compute_impl<Info, min_exponent, max_exponent, current_tier + 1>;
-                    using default_return_type = typename next_tier::default_return_type;
-                    template <class ReturnType, class Int>
-                    static constexpr ReturnType compute(Int e) noexcept {
-                        return next_tier::template compute<ReturnType>(e);
-                    }
-                };
 
                 template <class Return = stdr::int_fast16_t, class Int>
                 constexpr Return floor_log10_pow2(Int e) noexcept {
-                    constexpr stdr::int_fast32_t multiply = 315653;
-                    constexpr stdr::int_fast32_t subtract = 0;
-                    constexpr stdr::size_t shift = 20;
-                    constexpr stdr::int_least32_t min_exponent = -2620;
-                    constexpr stdr::int_least32_t max_exponent = 2620;
-                    assert(min_exponent <= e && e <= max_exponent);
-                    return static_cast<Return>((e * multiply - subtract) >> shift);
+                    assert(-2620 <= e && e <= 2620);
+                    return static_cast<Return>((e * 315653) >> 20);
                 }
 
                 template <class Return = stdr::int_fast16_t, class Int>
                 constexpr Return floor_log2_pow10(Int e) noexcept {
-                    constexpr stdr::int_fast32_t multiply = 1741647;
-                    constexpr stdr::int_fast32_t subtract = 0;
-                    constexpr stdr::size_t shift = 19;
                     // Formula itself holds on [-4003,4003]; [-1233,1233] is to ensure no overflow.
-                    constexpr stdr::int_least32_t min_exponent = -1233;
-                    constexpr stdr::int_least32_t max_exponent = 1233;
-                    assert(min_exponent <= e && e <= max_exponent);
-                    return static_cast<Return>((e * multiply - subtract) >> shift);
+                    assert(-1233 <= e && e <= 1233);
+                    return static_cast<Return>((e * 1741647) >> 19);
                 }
 
                 template <class Return = stdr::int_fast16_t, class Int>
                 constexpr Return floor_log10_pow2_minus_log10_4_over_3(Int e) noexcept {
-                    constexpr stdr::int_fast32_t multiply = 631305;
-                    constexpr stdr::int_fast32_t subtract = 261663;
-                    constexpr stdr::size_t shift = 21;
-                    constexpr stdr::int_least32_t min_exponent = -2985;
-                    constexpr stdr::int_least32_t max_exponent = 2936;
-                    assert(min_exponent <= e && e <= max_exponent);
-                    return static_cast<Return>((e * multiply - subtract) >> shift);
+                    assert(-2985 <= e && e <= 2936);
+                    return static_cast<Return>((e * 631305 - 261663) >> 21);
                 }
 
                 template <class Return = stdr::int_fast32_t, class Int>
                 constexpr Return floor_log5_pow2(Int e) noexcept {
-                    constexpr stdr::int_fast32_t multiply = 225799;
-                    constexpr stdr::int_fast32_t subtract = 0;
-                    constexpr stdr::size_t shift = 19;
-                    constexpr stdr::int_least32_t min_exponent = -1831;
-                    constexpr stdr::int_least32_t max_exponent = 1831;
-                    assert(min_exponent <= e && e <= max_exponent);
-                    return static_cast<Return>((e * multiply - subtract) >> shift);
+                    assert(-1831 <= e && e <= 1831);
+                    return static_cast<Return>((e * 225799) >> 19);
                 }
 
                 template <class Return = stdr::int_fast32_t, class Int>
                 constexpr Return floor_log5_pow2_minus_log5_3(Int e) noexcept {
-                    constexpr stdr::int_fast32_t multiply = 451597;
-                    constexpr stdr::int_fast32_t subtract = 715764;
-                    constexpr stdr::size_t shift = 20;
-                    constexpr stdr::int_least32_t min_exponent = -3543;
-                    constexpr stdr::int_least32_t max_exponent = 2427;
-                    assert(min_exponent <= e && e <= max_exponent);
-                    return static_cast<Return>((e * multiply - subtract) >> shift);
+                    assert(-3543 <= e && e <= 2427);
+                    return static_cast<Return>((e * 451597 - 715764) >> 20);
                 }
             }
 
