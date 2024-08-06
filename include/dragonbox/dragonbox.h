@@ -27,23 +27,6 @@
     #define JKJ_HAS_CONSTEXPR17 0
 #endif
 
-// C++17 inline variables
-#if defined(__cpp_inline_variables) && __cpp_inline_variables >= 201606L
-    #define JKJ_HAS_INLINE_VARIABLE 1
-#elif __cplusplus >= 201703L
-    #define JKJ_HAS_INLINE_VARIABLE 1
-#elif defined(_MSC_VER) && _MSC_VER >= 1912 && _MSVC_LANG >= 201703L
-    #define JKJ_HAS_INLINE_VARIABLE 1
-#else
-    #define JKJ_HAS_INLINE_VARIABLE 0
-#endif
-
-#if JKJ_HAS_INLINE_VARIABLE
-    #define JKJ_INLINE_VARIABLE inline constexpr
-#else
-    #define JKJ_INLINE_VARIABLE static constexpr
-#endif
-
 // C++17 if constexpr
 #if defined(__cpp_if_constexpr) && __cpp_if_constexpr >= 201606L
     #define JKJ_HAS_IF_CONSTEXPR 1
@@ -1026,13 +1009,6 @@ namespace jkj {
                      UINT64_C(0xe596b7b0c643c71a), UINT64_C(0x8f7e32ce7bea5c70),
                      UINT64_C(0xb35dbf821ae4f38c), UINT64_C(0xe0352f62a19e306f)}};
         };
-#if !JKJ_HAS_INLINE_VARIABLE
-        // decltype(...) should not depend on Dummy; see
-        // https://stackoverflow.com/questions/76438400/decltype-on-static-variable-in-template-class.
-        template <class Dummy>
-        constexpr decltype(cache_holder<ieee754_binary32>::cache)
-            cache_holder<ieee754_binary32, Dummy>::cache;
-#endif
 
         template <class Dummy>
         struct cache_holder<ieee754_binary64, Dummy> {
@@ -1662,13 +1638,6 @@ namespace jkj {
                      {UINT64_C(0xc5a05277621be293), UINT64_C(0xc7098b7305241886)},
                      {UINT64_C(0xf70867153aa2db38), UINT64_C(0xb8cbee4fc66d1ea8)}}};
         };
-#if !JKJ_HAS_INLINE_VARIABLE
-        // decltype(...) should not depend on Dummy; see
-        // https://stackoverflow.com/questions/76438400/decltype-on-static-variable-in-template-class.
-        template <class Dummy>
-        constexpr decltype(cache_holder<ieee754_binary64>::cache)
-            cache_holder<ieee754_binary64, Dummy>::cache;
-#endif
 
         // Compressed cache.
         template <class FloatFormat, class Dummy = void>
@@ -1777,14 +1746,6 @@ namespace jkj {
                 }
             }
         };
-#if !JKJ_HAS_INLINE_VARIABLE
-        template <class Dummy>
-        constexpr typename compressed_cache_holder<ieee754_binary32, Dummy>::cache_holder_t
-            compressed_cache_holder<ieee754_binary32, Dummy>::cache;
-        template <class Dummy>
-        constexpr typename compressed_cache_holder<ieee754_binary32, Dummy>::pow5_holder_t
-            compressed_cache_holder<ieee754_binary32, Dummy>::pow5_table;
-#endif
 
         template <class Dummy>
         struct compressed_cache_holder<ieee754_binary64, Dummy> {
@@ -1886,14 +1847,6 @@ namespace jkj {
                 }
             }
         };
-#if !JKJ_HAS_INLINE_VARIABLE
-        template <class Dummy>
-        constexpr typename compressed_cache_holder<ieee754_binary64, Dummy>::cache_holder_t
-            compressed_cache_holder<ieee754_binary64, Dummy>::cache;
-        template <class Dummy>
-        constexpr typename compressed_cache_holder<ieee754_binary64, Dummy>::pow5_holder_t
-            compressed_cache_holder<ieee754_binary64, Dummy>::pow5_table;
-#endif
 
         ////////////////////////////////////////////////////////////////////////////////////////
         // Forward declarations of user-specializable templates used in the main algorithm.
@@ -1943,7 +1896,7 @@ namespace jkj {
 
         namespace policy {
             namespace sign {
-                JKJ_INLINE_VARIABLE struct ignore_t {
+                inline constexpr struct ignore_t {
                     using sign_policy = ignore_t;
                     static constexpr bool return_has_sign = false;
 
@@ -1975,7 +1928,7 @@ namespace jkj {
 #endif
                 } ignore = {};
 
-                JKJ_INLINE_VARIABLE struct return_sign_t {
+                inline constexpr struct return_sign_t {
                     using sign_policy = return_sign_t;
                     static constexpr bool return_has_sign = true;
 
@@ -1988,7 +1941,7 @@ namespace jkj {
             }
 
             namespace trailing_zero {
-                JKJ_INLINE_VARIABLE struct ignore_t {
+                inline constexpr struct ignore_t {
                     using trailing_zero_policy = ignore_t;
                     static constexpr bool report_trailing_zeros = false;
 
@@ -2007,7 +1960,7 @@ namespace jkj {
                     }
                 } ignore = {};
 
-                JKJ_INLINE_VARIABLE struct remove_t {
+                inline constexpr struct remove_t {
                     using trailing_zero_policy = remove_t;
                     static constexpr bool report_trailing_zeros = false;
 
@@ -2030,7 +1983,7 @@ namespace jkj {
                     }
                 } remove = {};
 
-                JKJ_INLINE_VARIABLE struct remove_compact_t {
+                inline constexpr struct remove_compact_t {
                     using trailing_zero_policy = remove_compact_t;
                     static constexpr bool report_trailing_zeros = false;
 
@@ -2053,7 +2006,7 @@ namespace jkj {
                     }
                 } remove_compact = {};
 
-                JKJ_INLINE_VARIABLE struct report_t {
+                inline constexpr struct report_t {
                     using trailing_zero_policy = report_t;
                     static constexpr bool report_trailing_zeros = true;
 
@@ -2113,7 +2066,7 @@ namespace jkj {
                     };
                 }
 
-                JKJ_INLINE_VARIABLE struct nearest_to_even_t {
+                inline constexpr struct nearest_to_even_t {
                     using decimal_to_binary_rounding_policy = nearest_to_even_t;
                     using interval_type_provider = nearest_to_even_t;
                     static constexpr auto tag = tag_t::to_nearest;
@@ -2138,7 +2091,7 @@ namespace jkj {
                     }
                 } nearest_to_even = {};
 
-                JKJ_INLINE_VARIABLE struct nearest_to_odd_t {
+                inline constexpr struct nearest_to_odd_t {
                     using decimal_to_binary_rounding_policy = nearest_to_odd_t;
                     using interval_type_provider = nearest_to_odd_t;
                     static constexpr auto tag = tag_t::to_nearest;
@@ -2162,7 +2115,7 @@ namespace jkj {
                     }
                 } nearest_to_odd = {};
 
-                JKJ_INLINE_VARIABLE struct nearest_toward_plus_infinity_t {
+                inline constexpr struct nearest_toward_plus_infinity_t {
                     using decimal_to_binary_rounding_policy = nearest_toward_plus_infinity_t;
                     using interval_type_provider = nearest_toward_plus_infinity_t;
                     static constexpr auto tag = tag_t::to_nearest;
@@ -2186,7 +2139,7 @@ namespace jkj {
                     }
                 } nearest_toward_plus_infinity = {};
 
-                JKJ_INLINE_VARIABLE struct nearest_toward_minus_infinity_t {
+                inline constexpr struct nearest_toward_minus_infinity_t {
                     using decimal_to_binary_rounding_policy = nearest_toward_minus_infinity_t;
                     using interval_type_provider = nearest_toward_minus_infinity_t;
                     static constexpr auto tag = tag_t::to_nearest;
@@ -2210,7 +2163,7 @@ namespace jkj {
                     }
                 } nearest_toward_minus_infinity = {};
 
-                JKJ_INLINE_VARIABLE struct nearest_toward_zero_t {
+                inline constexpr struct nearest_toward_zero_t {
                     using decimal_to_binary_rounding_policy = nearest_toward_zero_t;
                     using interval_type_provider = nearest_toward_zero_t;
                     static constexpr auto tag = tag_t::to_nearest;
@@ -2234,7 +2187,7 @@ namespace jkj {
                     }
                 } nearest_toward_zero = {};
 
-                JKJ_INLINE_VARIABLE struct nearest_away_from_zero_t {
+                inline constexpr struct nearest_away_from_zero_t {
                     using decimal_to_binary_rounding_policy = nearest_away_from_zero_t;
                     using interval_type_provider = nearest_away_from_zero_t;
                     static constexpr auto tag = tag_t::to_nearest;
@@ -2291,7 +2244,7 @@ namespace jkj {
                     };
                 }
 
-                JKJ_INLINE_VARIABLE struct nearest_to_even_static_boundary_t {
+                inline constexpr struct nearest_to_even_static_boundary_t {
                     using decimal_to_binary_rounding_policy = nearest_to_even_static_boundary_t;
 
                     template <class SignedSignificandBits, class Func, class... Args>
@@ -2304,7 +2257,7 @@ namespace jkj {
                     }
                 } nearest_to_even_static_boundary = {};
 
-                JKJ_INLINE_VARIABLE struct nearest_to_odd_static_boundary_t {
+                inline constexpr struct nearest_to_odd_static_boundary_t {
                     using decimal_to_binary_rounding_policy = nearest_to_odd_static_boundary_t;
 
                     template <class SignedSignificandBits, class Func, class... Args>
@@ -2317,7 +2270,7 @@ namespace jkj {
                     }
                 } nearest_to_odd_static_boundary = {};
 
-                JKJ_INLINE_VARIABLE struct nearest_toward_plus_infinity_static_boundary_t {
+                inline constexpr struct nearest_toward_plus_infinity_static_boundary_t {
                     using decimal_to_binary_rounding_policy =
                         nearest_toward_plus_infinity_static_boundary_t;
 
@@ -2331,7 +2284,7 @@ namespace jkj {
                     }
                 } nearest_toward_plus_infinity_static_boundary = {};
 
-                JKJ_INLINE_VARIABLE struct nearest_toward_minus_infinity_static_boundary_t {
+                inline constexpr struct nearest_toward_minus_infinity_static_boundary_t {
                     using decimal_to_binary_rounding_policy =
                         nearest_toward_minus_infinity_static_boundary_t;
 
@@ -2354,7 +2307,7 @@ namespace jkj {
                     };
                 }
 
-                JKJ_INLINE_VARIABLE struct toward_plus_infinity_t {
+                inline constexpr struct toward_plus_infinity_t {
                     using decimal_to_binary_rounding_policy = toward_plus_infinity_t;
 
                     template <class SignedSignificandBits, class Func, class... Args>
@@ -2366,7 +2319,7 @@ namespace jkj {
                     }
                 } toward_plus_infinity = {};
 
-                JKJ_INLINE_VARIABLE struct toward_minus_infinity_t {
+                inline constexpr struct toward_minus_infinity_t {
                     using decimal_to_binary_rounding_policy = toward_minus_infinity_t;
 
                     template <class SignedSignificandBits, class Func, class... Args>
@@ -2378,7 +2331,7 @@ namespace jkj {
                     }
                 } toward_minus_infinity = {};
 
-                JKJ_INLINE_VARIABLE struct toward_zero_t {
+                inline constexpr struct toward_zero_t {
                     using decimal_to_binary_rounding_policy = toward_zero_t;
 
                     template <class SignedSignificandBits, class Func, class... Args>
@@ -2389,7 +2342,7 @@ namespace jkj {
                     }
                 } toward_zero = {};
 
-                JKJ_INLINE_VARIABLE struct away_from_zero_t {
+                inline constexpr struct away_from_zero_t {
                     using decimal_to_binary_rounding_policy = away_from_zero_t;
 
                     template <class SignedSignificandBits, class Func, class... Args>
@@ -2408,7 +2361,7 @@ namespace jkj {
 
                 // The parameter significand corresponds to 10\tilde{s}+t in the paper.
 
-                JKJ_INLINE_VARIABLE struct do_not_care_t {
+                inline constexpr struct do_not_care_t {
                     using binary_to_decimal_rounding_policy = do_not_care_t;
                     static constexpr auto tag = tag_t::do_not_care;
 
@@ -2418,7 +2371,7 @@ namespace jkj {
                     }
                 } do_not_care = {};
 
-                JKJ_INLINE_VARIABLE struct to_even_t {
+                inline constexpr struct to_even_t {
                     using binary_to_decimal_rounding_policy = to_even_t;
                     static constexpr auto tag = tag_t::to_even;
 
@@ -2428,7 +2381,7 @@ namespace jkj {
                     }
                 } to_even = {};
 
-                JKJ_INLINE_VARIABLE struct to_odd_t {
+                inline constexpr struct to_odd_t {
                     using binary_to_decimal_rounding_policy = to_odd_t;
                     static constexpr auto tag = tag_t::to_odd;
 
@@ -2438,7 +2391,7 @@ namespace jkj {
                     }
                 } to_odd = {};
 
-                JKJ_INLINE_VARIABLE struct away_from_zero_t {
+                inline constexpr struct away_from_zero_t {
                     using binary_to_decimal_rounding_policy = away_from_zero_t;
                     static constexpr auto tag = tag_t::away_from_zero;
 
@@ -2448,7 +2401,7 @@ namespace jkj {
                     }
                 } away_from_zero = {};
 
-                JKJ_INLINE_VARIABLE struct toward_zero_t {
+                inline constexpr struct toward_zero_t {
                     using binary_to_decimal_rounding_policy = toward_zero_t;
                     static constexpr auto tag = tag_t::toward_zero;
 
@@ -2460,7 +2413,7 @@ namespace jkj {
             }
 
             namespace cache {
-                JKJ_INLINE_VARIABLE struct full_t {
+                inline constexpr struct full_t {
                     using cache_policy = full_t;
                     template <class FloatFormat>
                     using cache_holder_type = cache_holder<FloatFormat>;
@@ -2475,7 +2428,7 @@ namespace jkj {
                     }
                 } full = {};
 
-                JKJ_INLINE_VARIABLE struct compact_t {
+                inline constexpr struct compact_t {
                     using cache_policy = compact_t;
                     template <class FloatFormat>
                     using cache_holder_type = compressed_cache_holder<FloatFormat>;
@@ -2492,7 +2445,7 @@ namespace jkj {
             }
 
             namespace preferred_integer_types {
-                JKJ_INLINE_VARIABLE struct match_t {
+                inline constexpr struct match_t {
                     using preferred_integer_types_policy = match_t;
 
                     template <class FormatTraits, detail::stdr::uint_least64_t upper_bound>
@@ -2506,7 +2459,7 @@ namespace jkj {
                     using shift_amount_type = typename FormatTraits::exponent_int;
                 } match;
 
-                JKJ_INLINE_VARIABLE struct prefer_32_t {
+                inline constexpr struct prefer_32_t {
                     using preferred_integer_types_policy = prefer_32_t;
 
                     template <class FormatTraits, detail::stdr::uint_least64_t upper_bound>
@@ -2526,7 +2479,7 @@ namespace jkj {
                     using shift_amount_type = detail::stdr::int_least32_t;
                 } prefer_32;
 
-                JKJ_INLINE_VARIABLE struct minimal_t {
+                inline constexpr struct minimal_t {
                     using preferred_integer_types_policy = minimal_t;
 
                     template <class FormatTraits, detail::stdr::uint_least64_t upper_bound>
@@ -3807,6 +3760,4 @@ namespace jkj {
 #undef JKJ_IF_CONSTEVAL
 #undef JKJ_IF_CONSTEXPR
 #undef JKJ_HAS_IF_CONSTEXPR
-#undef JKJ_INLINE_VARIABLE
-#undef JKJ_HAS_INLINE_VARIABLE
 #undef JKJ_HAS_CONSTEXPR17
