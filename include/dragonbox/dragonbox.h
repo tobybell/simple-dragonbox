@@ -16,17 +16,6 @@
 // Language feature detections.
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// C++17 constexpr lambdas
-#if defined(__cpp_constexpr) && __cpp_constexpr >= 201603L
-    #define JKJ_HAS_CONSTEXPR17 1
-#elif __cplusplus >= 201703L
-    #define JKJ_HAS_CONSTEXPR17 1
-#elif defined(_MSC_VER) && _MSC_VER >= 1911 && _MSVC_LANG >= 201703L
-    #define JKJ_HAS_CONSTEXPR17 1
-#else
-    #define JKJ_HAS_CONSTEXPR17 0
-#endif
-
 // C++17 if constexpr
 #if defined(__cpp_if_constexpr) && __cpp_if_constexpr >= 201606L
     #define JKJ_HAS_IF_CONSTEXPR 1
@@ -173,24 +162,6 @@ namespace jkj {
         // Some general utilities for C++11-compatibility.
         ////////////////////////////////////////////////////////////////////////////////////////
         namespace detail {
-#if !JKJ_HAS_CONSTEXPR17
-            template <stdr::size_t... indices>
-            struct index_sequence {};
-
-            template <stdr::size_t current, stdr::size_t total, class Dummy, stdr::size_t... indices>
-            struct make_index_sequence_impl {
-                using type = typename make_index_sequence_impl<current + 1, total, Dummy, indices...,
-                                                               current>::type;
-            };
-
-            template <stdr::size_t total, class Dummy, stdr::size_t... indices>
-            struct make_index_sequence_impl<total, total, Dummy, indices...> {
-                using type = index_sequence<indices...>;
-            };
-
-            template <stdr::size_t N>
-            using make_index_sequence = typename make_index_sequence_impl<0, N, void>::type;
-#endif
 
             // Available since C++11, but including <utility> just for this is an overkill.
             template <class T>
@@ -1668,7 +1639,6 @@ namespace jkj {
             using cache_holder_t = detail::array<cache_entry_type, compressed_table_size>;
             using pow5_holder_t = detail::array<detail::stdr::uint_least16_t, pow5_table_size>;
 
-#if JKJ_HAS_CONSTEXPR17
             static constexpr cache_holder_t cache = [] {
                 cache_holder_t res{};
                 for (detail::stdr::size_t i = 0; i < compressed_table_size; ++i) {
@@ -1685,21 +1655,6 @@ namespace jkj {
                 }
                 return res;
             }();
-#else
-            template <detail::stdr::size_t... indices>
-            static constexpr cache_holder_t make_cache(detail::index_sequence<indices...>) {
-                return {cache_holder<ieee754_binary32>::cache[indices * compression_ratio]...};
-            }
-            static constexpr cache_holder_t cache =
-                make_cache(detail::make_index_sequence<compressed_table_size>{});
-
-            template <detail::stdr::size_t... indices>
-            static constexpr pow5_holder_t make_pow5_table(detail::index_sequence<indices...>) {
-                return {detail::compute_power<indices>(detail::stdr::uint_least16_t(5))...};
-            }
-            static constexpr pow5_holder_t pow5_table =
-                make_pow5_table(detail::make_index_sequence<pow5_table_size>{});
-#endif
 
             template <class ShiftAmountType, class DecimalExponentType>
             static JKJ_CONSTEXPR20 cache_entry_type get_cache(DecimalExponentType k) noexcept {
@@ -1762,7 +1717,6 @@ namespace jkj {
             using cache_holder_t = detail::array<cache_entry_type, compressed_table_size>;
             using pow5_holder_t = detail::array<detail::stdr::uint_least64_t, pow5_table_size>;
 
-#if JKJ_HAS_CONSTEXPR17
             static constexpr cache_holder_t cache = [] {
                 cache_holder_t res{};
                 for (detail::stdr::size_t i = 0; i < compressed_table_size; ++i) {
@@ -1779,21 +1733,6 @@ namespace jkj {
                 }
                 return res;
             }();
-#else
-            template <detail::stdr::size_t... indices>
-            static constexpr cache_holder_t make_cache(detail::index_sequence<indices...>) {
-                return {cache_holder<ieee754_binary64>::cache[indices * compression_ratio]...};
-            }
-            static constexpr cache_holder_t cache =
-                make_cache(detail::make_index_sequence<compressed_table_size>{});
-
-            template <detail::stdr::size_t... indices>
-            static constexpr pow5_holder_t make_pow5_table(detail::index_sequence<indices...>) {
-                return {detail::compute_power<indices>(detail::stdr::uint_least64_t(5))...};
-            }
-            static constexpr pow5_holder_t pow5_table =
-                make_pow5_table(detail::make_index_sequence<pow5_table_size>{});
-#endif
 
             template <class ShiftAmountType, class DecimalExponentType>
             static JKJ_CONSTEXPR20 cache_entry_type get_cache(DecimalExponentType k) noexcept {
@@ -3760,4 +3699,3 @@ namespace jkj {
 #undef JKJ_IF_CONSTEVAL
 #undef JKJ_IF_CONSTEXPR
 #undef JKJ_HAS_IF_CONSTEXPR
-#undef JKJ_HAS_CONSTEXPR17
