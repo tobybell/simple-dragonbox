@@ -16,23 +16,6 @@
 // Language feature detections.
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// C++14 constexpr
-#if defined(__cpp_constexpr) && __cpp_constexpr >= 201304L
-    #define JKJ_HAS_CONSTEXPR14 1
-#elif __cplusplus >= 201402L
-    #define JKJ_HAS_CONSTEXPR14 1
-#elif defined(_MSC_VER) && _MSC_VER >= 1910 && _MSVC_LANG >= 201402L
-    #define JKJ_HAS_CONSTEXPR14 1
-#else
-    #define JKJ_HAS_CONSTEXPR14 0
-#endif
-
-#if JKJ_HAS_CONSTEXPR14
-    #define JKJ_CONSTEXPR14 constexpr
-#else
-    #define JKJ_CONSTEXPR14
-#endif
-
 // C++17 constexpr lambdas
 #if defined(__cpp_constexpr) && __cpp_constexpr >= 201603L
     #define JKJ_HAS_CONSTEXPR17 1
@@ -235,7 +218,7 @@ namespace jkj {
             struct array {
                 T data_[N];
                 constexpr T operator[](stdr::size_t idx) const noexcept { return data_[idx]; }
-                JKJ_CONSTEXPR14 T& operator[](stdr::size_t idx) noexcept { return data_[idx]; }
+                constexpr T& operator[](stdr::size_t idx) noexcept { return data_[idx]; }
             };
         }
 
@@ -527,7 +510,7 @@ namespace jkj {
                 // Most compilers should be able to optimize this into the ROR instruction.
                 // n is assumed to be at most of bit_width bits.
                 template <stdr::size_t bit_width, class UInt>
-                JKJ_CONSTEXPR14 UInt rotr(UInt n, unsigned int r) noexcept {
+                constexpr UInt rotr(UInt n, unsigned int r) noexcept {
                     static_assert(bit_width > 0, "jkj::dragonbox: rotation bit-width must be positive");
                     static_assert(bit_width <= value_bits<UInt>::value,
                                   "jkj::dragonbox: rotation bit-width is too large");
@@ -724,33 +707,27 @@ namespace jkj {
 
             template <int k, class Int>
             constexpr Int compute_power(Int a) noexcept {
-                static_assert(k >= 0, "");
-#if JKJ_HAS_CONSTEXPR14
+                static_assert(k >= 0);
+                int e = k;
                 Int p = 1;
-                for (int i = 0; i < k; ++i) {
+                while (e) {
+                  if (e % 2)
                     p *= a;
+                  e /= 2;
+                  a *= a;
                 }
                 return p;
-#else
-                return k == 0       ? 1
-                       : k % 2 == 0 ? compute_power<k / 2, Int>(a * a)
-                                    : a * compute_power<k / 2, Int>(a * a);
-#endif
             }
 
             template <int a, class UInt>
             constexpr int count_factors(UInt n) noexcept {
-                static_assert(a > 1, "");
-#if JKJ_HAS_CONSTEXPR14
+                static_assert(a > 1);
                 int c = 0;
                 while (n % a == 0) {
                     n /= a;
                     ++c;
                 }
                 return c;
-#else
-                return n % a == 0 ? count_factors<a, UInt>(n / a) + 1 : 0;
-#endif
             }
 
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -849,7 +826,7 @@ namespace jkj {
                 };
 
                 template <int N, class UInt>
-                JKJ_CONSTEXPR14 bool check_divisibility_and_divide_by_pow10(UInt& n) noexcept {
+                constexpr bool check_divisibility_and_divide_by_pow10(UInt& n) noexcept {
                     // Make sure the computation for max_n does not overflow.
                     static_assert(N + 1 <= log::floor_log10_pow2(int(value_bits<UInt>::value)), "");
                     assert(n <= compute_power<N + 1>(UInt(10)));
@@ -869,7 +846,7 @@ namespace jkj {
                 // Compute floor(n / 10^N) for small n and N.
                 // Precondition: n <= 10^(N+1)
                 template <int N, class UInt>
-                JKJ_CONSTEXPR14 UInt small_division_by_pow10(UInt n) noexcept {
+                constexpr UInt small_division_by_pow10(UInt n) noexcept {
                     // Make sure the computation for max_n does not overflow.
                     static_assert(N + 1 <= log::floor_log10_pow2(int(value_bits<UInt>::value)), "");
                     assert(n <= compute_power<N + 1>(UInt(10)));
@@ -2035,7 +2012,7 @@ namespace jkj {
                     static constexpr bool report_trailing_zeros = false;
 
                     template <class Format, class DecimalSignificand, class DecimalExponentType>
-                    JKJ_FORCEINLINE static JKJ_CONSTEXPR14
+                    JKJ_FORCEINLINE static constexpr
                         unsigned_decimal_fp<DecimalSignificand, DecimalExponentType, false>
                         on_trailing_zeros(DecimalSignificand significand,
                                           DecimalExponentType exponent) noexcept {
@@ -2058,7 +2035,7 @@ namespace jkj {
                     static constexpr bool report_trailing_zeros = false;
 
                     template <class Format, class DecimalSignificand, class DecimalExponentType>
-                    JKJ_FORCEINLINE static JKJ_CONSTEXPR14
+                    JKJ_FORCEINLINE static constexpr
                         unsigned_decimal_fp<DecimalSignificand, DecimalExponentType, false>
                         on_trailing_zeros(DecimalSignificand significand,
                                           DecimalExponentType exponent) noexcept {
@@ -2491,10 +2468,8 @@ namespace jkj {
                     template <class FloatFormat, class ShiftAmountType, class DecimalExponentType>
                     static constexpr typename cache_holder_type<FloatFormat>::cache_entry_type
                     get_cache(DecimalExponentType k) noexcept {
-#if JKJ_HAS_CONSTEXPR14
                         assert(k >= cache_holder_type<FloatFormat>::min_k &&
                                k <= cache_holder_type<FloatFormat>::max_k);
-#endif
                         return cache_holder_type<FloatFormat>::cache[detail::stdr::size_t(
                             k - cache_holder_type<FloatFormat>::min_k)];
                     }
@@ -2607,7 +2582,7 @@ namespace jkj {
         template <class DecimalExponentType>
         struct remove_trailing_zeros_traits<policy::trailing_zero::remove_t, ieee754_binary32,
                                             detail::stdr::uint_least32_t, DecimalExponentType> {
-            JKJ_FORCEINLINE static JKJ_CONSTEXPR14 void
+            JKJ_FORCEINLINE static constexpr void
             remove_trailing_zeros(detail::stdr::uint_least32_t& significand,
                                   DecimalExponentType& exponent) noexcept {
                 // See https://github.com/jk-jeon/rtz_benchmark.
@@ -2639,7 +2614,7 @@ namespace jkj {
         template <class DecimalExponentType>
         struct remove_trailing_zeros_traits<policy::trailing_zero::remove_t, ieee754_binary64,
                                             detail::stdr::uint_least64_t, DecimalExponentType> {
-            JKJ_FORCEINLINE static JKJ_CONSTEXPR14 void
+            JKJ_FORCEINLINE static constexpr void
             remove_trailing_zeros(detail::stdr::uint_least64_t& significand,
                                   DecimalExponentType& exponent) noexcept {
                 // See https://github.com/jk-jeon/rtz_benchmark.
@@ -2677,7 +2652,7 @@ namespace jkj {
         template <class DecimalExponentType>
         struct remove_trailing_zeros_traits<policy::trailing_zero::remove_compact_t, ieee754_binary32,
                                             detail::stdr::uint_least32_t, DecimalExponentType> {
-            JKJ_FORCEINLINE static JKJ_CONSTEXPR14 void
+            JKJ_FORCEINLINE static constexpr void
             remove_trailing_zeros(detail::stdr::uint_least32_t& significand,
                                   DecimalExponentType& exponent) noexcept {
                 // See https://github.com/jk-jeon/rtz_benchmark.
@@ -2697,7 +2672,7 @@ namespace jkj {
         template <class DecimalExponentType>
         struct remove_trailing_zeros_traits<policy::trailing_zero::remove_compact_t, ieee754_binary64,
                                             detail::stdr::uint_least64_t, DecimalExponentType> {
-            JKJ_FORCEINLINE static JKJ_CONSTEXPR14 void
+            JKJ_FORCEINLINE static constexpr void
             remove_trailing_zeros(detail::stdr::uint_least64_t& significand,
                                   DecimalExponentType& exponent) noexcept {
                 // See https://github.com/jk-jeon/rtz_benchmark.
@@ -3835,5 +3810,3 @@ namespace jkj {
 #undef JKJ_INLINE_VARIABLE
 #undef JKJ_HAS_INLINE_VARIABLE
 #undef JKJ_HAS_CONSTEXPR17
-#undef JKJ_CONSTEXPR14
-#undef JKJ_HAS_CONSTEXPR14
