@@ -929,11 +929,11 @@ namespace jkj {
         // Computed cache entries.
         ////////////////////////////////////////////////////////////////////////////////////////
 
-        template <class FloatFormat, class Dummy = void>
+        template <class FloatFormat>
         struct cache_holder;
 
-        template <class Dummy>
-        struct cache_holder<ieee754_binary32, Dummy> {
+        template <>
+        struct cache_holder<ieee754_binary32> {
             using cache_entry_type = detail::stdr::uint_least64_t;
             static constexpr int cache_bits = 64;
             static constexpr int min_k = -31;
@@ -981,8 +981,8 @@ namespace jkj {
                      UINT64_C(0xb35dbf821ae4f38c), UINT64_C(0xe0352f62a19e306f)}};
         };
 
-        template <class Dummy>
-        struct cache_holder<ieee754_binary64, Dummy> {
+        template <>
+        struct cache_holder<ieee754_binary64> {
             using cache_entry_type = detail::wuint::uint128;
             static constexpr int cache_bits = 128;
             static constexpr int min_k = -292;
@@ -1611,7 +1611,7 @@ namespace jkj {
         };
 
         // Compressed cache.
-        template <class FloatFormat, class Dummy = void>
+        template <class FloatFormat>
         struct compressed_cache_holder {
             using cache_entry_type = typename cache_holder<FloatFormat>::cache_entry_type;
             static constexpr int cache_bits = cache_holder<FloatFormat>::cache_bits;
@@ -1624,8 +1624,8 @@ namespace jkj {
             }
         };
 
-        template <class Dummy>
-        struct compressed_cache_holder<ieee754_binary32, Dummy> {
+        template <>
+        struct compressed_cache_holder<ieee754_binary32> {
             using cache_entry_type = cache_holder<ieee754_binary32>::cache_entry_type;
             static constexpr int cache_bits = cache_holder<ieee754_binary32>::cache_bits;
             static constexpr int min_k = cache_holder<ieee754_binary32>::min_k;
@@ -1702,8 +1702,8 @@ namespace jkj {
             }
         };
 
-        template <class Dummy>
-        struct compressed_cache_holder<ieee754_binary64, Dummy> {
+        template <>
+        struct compressed_cache_holder<ieee754_binary64> {
             using cache_entry_type = cache_holder<ieee754_binary64>::cache_entry_type;
             static constexpr int cache_bits = cache_holder<ieee754_binary64>::cache_bits;
             static constexpr int min_k = cache_holder<ieee754_binary64>::min_k;
