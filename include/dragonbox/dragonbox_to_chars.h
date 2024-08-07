@@ -62,55 +62,16 @@ namespace jkj {
         }
 
         namespace policy {
-            namespace digit_generation {
-                inline constexpr struct fast_t {
-                    using digit_generation_policy = fast_t;
-
-                    template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
-                              class CachePolicy, class PreferredIntegerTypesPolicy, class FormatTraits>
-                    static char* to_chars(signed_significand_bits<FormatTraits> s,
-                                          typename FormatTraits::exponent_int exponent_bits,
-                                          char* buffer) noexcept {
-                        auto result = to_decimal_ex(
-                            s, exponent_bits, policy::sign::ignore, policy::trailing_zero::ignore,
-                            DecimalToBinaryRoundingPolicy{}, BinaryToDecimalRoundingPolicy{},
-                            CachePolicy{}, PreferredIntegerTypesPolicy{});
-
-                        return detail::to_chars<typename FormatTraits::format>(result.significand,
-                                                                               result.exponent, buffer);
-                    }
-                } fast = {};
-
-                inline constexpr struct compact_t {
-                    using digit_generation_policy = compact_t;
-
-                    template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
-                              class CachePolicy, class PreferredIntegerTypesPolicy, class FormatTraits>
-                    static constexpr char*
-                    to_chars(signed_significand_bits<FormatTraits> s,
-                             typename FormatTraits::exponent_int exponent_bits, char* buffer) noexcept {
-                        auto result = to_decimal_ex(s, exponent_bits, policy::sign::ignore,
-                                                    policy::trailing_zero::remove_compact,
-                                                    DecimalToBinaryRoundingPolicy{},
-                                                    BinaryToDecimalRoundingPolicy{}, CachePolicy{},
-                                                    PreferredIntegerTypesPolicy{});
-
-                        return detail::to_chars_naive<typename FormatTraits::format>(
-                            result.significand, result.exponent, buffer);
-                    }
-                } compact = {};
-            }
-        }
-
-        namespace detail {
-            struct is_digit_generation_policy {
-                constexpr bool operator()(...) noexcept { return false; }
-                template <class Policy, class = typename Policy::digit_generation_policy>
-                constexpr bool operator()(dummy<Policy>) noexcept {
-                    return true;
-                }
-            };
-
+          namespace digit_generation {
+            inline constexpr struct fast_t {} fast = {};
+            inline constexpr struct compact_t {} compact = {};
+            template <class... T>
+            struct Get { static constexpr bool compact = false; };
+            template <class S, class... T>
+            struct Get<S, T...>: Get<T...> {};
+            template <class... T>
+            struct Get<compact_t, T...> { static constexpr bool compact = true; };
+          }
         }
 
 template <class Float>
@@ -119,10 +80,39 @@ struct ToCharsImpl {
   using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
                                              typename ConversionTraits::carrier_uint>;
 
+  template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
+            class CachePolicy, class PreferredIntegerTypesPolicy>
+  static char* fast_to_chars(signed_significand_bits<FormatTraits> s,
+                        typename FormatTraits::exponent_int exponent_bits,
+                        char* buffer) noexcept {
+      auto result = to_decimal_ex(
+          s, exponent_bits, policy::sign::ignore, policy::trailing_zero::ignore,
+          DecimalToBinaryRoundingPolicy{}, BinaryToDecimalRoundingPolicy{},
+          CachePolicy{}, PreferredIntegerTypesPolicy{});
+
+      return detail::to_chars<typename FormatTraits::format>(result.significand,
+                                                             result.exponent, buffer);
+  }
+
+  template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
+            class CachePolicy, class PreferredIntegerTypesPolicy, class FormatTraits>
+  static constexpr char*
+  compact_to_chars(signed_significand_bits<FormatTraits> s,
+           typename FormatTraits::exponent_int exponent_bits, char* buffer) noexcept {
+      auto result = to_decimal_ex(s, exponent_bits, policy::sign::ignore,
+                                  policy::trailing_zero::remove_compact,
+                                  DecimalToBinaryRoundingPolicy{},
+                                  BinaryToDecimalRoundingPolicy{}, CachePolicy{},
+                                  PreferredIntegerTypesPolicy{});
+
+      return detail::to_chars_naive<typename FormatTraits::format>(
+          result.significand, result.exponent, buffer);
+  }
+
   // Avoid needless ABI overhead incurred by tag dispatch.
   template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
-            class CachePolicy, class PreferredIntegerTypesPolicy, class DigitGenerationPolicy>
-  constexpr static char* to_chars_n_impl(float_bits<FormatTraits> br, char* buffer) noexcept {
+            class CachePolicy, class PreferredIntegerTypesPolicy>
+  constexpr static char* to_chars_n_impl(float_bits<FormatTraits> br, char* buffer, bool compact_digit_generation) noexcept {
       auto const exponent_bits = br.extract_exponent_bits();
       auto const s = br.remove_exponent_bits();
 
@@ -132,9 +122,15 @@ struct ToCharsImpl {
               ++buffer;
           }
           if (br.is_nonzero()) {
-              return DigitGenerationPolicy::template to_chars<
-                  DecimalToBinaryRoundingPolicy, BinaryToDecimalRoundingPolicy, CachePolicy,
-                  PreferredIntegerTypesPolicy>(s, exponent_bits, buffer);
+            if (compact_digit_generation) {
+              return compact_to_chars<DecimalToBinaryRoundingPolicy,
+                BinaryToDecimalRoundingPolicy, CachePolicy,
+                PreferredIntegerTypesPolicy>(s, exponent_bits, buffer);
+            } else {
+              return fast_to_chars<DecimalToBinaryRoundingPolicy,
+                BinaryToDecimalRoundingPolicy, CachePolicy,
+                PreferredIntegerTypesPolicy>(s, exponent_bits, buffer);
+            }
           }
           else {
               buffer[0] = '0';
@@ -172,17 +168,14 @@ struct ToCharsImpl {
                                           policy::binary_to_decimal_rounding::to_even_t>,
             detail::detector_default_pair<detail::is_cache_policy, policy::cache::full_t>,
             detail::detector_default_pair<detail::is_preferred_integer_types_policy,
-                                          policy::preferred_integer_types::match_t>,
-            detail::detector_default_pair<detail::is_digit_generation_policy,
-                                          policy::digit_generation::fast_t>>,
+                                          policy::preferred_integer_types::match_t>>,
         Policies...>;
 
     return to_chars_n_impl<typename policy_holder::decimal_to_binary_rounding_policy,
                            typename policy_holder::binary_to_decimal_rounding_policy,
                            typename policy_holder::cache_policy,
-                           typename policy_holder::preferred_integer_types_policy,
-                           typename policy_holder::digit_generation_policy>(
-        make_float_bits<Float, ConversionTraits, FormatTraits>(x), buffer);
+                           typename policy_holder::preferred_integer_types_policy>(
+        make_float_bits<Float, ConversionTraits, FormatTraits>(x), buffer, policy::digit_generation::Get<Policies...>::compact);
   }
 };
 
