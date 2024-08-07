@@ -65,11 +65,11 @@ struct analysis_result {
     std::vector<error_case> error_cases;
 };
 
-template <class FormatTraits>
+template <class Float>
 static bool analyze(std::ostream& out, std::size_t cache_bits) {
     out << "e,bits_for_multiplication,bits_for_integer_check\n";
 
-    using impl = jkj::dragonbox::detail::impl<FormatTraits>;
+    using impl = jkj::dragonbox::detail::impl<Float>;
     using namespace jkj::dragonbox::detail::log;
 
     auto n_max = jkj::big_uint::power_of_2(impl::significand_bits + 2);
@@ -320,16 +320,14 @@ int main() {
 
     std::cout << "[Verifying sufficiency of cache precision for binary32...]\n";
     out.open("results/binary32.csv");
-    if (!analyze<jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary32,
-                                                       std::uint_least32_t>>(out, 64)) {
+    if (!analyze<float>(out, 64)) {
         success = false;
     }
     out.close();
 
     std::cout << "[Verifying sufficiency of cache precision for binary64...]\n";
     out.open("results/binary64.csv");
-    if (!analyze<jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary64,
-                                                        std::uint_least64_t>>(out, 128)) {
+    if (!analyze<double>(out, 128)) {
         success = false;
     }
     out.close();

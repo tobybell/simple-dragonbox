@@ -49,12 +49,12 @@ struct recovered_cache_t {
     bool success;
 };
 
-template <class FormatTraits, class GetCache, class ConvertToBigUInt>
+template <class Float, class GetCache, class ConvertToBigUInt>
 bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to_big_uint,
                              std::size_t max_diff_for_multiplication) {
-    using format = typename FormatTraits::format;
+    using impl = jkj::dragonbox::detail::impl<Float>;
+    using format = typename impl::format;
     using cache_holder_type = jkj::dragonbox::compressed_cache_holder<format>;
-    using impl = jkj::dragonbox::detail::impl<FormatTraits>;
 
     jkj::unsigned_rational<jkj::big_uint> unit;
     auto n_max = jkj::big_uint::power_of_2(format::significand_bits + 2);
@@ -106,14 +106,14 @@ bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to
                     jkj::big_uint::power_of_2(cache_holder_type::cache_bits - beta) * unit.numerator;
 
                 if (left_hand_side * (n_max / unit.denominator) >=
-                    jkj::big_uint::power_of_2(FormatTraits::carrier_bits - beta)) {
+                    jkj::big_uint::power_of_2(impl::carrier_bits - beta)) {
                     std::cout << "Integer check is no longer valid. (e = " << e << ")\n";
 
                     // This exceptional case is carefully examined, so okay.
                     if (std::is_same<format, jkj::dragonbox::ieee754_binary32>::value && e == -10) {
                         // The exceptional case only occurs when n is exactly n_max.
                         if (left_hand_side * ((n_max - 1) / unit.denominator) >=
-                            jkj::big_uint::power_of_2(FormatTraits::carrier_bits - beta)) {
+                            jkj::big_uint::power_of_2(impl::carrier_bits - beta)) {
                             return false;
                         }
                         std::cout << "    This case has been carefully addressed.\n\n";
@@ -137,8 +137,7 @@ int main() {
         using cache_holder_type =
             jkj::dragonbox::compressed_cache_holder<jkj::dragonbox::ieee754_binary32>;
 
-        if (verify_compressed_cache<jkj::dragonbox::ieee754_binary_traits<
-                jkj::dragonbox::ieee754_binary32, std::uint_least32_t>>(
+        if (verify_compressed_cache<float>(
                 [](int k) {
                     return recovered_cache_t<cache_holder_type::cache_entry_type>{
                         cache_holder_type::get_cache<int>(k), true};
@@ -157,8 +156,7 @@ int main() {
         using cache_holder_type =
             jkj::dragonbox::compressed_cache_holder<jkj::dragonbox::ieee754_binary64>;
 
-        if (verify_compressed_cache<jkj::dragonbox::ieee754_binary_traits<
-                jkj::dragonbox::ieee754_binary64, std::uint_least64_t>>(
+        if (verify_compressed_cache<double>(
                 [](int k) {
                     // Compute the base index.
                     auto const cache_index = int(std::uint_least32_t(k - cache_holder_type::min_k) /

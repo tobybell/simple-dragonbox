@@ -23,9 +23,9 @@
 #include <stdexcept>
 #include <vector>
 
-template <class FormatTraits>
+template <class Float>
 auto generate_cache(std::size_t cache_bits) {
-    using impl = jkj::dragonbox::detail::impl<FormatTraits>;
+    using impl = jkj::dragonbox::detail::impl<Float>;
 
     std::vector<jkj::big_uint> results;
     jkj::unsigned_rational<jkj::big_uint> target_number;
@@ -100,9 +100,7 @@ int main() {
 
     try {
         out.open("results/binary32_generated_cache.txt");
-        write_file(out, 64,
-                   jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary32,
-                                                         std::uint_least32_t>{},
+        write_file(out, 64, float {},
                    "binary32", [](std::ofstream& out, jkj::big_uint const& value) {
                        out << "UINT64_C(0x" << std::hex << std::setw(16) << std::setfill('0')
                            << value[0] << ")";
@@ -110,9 +108,7 @@ int main() {
         out.close();
 
         out.open("results/binary64_generated_cache.txt");
-        write_file(out, 128,
-                   jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary64,
-                                                         std::uint_least64_t>{},
+        write_file(out, 128, double {},
                    "binary64", [](std::ofstream& out, jkj::big_uint const& value) {
                        out << "{UINT64_C(0x" << std::hex << std::setw(16) << std::setfill('0')
                            << value[1] << "), UINT64_C(0x" << std::hex << std::setw(16)

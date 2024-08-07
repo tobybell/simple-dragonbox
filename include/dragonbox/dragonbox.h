@@ -2310,17 +2310,22 @@ namespace jkj {
 
         namespace detail {
 
-            template <class FormatTraits>
-            struct impl : private FormatTraits::format {
+            template <class Float>
+            struct impl {
+                using ConversionTraits = default_float_bit_carrier_conversion_traits<Float>;
+                using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
+                                                           typename ConversionTraits::carrier_uint>;
                 using format = typename FormatTraits::format;
                 using carrier_uint = typename FormatTraits::carrier_uint;
                 static constexpr int carrier_bits = FormatTraits::carrier_bits;
                 using exponent_int = typename FormatTraits::exponent_int;
 
-                using format::significand_bits;
-                using format::min_exponent;
-                using format::max_exponent;
-                using format::exponent_bias;
+                enum {
+                  significand_bits = format::significand_bits,
+                  min_exponent = format::min_exponent,
+                  max_exponent = format::max_exponent,
+                  exponent_bias = format::exponent_bias,
+                };
 
                 static constexpr int kappa =
                     log::floor_log10_pow2(carrier_bits - significand_bits - 2) - 1;
@@ -2632,7 +2637,7 @@ namespace jkj {
                 using ConversionTraits = default_float_bit_carrier_conversion_traits<Float>;
                 using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
                                                            typename ConversionTraits::carrier_uint>;
-                using Impl = impl<FormatTraits>;
+                using Impl = impl<Float>;
                 using format = typename FormatTraits::format;
                 using PolicyHolder = detail::to_decimal_policy_holder<Policies...>;
                 using SignPolicy = typename PolicyHolder::sign_policy;

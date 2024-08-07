@@ -21,15 +21,15 @@
 
 #include <iostream>
 
-template <class FormatTraits, class CachePolicy>
+template <class Float, class CachePolicy>
 static bool verify_fast_multiplication_xz(CachePolicy&& cache_policy) {
-    using format = typename FormatTraits::format;
-    using carrier_uint = typename FormatTraits::carrier_uint;
-    using impl = jkj::dragonbox::detail::impl<FormatTraits>;
+    using impl = jkj::dragonbox::detail::impl<Float>;
+    using format = typename impl::format;
+    using carrier_uint = typename impl::carrier_uint;
     using cache_holder_type =
         typename std::decay<CachePolicy>::type::template cache_holder_type<format>;
     using multiplication_traits = jkj::dragonbox::multiplication_traits<
-        FormatTraits, typename cache_holder_type::cache_entry_type, cache_holder_type::cache_bits>;
+        typename impl::FormatTraits, typename cache_holder_type::cache_entry_type, cache_holder_type::cache_bits>;
 
 
     constexpr auto four_fl = (carrier_uint(1) << (impl::significand_bits + 2)) - 1;
@@ -96,10 +96,10 @@ static bool verify_fast_multiplication_xz(CachePolicy&& cache_policy) {
     return success;
 }
 
-template <class FormatTraits, class CachePolicy>
+template <class Float, class CachePolicy>
 static bool verify_fast_multiplication_yru(CachePolicy&& cache_policy) {
-    using format = typename FormatTraits::format;
-    using impl = jkj::dragonbox::detail::impl<FormatTraits>;
+    using impl = jkj::dragonbox::detail::impl<Float>;
+    using format = typename impl::format;
     using cache_holder_type =
         typename std::decay<CachePolicy>::type::template cache_holder_type<format>;
 
@@ -144,57 +144,49 @@ int main() {
 
     std::cout << "[Verifying fast computation of xi and zi for the shorter interval case "
                  "with full cache (binary32)...]\n";
-    success &= verify_fast_multiplication_xz<
-        jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary32, std::uint_least32_t>>(
+    success &= verify_fast_multiplication_xz<float>(
         jkj::dragonbox::policy::cache::full);
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of xi and zi for the shorter interval case "
                  "with compressed cache (binary32)...]\n";
-    success &= verify_fast_multiplication_xz<
-        jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary32, std::uint_least32_t>>(
+    success &= verify_fast_multiplication_xz<float>(
         jkj::dragonbox::policy::cache::compact);
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of yru for the shorter interval case "
                  "with full cache (binary32)...]\n";
-    success &= verify_fast_multiplication_yru<
-        jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary32, std::uint_least32_t>>(
+    success &= verify_fast_multiplication_yru<float>(
         jkj::dragonbox::policy::cache::full);
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of yru for the shorter interval case "
                  "with compressed cache (binary32)...]\n";
-    success &= verify_fast_multiplication_yru<
-        jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary32, std::uint_least32_t>>(
+    success &= verify_fast_multiplication_yru<float>(
         jkj::dragonbox::policy::cache::compact);
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of xi and zi for the shorter interval case "
                  "with full cache (binary64)...]\n";
-    success &= verify_fast_multiplication_xz<
-        jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary64, std::uint_least64_t>>(
+    success &= verify_fast_multiplication_xz<double>(
         jkj::dragonbox::policy::cache::full);
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of xi and zi for the shorter interval case "
                  "with compressed cache (binary64)...]\n";
-    success &= verify_fast_multiplication_xz<
-        jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary64, std::uint_least64_t>>(
+    success &= verify_fast_multiplication_xz<double>(
         jkj::dragonbox::policy::cache::compact);
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of yru for the shorter interval case "
                  "with full cache (binary64)...]\n";
-    success &= verify_fast_multiplication_yru<
-        jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary64, std::uint_least64_t>>(
+    success &= verify_fast_multiplication_yru<double>(
         jkj::dragonbox::policy::cache::full);
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of yru for the shorter interval case "
                  "with compressed cache (binary64)...]\n";
-    success &= verify_fast_multiplication_yru<
-        jkj::dragonbox::ieee754_binary_traits<jkj::dragonbox::ieee754_binary64, std::uint_least64_t>>(
+    success &= verify_fast_multiplication_yru<double>(
         jkj::dragonbox::policy::cache::compact);
     std::cout << "Done.\n\n\n";
 
