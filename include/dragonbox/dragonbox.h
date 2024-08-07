@@ -1849,6 +1849,43 @@ namespace jkj {
           AwayFromZero,
         };
 
+        namespace interval_type {
+            struct symmetric_boundary {
+                static constexpr bool is_symmetric = true;
+                bool is_closed;
+                constexpr bool include_left_endpoint() const noexcept { return is_closed; }
+                constexpr bool include_right_endpoint() const noexcept { return is_closed; }
+            };
+            struct asymmetric_boundary {
+                static constexpr bool is_symmetric = false;
+                bool is_left_closed;
+                constexpr bool include_left_endpoint() const noexcept { return is_left_closed; }
+                constexpr bool include_right_endpoint() const noexcept {
+                    return !is_left_closed;
+                }
+            };
+            struct closed {
+                static constexpr bool is_symmetric = true;
+                static constexpr bool include_left_endpoint() noexcept { return true; }
+                static constexpr bool include_right_endpoint() noexcept { return true; }
+            };
+            struct open {
+                static constexpr bool is_symmetric = true;
+                static constexpr bool include_left_endpoint() noexcept { return false; }
+                static constexpr bool include_right_endpoint() noexcept { return false; }
+            };
+            struct left_closed_right_open {
+                static constexpr bool is_symmetric = false;
+                static constexpr bool include_left_endpoint() noexcept { return true; }
+                static constexpr bool include_right_endpoint() noexcept { return false; }
+            };
+            struct right_closed_left_open {
+                static constexpr bool is_symmetric = false;
+                static constexpr bool include_left_endpoint() noexcept { return false; }
+                static constexpr bool include_right_endpoint() noexcept { return true; }
+            };
+        }
+
         namespace policy {
             namespace sign {
                 inline constexpr struct ignore_t {
@@ -1982,43 +2019,6 @@ namespace jkj {
             }
 
             namespace decimal_to_binary_rounding {
-
-                namespace interval_type {
-                    struct symmetric_boundary {
-                        static constexpr bool is_symmetric = true;
-                        bool is_closed;
-                        constexpr bool include_left_endpoint() const noexcept { return is_closed; }
-                        constexpr bool include_right_endpoint() const noexcept { return is_closed; }
-                    };
-                    struct asymmetric_boundary {
-                        static constexpr bool is_symmetric = false;
-                        bool is_left_closed;
-                        constexpr bool include_left_endpoint() const noexcept { return is_left_closed; }
-                        constexpr bool include_right_endpoint() const noexcept {
-                            return !is_left_closed;
-                        }
-                    };
-                    struct closed {
-                        static constexpr bool is_symmetric = true;
-                        static constexpr bool include_left_endpoint() noexcept { return true; }
-                        static constexpr bool include_right_endpoint() noexcept { return true; }
-                    };
-                    struct open {
-                        static constexpr bool is_symmetric = true;
-                        static constexpr bool include_left_endpoint() noexcept { return false; }
-                        static constexpr bool include_right_endpoint() noexcept { return false; }
-                    };
-                    struct left_closed_right_open {
-                        static constexpr bool is_symmetric = false;
-                        static constexpr bool include_left_endpoint() noexcept { return true; }
-                        static constexpr bool include_right_endpoint() noexcept { return false; }
-                    };
-                    struct right_closed_left_open {
-                        static constexpr bool is_symmetric = false;
-                        static constexpr bool include_left_endpoint() noexcept { return false; }
-                        static constexpr bool include_right_endpoint() noexcept { return true; }
-                    };
-                }
 
                 inline constexpr struct nearest_to_even_t {
                     constexpr static auto round_mode = NearestToEven;
@@ -2890,34 +2890,82 @@ namespace jkj {
                   return run(PolicyHolder::decimal_to_binary_rounding_policy::round_mode);
                 }
 
+                return_type nearest_to_even() {
+                    return nearest(
+                      interval_type::symmetric_boundary {s.has_even_significand_bits()},
+                      interval_type::closed {});
+                }
+
+                return_type nearest_to_odd() {
+                    return nearest(
+                      interval_type::symmetric_boundary {!s.has_even_significand_bits()},
+                      interval_type::open {});
+                }
+
+                return_type nearest_toward_plus_infinity() {
+                    return nearest(
+                      interval_type::asymmetric_boundary {!s.is_negative()},
+                      interval_type::asymmetric_boundary {!s.is_negative()});
+                }
+
+                return_type nearest_toward_minus_infinity() {
+                    return nearest(
+                      interval_type::asymmetric_boundary {s.is_negative()},
+                      interval_type::asymmetric_boundary {s.is_negative()});
+                }
+
+                return_type nearest_toward_zero() {
+                    return nearest(
+                      interval_type::right_closed_left_open {},
+                      interval_type::right_closed_left_open {});
+                }
+
+                return_type nearest_away_from_zero() {
+                    return nearest(
+                      interval_type::left_closed_right_open {},
+                      interval_type::left_closed_right_open {});
+                }
+
+                return_type nearest_always_closed() {
+                    return nearest(
+                      interval_type::closed {},
+                      interval_type::closed {});
+                }
+
+                return_type nearest_always_open() {
+                    return nearest(
+                      interval_type::open {},
+                      interval_type::open {});
+                }
+
                 return_type run(RoundMode round_mode) {
                   switch (round_mode) {
                     case NearestToEven:
-                      return nearest<policy::decimal_to_binary_rounding::nearest_to_even_t>();
+                      return nearest_to_even();
                     case NearestToOdd:
-                      return nearest<policy::decimal_to_binary_rounding::nearest_to_odd_t>();
+                      return nearest_to_odd();
                     case NearestTowardPlusInfinity:
-                      return nearest<policy::decimal_to_binary_rounding::nearest_toward_plus_infinity_t>();
+                      return nearest_toward_plus_infinity();
                     case NearestTowardMinusInfinity:
-                      return nearest<policy::decimal_to_binary_rounding::nearest_toward_minus_infinity_t>();
+                      return nearest_toward_minus_infinity();
                     case NearestTowardZero:
-                      return nearest<policy::decimal_to_binary_rounding::nearest_toward_zero_t>();
+                      return nearest_toward_zero();
                     case NearestAwayFromZero:
-                      return nearest<policy::decimal_to_binary_rounding::nearest_away_from_zero_t>();
+                      return nearest_away_from_zero();
                     case NearestToEvenStaticBoundary:
                       return s.has_even_significand_bits()
-                                 ? nearest<policy::decimal_to_binary_rounding::detail::nearest_always_closed_t>()
-                                 : nearest<policy::decimal_to_binary_rounding::detail::nearest_always_open_t>();
+                                 ? nearest_always_closed()
+                                 : nearest_always_open();
                     case NearestToOddStaticBoundary:
                       return s.has_even_significand_bits()
-                                 ? nearest<policy::decimal_to_binary_rounding::detail::nearest_always_open_t>()
-                                 : nearest<policy::decimal_to_binary_rounding::detail::nearest_always_closed_t>();
+                                 ? nearest_always_open()
+                                 : nearest_always_closed();
                     case NearestTowardPlusInfinityStaticBoundary:
-                      return s.is_negative() ? nearest<policy::decimal_to_binary_rounding::nearest_toward_zero_t>()
-                                             : nearest<policy::decimal_to_binary_rounding::nearest_away_from_zero_t>();
+                      return s.is_negative() ? nearest_toward_zero()
+                                             : nearest_away_from_zero();
                     case NearestTowardMinusInfinityStaticBoundary:
-                      return s.is_negative() ? nearest<policy::decimal_to_binary_rounding::nearest_away_from_zero_t>()
-                                             : nearest<policy::decimal_to_binary_rounding::nearest_toward_zero_t>();
+                      return s.is_negative() ? nearest_away_from_zero()
+                                             : nearest_toward_zero();
                     case TowardPlusInfinity:
                       return s.is_negative() ? left_closed_directed()
                                              : right_closed_directed();
@@ -2933,9 +2981,9 @@ namespace jkj {
 
                 //// The main algorithm assumes the input is a normal/subnormal finite number.
 
-                template <class IntervalTypeProvider>
+                template <class NormalInterval, class ShorterInterval>
                 JKJ_SAFEBUFFERS JKJ_CONSTEXPR20
-                return_type nearest() noexcept {
+                return_type nearest(NormalInterval normal_interval, ShorterInterval shorter_interval) noexcept {
                     using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
                     static_assert(
                         min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
@@ -2985,7 +3033,6 @@ namespace jkj {
 
                         // Shorter interval case.
                         if (two_fc == 0) {
-                            auto interval_type = IntervalTypeProvider::shorter_interval(s);
 
                             // Compute k and beta.
                             auto const minus_k = log::floor_log10_pow2_minus_log10_4_over_3<
@@ -3008,13 +3055,13 @@ namespace jkj {
 
                             // If we don't accept the right endpoint and
                             // if the right endpoint is an integer, decrease it.
-                            if (!interval_type.include_right_endpoint() &&
+                            if (!shorter_interval.include_right_endpoint() &&
                                 is_right_endpoint_integer_shorter_interval(binary_exponent)) {
                                 --zi;
                             }
                             // If we don't accept the left endpoint or
                             // if the left endpoint is not an integer, increase it.
-                            if (!interval_type.include_left_endpoint() ||
+                            if (!shorter_interval.include_left_endpoint() ||
                                 !is_left_endpoint_integer_shorter_interval(binary_exponent)) {
                                 ++xi;
                             }
@@ -3069,8 +3116,6 @@ namespace jkj {
                     // Step 1: Schubfach multiplier calculation.
                     //////////////////////////////////////////////////////////////////////
 
-                    auto interval_type = IntervalTypeProvider::normal_interval(s);
-
                     // Compute k and beta.
                     auto const minus_k = decimal_exponent_type_(
                         log::floor_log10_pow2<decimal_exponent_type_>(binary_exponent) -
@@ -3118,7 +3163,7 @@ namespace jkj {
                         if (r < deltai) {
                             // Exclude the right endpoint if necessary.
                             if ((r | remainder_type_(!z_result.is_integer) |
-                                 remainder_type_(interval_type.include_right_endpoint())) == 0) {
+                                 remainder_type_(normal_interval.include_right_endpoint())) == 0) {
                                 JKJ_IF_CONSTEXPR(
                                     BinaryToDecimalRoundingPolicy::tag ==
                                     policy::binary_to_decimal_rounding::tag_t::do_not_care) {
@@ -3145,7 +3190,7 @@ namespace jkj {
                                 carrier_uint(two_fc - 1), cache, beta);
 
                             if (!(x_result.parity |
-                                  (x_result.is_integer & interval_type.include_left_endpoint()))) {
+                                  (x_result.is_integer & normal_interval.include_left_endpoint()))) {
                                 break;
                             }
                         }
@@ -3170,7 +3215,7 @@ namespace jkj {
                         // and return, but we need to take care of the case that the resulting
                         // value is exactly the right endpoint, while that is not included in the
                         // interval.
-                        if (!interval_type.include_right_endpoint()) {
+                        if (!normal_interval.include_right_endpoint()) {
                             // Is r divisible by 10^kappa?
                             if (div::check_divisibility_and_divide_by_pow10<kappa>(r) &&
                                 z_result.is_integer) {
