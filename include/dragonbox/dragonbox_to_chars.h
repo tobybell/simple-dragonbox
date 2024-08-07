@@ -68,12 +68,10 @@ struct ToCharsImpl {
   template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
             class CachePolicy, class FormatTraits>
   static constexpr char*
-  compact_to_chars(signed_significand_bits<FormatTraits> s,
-           typename FormatTraits::exponent_int exponent_bits, char* buffer) noexcept {
-      auto result = to_decimal_ex(s, exponent_bits, policy::sign::ignore,
-                                  policy::trailing_zero::remove_compact,
-                                  DecimalToBinaryRoundingPolicy{},
-                                  BinaryToDecimalRoundingPolicy{}, CachePolicy{});
+  compact_to_chars(bool sign,
+           typename FormatTraits::exponent_int exponent,
+           typename FormatTraits::carrier_uint significand, char* buffer) noexcept {
+      auto result = to_decimal_ex<Float, policy::sign::ignore_t, policy::trailing_zero::remove_compact_t, DecimalToBinaryRoundingPolicy, BinaryToDecimalRoundingPolicy, CachePolicy>(sign, exponent, significand);
 
       return detail::to_chars_naive<typename FormatTraits::format>(
           result.significand, result.exponent, buffer);
@@ -85,6 +83,7 @@ struct ToCharsImpl {
   constexpr static char* to_chars_n_impl(float_bits<FormatTraits> br, char* buffer) noexcept {
       auto const exponent_bits = br.extract_exponent_bits();
       auto const s = br.remove_exponent_bits();
+      bool sign = s.is_negative();
 
       if (br.is_finite(exponent_bits)) {
           if (s.is_negative()) {
@@ -93,7 +92,7 @@ struct ToCharsImpl {
           }
           if (br.is_nonzero()) {
             return compact_to_chars<DecimalToBinaryRoundingPolicy,
-              BinaryToDecimalRoundingPolicy, CachePolicy>(s, exponent_bits, buffer);
+              BinaryToDecimalRoundingPolicy, CachePolicy, FormatTraits>(sign, exponent_bits, s.significand(), buffer);
           }
           else {
               buffer[0] = '0';

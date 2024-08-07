@@ -162,6 +162,7 @@ namespace jkj {
             using carrier_uint = CarrierUInt;
             static constexpr int carrier_bits = int(detail::value_bits<carrier_uint>::value);
             using exponent_int = ExponentInt;
+            using significand_int = CarrierUInt;
 
             // Extract exponent bits from a bit pattern.
             // The result must be aligned to the LSB so that there is no additional zero paddings
@@ -298,6 +299,9 @@ namespace jkj {
             }
             constexpr bool has_even_significand_bits() const noexcept {
                 return format_traits::has_even_significand_bits(u);
+            }
+            constexpr carrier_uint significand() const noexcept {
+                return carrier_uint(u & ((carrier_uint(1) << format_traits::format::significand_bits) - 1u));
             }
         };
 
@@ -1779,25 +1783,25 @@ namespace jkj {
 #if defined(_MSC_VER) && !defined(__clang__)
                     // See
                     // https://developercommunity.visualstudio.com/t/Failure-to-optimize-intrinsics/10628226
-                    template <class SignedSignificandBits, class DecimalSignificand,
+                    template <class DecimalSignificand,
                               class DecimalExponentType>
                     static constexpr decimal_fp<DecimalSignificand, DecimalExponentType, false, false>
                     handle_sign(
-                        SignedSignificandBits,
+                        bool,
                         decimal_fp<DecimalSignificand, DecimalExponentType, false, false> r) noexcept {
                         return {r.significand, r.exponent};
                     }
-                    template <class SignedSignificandBits, class DecimalSignificand,
+                    template <class DecimalSignificand,
                               class DecimalExponentType>
                     static constexpr decimal_fp<DecimalSignificand, DecimalExponentType, false, true>
                     handle_sign(
-                        SignedSignificandBits,
+                        bool,
                         decimal_fp<DecimalSignificand, DecimalExponentType, false, true> r) noexcept {
                         return {r.significand, r.exponent, r.may_have_trailing_zeros};
                     }
 #else
-                    template <class SignedSignificandBits, class UnsignedDecimalFp>
-                    static constexpr UnsignedDecimalFp handle_sign(SignedSignificandBits,
+                    template <class UnsignedDecimalFp>
+                    static constexpr UnsignedDecimalFp handle_sign(bool,
                                                                    UnsignedDecimalFp r) noexcept {
                         return r;
                     }
@@ -1808,10 +1812,10 @@ namespace jkj {
                     using sign_policy = return_sign_t;
                     static constexpr bool return_has_sign = true;
 
-                    template <class SignedSignificandBits, class UnsignedDecimalFp>
+                    template <class UnsignedDecimalFp>
                     static constexpr detail::unsigned_decimal_fp_to_signed_t<UnsignedDecimalFp>
-                    handle_sign(SignedSignificandBits s, UnsignedDecimalFp r) noexcept {
-                        return add_sign_to_unsigned_decimal_fp(s.is_negative(), r);
+                    handle_sign(bool sign, UnsignedDecimalFp r) noexcept {
+                        return add_sign_to_unsigned_decimal_fp(sign, r);
                     }
                 } return_sign = {};
             }
@@ -2623,8 +2627,11 @@ namespace jkj {
                     detector_default_pair<is_cache_policy, policy::cache::full_t>>,
                 Policies...>;
 
-            template <class FormatTraits, class... Policies>
-            struct to_decimal_dispatch : FormatTraits::format {
+            template <class Float, class... Policies>
+            struct to_decimal_dispatch {
+                using ConversionTraits = default_float_bit_carrier_conversion_traits<Float>;
+                using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
+                                                           typename ConversionTraits::carrier_uint>;
                 using Impl = impl<FormatTraits>;
                 using format = typename FormatTraits::format;
                 using PolicyHolder = detail::to_decimal_policy_holder<Policies...>;
@@ -2633,9 +2640,6 @@ namespace jkj {
                 using BinaryToDecimalRoundingPolicy =
                     typename PolicyHolder::binary_to_decimal_rounding_policy;
                 using CachePolicy = typename PolicyHolder::cache_policy;
-
-                signed_significand_bits<FormatTraits> s;
-                typename FormatTraits::exponent_int exponent_bits;
 
                 using carrier_uint = typename FormatTraits::carrier_uint;
                 using exponent_int = typename FormatTraits::exponent_int;
@@ -2646,6 +2650,10 @@ namespace jkj {
                 using return_type =
                     decimal_fp<carrier_uint, decimal_exponent_type_,
                                SignPolicy::return_has_sign, TrailingZeroPolicy::report_trailing_zeros>;
+
+                bool negative;
+                typename FormatTraits::exponent_int exponent_bits;
+                typename FormatTraits::significand_int significand;
                 
                 enum {
                   min_k = Impl::min_k,
@@ -2665,22 +2673,20 @@ namespace jkj {
                 }
 
                 return_type nearest_to_even() {
-                    bool even = s.has_even_significand_bits();
+                    bool even = significand % 2 == 0;
                     return nearest({even, even}, {true, true});
                 }
 
                 return_type nearest_to_odd() {
-                    bool even = s.has_even_significand_bits();
+                    bool even = significand % 2 == 0;
                     return nearest({!even, even}, {false, false});
                 }
 
                 return_type nearest_toward_plus_infinity() {
-                    bool negative = s.is_negative();
                     return nearest({!negative, negative}, {!negative, negative});
                 }
 
                 return_type nearest_toward_minus_infinity() {
-                    bool negative = s.is_negative();
                     return nearest({negative, !negative}, {negative, !negative});
                 }
 
@@ -2701,6 +2707,7 @@ namespace jkj {
                 }
 
                 return_type run(RoundMode round_mode) {
+                  bool even = significand % 2 == 0;
                   switch (round_mode) {
                     case NearestToEven:
                       return nearest_to_even();
@@ -2715,25 +2722,23 @@ namespace jkj {
                     case NearestAwayFromZero:
                       return nearest_away_from_zero();
                     case NearestToEvenStaticBoundary:
-                      return s.has_even_significand_bits()
-                                 ? nearest_always_closed()
-                                 : nearest_always_open();
+                      return even ? nearest_always_closed()
+                                  : nearest_always_open();
                     case NearestToOddStaticBoundary:
-                      return s.has_even_significand_bits()
-                                 ? nearest_always_open()
-                                 : nearest_always_closed();
+                      return even ? nearest_always_open()
+                                  : nearest_always_closed();
                     case NearestTowardPlusInfinityStaticBoundary:
-                      return s.is_negative() ? nearest_toward_zero()
-                                             : nearest_away_from_zero();
+                      return negative ? nearest_toward_zero()
+                                      : nearest_away_from_zero();
                     case NearestTowardMinusInfinityStaticBoundary:
-                      return s.is_negative() ? nearest_away_from_zero()
-                                             : nearest_toward_zero();
+                      return negative ? nearest_away_from_zero()
+                                      : nearest_toward_zero();
                     case TowardPlusInfinity:
-                      return s.is_negative() ? left_closed_directed()
-                                             : right_closed_directed();
+                      return negative ? left_closed_directed()
+                                      : right_closed_directed();
                     case TowardMinusInfinity:
-                      return s.is_negative() ? right_closed_directed()
-                                             : right_closed_directed();
+                      return negative ? right_closed_directed()
+                                      : right_closed_directed();
                     case TowardZero:
                       return left_closed_directed();
                     case AwayFromZero:
@@ -2755,7 +2760,7 @@ namespace jkj {
                 constexpr
                 return_type nearest(interval normal_interval, interval shorter_interval) noexcept {
 
-                    auto two_fc = s.remove_sign_bit_and_shift();
+                    carrier_uint two_fc = significand * 2;
                     auto binary_exponent = exponent_bits;
 
                     // Is the input a normal number?
@@ -2842,7 +2847,7 @@ namespace jkj {
                             // If succeed, remove trailing zeros if necessary and return.
                             if (decimal_significand * 10 >= xi) {
                                 return SignPolicy::handle_sign(
-                                    s, TrailingZeroPolicy::template on_trailing_zeros<format>(
+                                    negative, TrailingZeroPolicy::template on_trailing_zeros<format>(
                                            decimal_significand, decimal_exponent_type_(minus_k + 1)));
                             }
 
@@ -2861,7 +2866,7 @@ namespace jkj {
                                 ++decimal_significand;
                             }
                             return SignPolicy::handle_sign(
-                                s, TrailingZeroPolicy::template no_trailing_zeros<format>(
+                                negative, TrailingZeroPolicy::template no_trailing_zeros<format>(
                                        decimal_significand, decimal_exponent_type_(minus_k)));
                         }
 
@@ -2932,7 +2937,7 @@ namespace jkj {
                                     decimal_significand *= 10;
                                     --decimal_significand;
                                     return SignPolicy::handle_sign(
-                                        s, TrailingZeroPolicy::template no_trailing_zeros<format>(
+                                        negative, TrailingZeroPolicy::template no_trailing_zeros<format>(
                                                decimal_significand,
                                                decimal_exponent_type_(minus_k + kappa)));
                                 }
@@ -2959,7 +2964,7 @@ namespace jkj {
 
                         // We may need to remove trailing zeros.
                         return SignPolicy::handle_sign(
-                            s, TrailingZeroPolicy::template on_trailing_zeros<format>(
+                            negative, TrailingZeroPolicy::template on_trailing_zeros<format>(
                                    decimal_significand, decimal_exponent_type_(minus_k + kappa + 1)));
                     } while (false);
 
@@ -3030,14 +3035,14 @@ namespace jkj {
                         }
                     }
                     return SignPolicy::handle_sign(
-                        s, TrailingZeroPolicy::template no_trailing_zeros<format>(
+                        negative, TrailingZeroPolicy::template no_trailing_zeros<format>(
                                decimal_significand, decimal_exponent_type_(minus_k + kappa)));
                 }
 
                 JKJ_FORCEINLINE constexpr
                 return_type left_closed_directed() noexcept {
 
-                    auto two_fc = s.remove_sign_bit_and_shift();
+                    carrier_uint two_fc = significand * 2;
                     auto binary_exponent = exponent_bits;
 
                     // Is the input a normal number?
@@ -3139,7 +3144,7 @@ namespace jkj {
 
                         // The ceiling is inside, so we are done.
                         return SignPolicy::handle_sign(
-                            s, TrailingZeroPolicy::template on_trailing_zeros<format>(
+                            negative, TrailingZeroPolicy::template on_trailing_zeros<format>(
                                    decimal_significand, decimal_exponent_type_(minus_k + kappa + 1)));
                     } while (false);
 
@@ -3151,14 +3156,14 @@ namespace jkj {
                     decimal_significand *= 10;
                     decimal_significand -= div::small_division_by_pow10<kappa>(r);
                     return SignPolicy::handle_sign(
-                        s, TrailingZeroPolicy::template no_trailing_zeros<format>(
+                        negative, TrailingZeroPolicy::template no_trailing_zeros<format>(
                                decimal_significand, decimal_exponent_type_(minus_k + kappa)));
                 }
 
                 JKJ_FORCEINLINE constexpr
                 return_type right_closed_directed() noexcept {
 
-                    auto two_fc = s.remove_sign_bit_and_shift();
+                    carrier_uint two_fc = significand * 2;
                     auto binary_exponent = exponent_bits;
                     bool shorter_interval = false;
 
@@ -3228,7 +3233,7 @@ namespace jkj {
 
                         // The floor is inside, so we are done.
                         return SignPolicy::handle_sign(
-                            s, TrailingZeroPolicy::template on_trailing_zeros<format>(
+                            negative, TrailingZeroPolicy::template on_trailing_zeros<format>(
                                    decimal_significand, decimal_exponent_type_(minus_k + kappa + 1)));
                     } while (false);
 
@@ -3240,7 +3245,7 @@ namespace jkj {
                     decimal_significand *= 10;
                     decimal_significand += div::small_division_by_pow10<kappa>(r);
                     return SignPolicy::handle_sign(
-                        s, TrailingZeroPolicy::template no_trailing_zeros<format>(
+                        negative, TrailingZeroPolicy::template no_trailing_zeros<format>(
                                decimal_significand, decimal_exponent_type_(minus_k + kappa)));
                 }
 
@@ -3265,29 +3270,28 @@ namespace jkj {
         // The interface function.
         ////////////////////////////////////////////////////////////////////////////////////////
 
-        template <class FormatTraits, class... Policies>
+        template <class Float, class... Policies>
         JKJ_FORCEINLINE
-            constexpr typename detail::to_decimal_dispatch<FormatTraits, Policies...>::return_type
-            to_decimal_ex(signed_significand_bits<FormatTraits> s, typename FormatTraits::exponent_int exponent_bits,
-                          Policies...) noexcept {
-
-            return detail::to_decimal_dispatch<FormatTraits, Policies...>{{}, s, exponent_bits}.run();
+            constexpr typename detail::to_decimal_dispatch<Float, Policies...>::return_type
+            to_decimal_ex(bool sign, typename detail::to_decimal_dispatch<Float, Policies...>::exponent_int exponent,
+                typename detail::to_decimal_dispatch<Float, Policies...>::carrier_uint significand) noexcept {
+            return detail::to_decimal_dispatch<Float, Policies...>{sign, exponent, significand}.run();
         }
 
         template <class Float,
-                  class ConversionTraits = default_float_bit_carrier_conversion_traits<Float>,
-                  class FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
-                                                             typename ConversionTraits::carrier_uint>,
                   class... Policies>
         JKJ_FORCEINLINE
-            constexpr typename detail::to_decimal_dispatch<FormatTraits, Policies...>::return_type
-            to_decimal(Float x, Policies... policies) noexcept {
+        constexpr typename detail::to_decimal_dispatch<Float, Policies...>::return_type
+        to_decimal(Float x, Policies... policies) noexcept {
+            using ConversionTraits = default_float_bit_carrier_conversion_traits<Float>;
+            using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
+                                                       typename ConversionTraits::carrier_uint>;
             auto const br = make_float_bits<Float, ConversionTraits, FormatTraits>(x);
             auto const exponent_bits = br.extract_exponent_bits();
             auto const s = br.remove_exponent_bits();
             assert(br.is_finite() && br.is_nonzero());
 
-            return to_decimal_ex(s, exponent_bits, policies...);
+            return to_decimal_ex<Float, Policies...>(s.is_negative(), s.significand(), exponent_bits);
         }
     }
 }
