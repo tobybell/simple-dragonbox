@@ -37,19 +37,16 @@ set(dragonbox_to_chars_headers
         ${dragonbox_headers}
         include/dragonbox/dragonbox_to_chars.h)
 
-set(dragonbox_to_chars_sources source/dragonbox_to_chars.cpp)
-
-add_library(dragonbox_to_chars STATIC
-        ${dragonbox_to_chars_headers}
-        ${dragonbox_to_chars_sources})
+add_library(dragonbox_to_chars INTERFACE
+        ${dragonbox_to_chars_headers})
 add_library(dragonbox::dragonbox_to_chars ALIAS dragonbox_to_chars)
 
 target_include_directories(dragonbox_to_chars
         ${dragonbox_warning_guard}
-        PUBLIC
+        INTERFACE
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>")
 
-target_compile_features(dragonbox_to_chars PUBLIC cxx_std_17)
+target_compile_features(dragonbox_to_chars INTERFACE cxx_std_17)
 
 # ---- Install ----
 

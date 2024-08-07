@@ -510,7 +510,6 @@ namespace jkj {
                         auto const sum = (low_ + n) & UINT64_C(0xffffffffffffffff);
                         high_ += (sum < low_ ? 1 : 0);
                         low_ = sum;
-                        return *this;
                     }
                 };
 

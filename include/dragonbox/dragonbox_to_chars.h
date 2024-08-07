@@ -5,9 +5,6 @@
 namespace jkj {
     namespace dragonbox {
         namespace detail {
-            template <class FloatFormat, class CarrierUInt>
-            extern char* to_chars(CarrierUInt significand, int exponent, char* buffer) noexcept;
-
             template <stdr::size_t max_digits, class UInt>
             constexpr char* print_integer_naive(UInt n, char* buffer) noexcept {
                 char temp[max_digits]{};
@@ -61,38 +58,12 @@ namespace jkj {
             }
         }
 
-        namespace policy {
-          namespace digit_generation {
-            inline constexpr struct fast_t {} fast = {};
-            inline constexpr struct compact_t {} compact = {};
-            template <class... T>
-            struct Get { static constexpr bool compact = false; };
-            template <class S, class... T>
-            struct Get<S, T...>: Get<T...> {};
-            template <class... T>
-            struct Get<compact_t, T...> { static constexpr bool compact = true; };
-          }
-        }
 
 template <class Float>
 struct ToCharsImpl {
   using ConversionTraits = default_float_bit_carrier_conversion_traits<Float>;
   using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
                                              typename ConversionTraits::carrier_uint>;
-
-  template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
-            class CachePolicy, class PreferredIntegerTypesPolicy>
-  static char* fast_to_chars(signed_significand_bits<FormatTraits> s,
-                        typename FormatTraits::exponent_int exponent_bits,
-                        char* buffer) noexcept {
-      auto result = to_decimal_ex(
-          s, exponent_bits, policy::sign::ignore, policy::trailing_zero::ignore,
-          DecimalToBinaryRoundingPolicy{}, BinaryToDecimalRoundingPolicy{},
-          CachePolicy{}, PreferredIntegerTypesPolicy{});
-
-      return detail::to_chars<typename FormatTraits::format>(result.significand,
-                                                             result.exponent, buffer);
-  }
 
   template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
             class CachePolicy, class PreferredIntegerTypesPolicy, class FormatTraits>
@@ -112,7 +83,7 @@ struct ToCharsImpl {
   // Avoid needless ABI overhead incurred by tag dispatch.
   template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
             class CachePolicy, class PreferredIntegerTypesPolicy>
-  constexpr static char* to_chars_n_impl(float_bits<FormatTraits> br, char* buffer, bool compact_digit_generation) noexcept {
+  constexpr static char* to_chars_n_impl(float_bits<FormatTraits> br, char* buffer) noexcept {
       auto const exponent_bits = br.extract_exponent_bits();
       auto const s = br.remove_exponent_bits();
 
@@ -122,15 +93,9 @@ struct ToCharsImpl {
               ++buffer;
           }
           if (br.is_nonzero()) {
-            if (compact_digit_generation) {
-              return compact_to_chars<DecimalToBinaryRoundingPolicy,
-                BinaryToDecimalRoundingPolicy, CachePolicy,
-                PreferredIntegerTypesPolicy>(s, exponent_bits, buffer);
-            } else {
-              return fast_to_chars<DecimalToBinaryRoundingPolicy,
-                BinaryToDecimalRoundingPolicy, CachePolicy,
-                PreferredIntegerTypesPolicy>(s, exponent_bits, buffer);
-            }
+            return compact_to_chars<DecimalToBinaryRoundingPolicy,
+              BinaryToDecimalRoundingPolicy, CachePolicy,
+              PreferredIntegerTypesPolicy>(s, exponent_bits, buffer);
           }
           else {
               buffer[0] = '0';
@@ -175,7 +140,7 @@ struct ToCharsImpl {
                            typename policy_holder::binary_to_decimal_rounding_policy,
                            typename policy_holder::cache_policy,
                            typename policy_holder::preferred_integer_types_policy>(
-        make_float_bits<Float, ConversionTraits, FormatTraits>(x), buffer, policy::digit_generation::Get<Policies...>::compact);
+        make_float_bits<Float, ConversionTraits, FormatTraits>(x), buffer);
   }
 };
 
