@@ -111,48 +111,6 @@ namespace jkj {
                 }
             };
 
-            // Avoid needless ABI overhead incurred by tag dispatch.
-            template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
-                      class CachePolicy, class PreferredIntegerTypesPolicy, class DigitGenerationPolicy,
-                      class FormatTraits>
-            constexpr char* to_chars_n_impl(float_bits<FormatTraits> br, char* buffer) noexcept {
-                auto const exponent_bits = br.extract_exponent_bits();
-                auto const s = br.remove_exponent_bits();
-
-                if (br.is_finite(exponent_bits)) {
-                    if (s.is_negative()) {
-                        *buffer = '-';
-                        ++buffer;
-                    }
-                    if (br.is_nonzero()) {
-                        return DigitGenerationPolicy::template to_chars<
-                            DecimalToBinaryRoundingPolicy, BinaryToDecimalRoundingPolicy, CachePolicy,
-                            PreferredIntegerTypesPolicy>(s, exponent_bits, buffer);
-                    }
-                    else {
-                        buffer[0] = '0';
-                        buffer[1] = 'E';
-                        buffer[2] = '0';
-                        return buffer + 3;
-                    }
-                }
-                else {
-                    if (s.has_all_zero_significand_bits()) {
-                        if (s.is_negative()) {
-                            *buffer = '-';
-                            ++buffer;
-                        }
-                        stdr::memcpy(buffer, "Infinity", 8);
-                        return buffer + 8;
-                    }
-                    else {
-                        buffer[0] = 'N';
-                        buffer[1] = 'a';
-                        buffer[2] = 'N';
-                        return buffer + 3;
-                    }
-                }
-            }
         }
 
 template <class Float>
@@ -160,6 +118,48 @@ struct ToCharsImpl {
   using ConversionTraits = default_float_bit_carrier_conversion_traits<Float>;
   using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
                                              typename ConversionTraits::carrier_uint>;
+
+  // Avoid needless ABI overhead incurred by tag dispatch.
+  template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
+            class CachePolicy, class PreferredIntegerTypesPolicy, class DigitGenerationPolicy>
+  constexpr static char* to_chars_n_impl(float_bits<FormatTraits> br, char* buffer) noexcept {
+      auto const exponent_bits = br.extract_exponent_bits();
+      auto const s = br.remove_exponent_bits();
+
+      if (br.is_finite(exponent_bits)) {
+          if (s.is_negative()) {
+              *buffer = '-';
+              ++buffer;
+          }
+          if (br.is_nonzero()) {
+              return DigitGenerationPolicy::template to_chars<
+                  DecimalToBinaryRoundingPolicy, BinaryToDecimalRoundingPolicy, CachePolicy,
+                  PreferredIntegerTypesPolicy>(s, exponent_bits, buffer);
+          }
+          else {
+              buffer[0] = '0';
+              buffer[1] = 'E';
+              buffer[2] = '0';
+              return buffer + 3;
+          }
+      }
+      else {
+          if (s.has_all_zero_significand_bits()) {
+              if (s.is_negative()) {
+                  *buffer = '-';
+                  ++buffer;
+              }
+              std::memcpy(buffer, "Infinity", 8);
+              return buffer + 8;
+          }
+          else {
+              buffer[0] = 'N';
+              buffer[1] = 'a';
+              buffer[2] = 'N';
+              return buffer + 3;
+          }
+      }
+  }
 
   template <class... Policies>
   constexpr static char* to_chars_n(Float x, char* buffer, Policies...) noexcept {
@@ -177,11 +177,11 @@ struct ToCharsImpl {
                                           policy::digit_generation::fast_t>>,
         Policies...>;
 
-    return detail::to_chars_n_impl<typename policy_holder::decimal_to_binary_rounding_policy,
-                                   typename policy_holder::binary_to_decimal_rounding_policy,
-                                   typename policy_holder::cache_policy,
-                                   typename policy_holder::preferred_integer_types_policy,
-                                   typename policy_holder::digit_generation_policy>(
+    return to_chars_n_impl<typename policy_holder::decimal_to_binary_rounding_policy,
+                           typename policy_holder::binary_to_decimal_rounding_policy,
+                           typename policy_holder::cache_policy,
+                           typename policy_holder::preferred_integer_types_policy,
+                           typename policy_holder::digit_generation_policy>(
         make_float_bits<Float, ConversionTraits, FormatTraits>(x), buffer);
   }
 };
