@@ -118,7 +118,11 @@ namespace jkj {
         // These classes expose encoding specs of IEEE-754-like floating-point formats.
         // Currently available formats are IEEE-754 binary32 & IEEE-754 binary64.
 
-        struct ieee754_binary32 {
+        template <class T>
+        struct FloatFormat;
+
+        template <>
+        struct FloatFormat<float> {
             static constexpr int total_bits = 32;
             static constexpr int significand_bits = 23;
             static constexpr int exponent_bits = 8;
@@ -127,8 +131,11 @@ namespace jkj {
             static constexpr int exponent_bias = -127;
             static constexpr int decimal_significand_digits = 9;
             static constexpr int decimal_exponent_digits = 2;
+            using carrier_uint = detail::stdr::uint_least32_t;
         };
-        struct ieee754_binary64 {
+
+        template <>
+        struct FloatFormat<double> {
             static constexpr int total_bits = 64;
             static constexpr int significand_bits = 52;
             static constexpr int exponent_bits = 11;
@@ -137,13 +144,20 @@ namespace jkj {
             static constexpr int exponent_bias = -1023;
             static constexpr int decimal_significand_digits = 17;
             static constexpr int decimal_exponent_digits = 3;
+            using carrier_uint = detail::stdr::uint_least64_t;
         };
+
+        using ieee754_binary32 = FloatFormat<float>;
+        using ieee754_binary64 = FloatFormat<double>;
 
         // A floating-point format traits class defines ways to interpret a bit pattern of given size as
         // an encoding of floating-point number. This is an implementation of such a traits class,
         // supporting ways to interpret IEEE-754 binary floating-point numbers.
-        template <class Format, class CarrierUInt, class ExponentInt = int>
+        template <class Float, class ExponentInt = int>
         struct ieee754_binary_traits {
+            using Format = FloatFormat<Float>;
+            using CarrierUInt = typename Format::carrier_uint;
+
             // CarrierUInt needs to have enough size to hold the entire contents of floating-point
             // numbers. The actual bits are assumed to be aligned to the LSB, and every other bits are
             // assumed to be zeroed.
@@ -226,48 +240,6 @@ namespace jkj {
             }
             static constexpr bool has_even_significand_bits(carrier_uint u) noexcept {
                 return u % 2 == 0;
-            }
-        };
-
-        // Convert between bit patterns stored in carrier_uint and instances of an actual
-        // floating-point type. Depending on format and carrier_uint, this operation might not
-        // be possible for some specific bit patterns. However, the contract is that u always
-        // denotes a valid bit pattern, so the functions here are assumed to be noexcept.
-        // Users might specialize this class to change the behavior for certain types.
-        // The default provided by the library is to treat the given floating-point type Float as either
-        // IEEE-754 binary32 or IEEE-754 binary64, depending on the bitwise size of Float.
-        template <class Float>
-        struct default_float_bit_carrier_conversion_traits {
-            // Guards against types that have different internal representations than IEEE-754
-            // binary32/64. I don't know if there is a truly reliable way of detecting IEEE-754 binary
-            // formats. I just did my best here. Note that in some cases
-            // numeric_limits<Float>::is_iec559 may report false even if the internal representation is
-            // IEEE-754 compatible. In such a case, the user can specialize this traits template and
-            // remove this static sanity check in order to make Dragonbox work for Float.
-            static_assert(detail::stdr::numeric_limits<Float>::is_iec559 &&
-                              detail::stdr::numeric_limits<Float>::radix == 2 &&
-                              (detail::physical_bits<Float> == 32 ||
-                               detail::physical_bits<Float> == 64),
-                          "jkj::dragonbox: Float may not be of IEEE-754 binary32/binary64");
-
-            // Specifies the unsigned integer type to hold bitwise value of Float.
-            using carrier_uint =
-                typename detail::stdr::conditional<detail::physical_bits<Float> == 32,
-                                                   detail::stdr::uint_least32_t,
-                                                   detail::stdr::uint_least64_t>::type;
-
-            // Specifies the floating-point format.
-            using format = typename detail::stdr::conditional<detail::physical_bits<Float> == 32,
-                                                              ieee754_binary32, ieee754_binary64>::type;
-
-            // Converts the floating-point type into the bit-carrier unsigned integer type.
-            static constexpr carrier_uint float_to_carrier(Float x) noexcept {
-                return detail::bit_cast<carrier_uint>(x);
-            }
-
-            // Converts the bit-carrier unsigned integer type into the floating-point type.
-            static constexpr Float carrier_to_float(carrier_uint x) noexcept {
-                return detail::bit_cast<Float>(x);
             }
         };
 
@@ -366,14 +338,6 @@ namespace jkj {
                 return format_traits::has_even_significand_bits(u);
             }
         };
-
-        template <class Float,
-                  class ConversionTraits = default_float_bit_carrier_conversion_traits<Float>,
-                  class FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
-                                                             typename ConversionTraits::carrier_uint>>
-        constexpr float_bits<FormatTraits> make_float_bits(Float x) noexcept {
-            return float_bits<FormatTraits>(ConversionTraits::float_to_carrier(x));
-        }
 
         namespace detail {
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -2195,10 +2159,10 @@ namespace jkj {
 
         template <class ExponentInt>
         struct multiplication_traits<
-            ieee754_binary_traits<ieee754_binary32, detail::stdr::uint_least32_t, ExponentInt>,
+            ieee754_binary_traits<float, ExponentInt>,
             detail::stdr::uint_least64_t, 64>
             : public multiplication_traits_base<
-                  ieee754_binary_traits<ieee754_binary32, detail::stdr::uint_least32_t>,
+                  ieee754_binary_traits<float>,
                   detail::stdr::uint_least64_t, 64> {
             static constexpr compute_mul_result
             compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept {
@@ -2252,10 +2216,10 @@ namespace jkj {
 
         template <class ExponentInt>
         struct multiplication_traits<
-            ieee754_binary_traits<ieee754_binary64, detail::stdr::uint_least64_t, ExponentInt>,
+            ieee754_binary_traits<double, ExponentInt>,
             detail::wuint::uint128, 128>
             : public multiplication_traits_base<
-                  ieee754_binary_traits<ieee754_binary64, detail::stdr::uint_least64_t>,
+                  ieee754_binary_traits<double>,
                   detail::wuint::uint128, 128> {
             static constexpr compute_mul_result
             compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept {
@@ -2312,13 +2276,33 @@ namespace jkj {
 
             template <class Float>
             struct impl {
-                using ConversionTraits = default_float_bit_carrier_conversion_traits<Float>;
-                using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
-                                                           typename ConversionTraits::carrier_uint>;
+              // Guards against types that have different internal representations than IEEE-754
+              // binary32/64. I don't know if there is a truly reliable way of detecting IEEE-754 binary
+              // formats. I just did my best here. Note that in some cases
+              // numeric_limits<Float>::is_iec559 may report false even if the internal representation is
+              // IEEE-754 compatible. In such a case, the user can specialize this traits template and
+              // remove this static sanity check in order to make Dragonbox work for Float.
+              static_assert(detail::stdr::numeric_limits<Float>::is_iec559 &&
+                                detail::stdr::numeric_limits<Float>::radix == 2 &&
+                                (detail::physical_bits<Float> == 32 ||
+                                 detail::physical_bits<Float> == 64),
+                            "jkj::dragonbox: Float may not be of IEEE-754 binary32/binary64");
+
+                using FormatTraits = ieee754_binary_traits<Float>;
                 using format = typename FormatTraits::format;
                 using carrier_uint = typename FormatTraits::carrier_uint;
                 static constexpr int carrier_bits = FormatTraits::carrier_bits;
                 using exponent_int = typename FormatTraits::exponent_int;
+
+              constexpr static float_bits<FormatTraits> make_float_bits(Float x) noexcept {
+                  carrier_uint carrier = detail::bit_cast<carrier_uint>(x);
+                  return float_bits<FormatTraits>(carrier);
+              }
+
+              constexpr static Float carrier_to_float(carrier_uint u) noexcept {
+                return detail::bit_cast<Float>(u);
+              }
+
 
                 enum {
                   significand_bits = format::significand_bits,
@@ -2634,9 +2618,7 @@ namespace jkj {
 
             template <class Float, class... Policies>
             struct to_decimal_dispatch {
-                using ConversionTraits = default_float_bit_carrier_conversion_traits<Float>;
-                using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
-                                                           typename ConversionTraits::carrier_uint>;
+                using FormatTraits = ieee754_binary_traits<Float>;
                 using Impl = impl<Float>;
                 using format = typename FormatTraits::format;
                 using PolicyHolder = detail::to_decimal_policy_holder<Policies...>;
@@ -3288,10 +3270,8 @@ namespace jkj {
         JKJ_FORCEINLINE
         constexpr typename detail::to_decimal_dispatch<Float, Policies...>::return_type
         to_decimal(Float x, Policies... policies) noexcept {
-            using ConversionTraits = default_float_bit_carrier_conversion_traits<Float>;
-            using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
-                                                       typename ConversionTraits::carrier_uint>;
-            auto const br = make_float_bits<Float, ConversionTraits, FormatTraits>(x);
+            using FormatTraits = ieee754_binary_traits<Float>;
+            auto const br = detail::impl<Float>::make_float_bits(x);
             auto const exponent_bits = br.extract_exponent_bits();
             auto const s = br.remove_exponent_bits();
             assert(br.is_finite() && br.is_nonzero());

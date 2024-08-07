@@ -61,9 +61,7 @@ namespace jkj {
 
 template <class Float>
 struct ToCharsImpl {
-  using ConversionTraits = default_float_bit_carrier_conversion_traits<Float>;
-  using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
-                                             typename ConversionTraits::carrier_uint>;
+  using FormatTraits = ieee754_binary_traits<Float>;
 
   template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
             class CachePolicy, class FormatTraits>
@@ -134,7 +132,7 @@ struct ToCharsImpl {
     return to_chars_n_impl<typename policy_holder::decimal_to_binary_rounding_policy,
                            typename policy_holder::binary_to_decimal_rounding_policy,
                            typename policy_holder::cache_policy>(
-        make_float_bits<Float, ConversionTraits, FormatTraits>(x), buffer);
+        detail::impl<Float>::make_float_bits(x), buffer);
   }
 };
 
