@@ -6,92 +6,11 @@
 #include <limits>
 #include <type_traits>
 
-#ifdef __has_include
-    #if __has_include(<version>)
-        #include <version>
-    #endif
-#endif
-
-////////////////////////////////////////////////////////////////////////////////////////
-// Language feature detections.
-////////////////////////////////////////////////////////////////////////////////////////
-
-// C++17 if constexpr
-#if defined(__cpp_if_constexpr) && __cpp_if_constexpr >= 201606L
-    #define JKJ_HAS_IF_CONSTEXPR 1
-#elif __cplusplus >= 201703L
-    #define JKJ_HAS_IF_CONSTEXPR 1
-#elif defined(_MSC_VER) && _MSC_VER >= 1911 && _MSVC_LANG >= 201703L
-    #define JKJ_HAS_IF_CONSTEXPR 1
-#else
-    #define JKJ_HAS_IF_CONSTEXPR 0
-#endif
-
-#if JKJ_HAS_IF_CONSTEXPR
-    #define JKJ_IF_CONSTEXPR if constexpr
-#else
-    #define JKJ_IF_CONSTEXPR if
-#endif
-
-// C++23 if consteval or C++20 std::is_constant_evaluated
-#if defined(__cpp_if_consteval) && __cpp_is_consteval >= 202106L
-    #define JKJ_IF_CONSTEVAL if consteval
-    #define JKJ_IF_NOT_CONSTEVAL if !consteval
-    #define JKJ_CAN_BRANCH_ON_CONSTEVAL 1
-    #define JKJ_USE_IS_CONSTANT_EVALUATED 0
-#elif std_DEFINED
-    #if JKJ_STD_REPLACEMENT_HAS_IS_CONSTANT_EVALUATED
-        #define JKJ_IF_CONSTEVAL if (stdr::is_constant_evaluated())
-        #define JKJ_IF_NOT_CONSTEVAL if (!stdr::is_constant_evaluated())
-        #define JKJ_CAN_BRANCH_ON_CONSTEVAL 1
-        #define JKJ_USE_IS_CONSTANT_EVALUATED 1
-    #elif JKJ_HAS_IF_CONSTEXPR
-        #define JKJ_IF_CONSTEVAL if constexpr (false)
-        #define JKJ_IF_NOT_CONSTEVAL if constexpr (true)
-        #define JKJ_CAN_BRANCH_ON_CONSTEVAL 0
-        #define JKJ_USE_IS_CONSTANT_EVALUATED 0
-    #else
-        #define JKJ_IF_CONSTEVAL if (false)
-        #define JKJ_IF_NOT_CONSTEVAL if (true)
-        #define JKJ_CAN_BRANCH_ON_CONSTEVAL 0
-        #define JKJ_USE_IS_CONSTANT_EVALUATED 0
-    #endif
-#else
-    #if defined(__cpp_lib_is_constant_evaluated) && __cpp_lib_is_constant_evaluated >= 201811L
-        #define JKJ_IF_CONSTEVAL if (stdr::is_constant_evaluated())
-        #define JKJ_IF_NOT_CONSTEVAL if (!stdr::is_constant_evaluated())
-        #define JKJ_CAN_BRANCH_ON_CONSTEVAL 1
-        #define JKJ_USE_IS_CONSTANT_EVALUATED 1
-    #elif JKJ_HAS_IF_CONSTEXPR
-        #define JKJ_IF_CONSTEVAL if constexpr (false)
-        #define JKJ_IF_NOT_CONSTEVAL if constexpr (true)
-        #define JKJ_CAN_BRANCH_ON_CONSTEVAL 0
-        #define JKJ_USE_IS_CONSTANT_EVALUATED 0
-    #else
-        #define JKJ_IF_CONSTEVAL if (false)
-        #define JKJ_IF_NOT_CONSTEVAL if (true)
-        #define JKJ_CAN_BRANCH_ON_CONSTEVAL 0
-        #define JKJ_USE_IS_CONSTANT_EVALUATED 0
-    #endif
-#endif
-
-#if JKJ_CAN_BRANCH_ON_CONSTEVAL
-    #define JKJ_CONSTEXPR20 constexpr
-#else
-    #define JKJ_CONSTEXPR20
-#endif
-
-// Suppress additional buffer overrun check.
-// I have no idea why MSVC thinks some functions here are vulnerable to the buffer overrun
-// attacks. No, they aren't.
 #if defined(__GNUC__) || defined(__clang__)
-    #define JKJ_SAFEBUFFERS
     #define JKJ_FORCEINLINE inline __attribute__((always_inline))
 #elif defined(_MSC_VER)
-    #define JKJ_SAFEBUFFERS __declspec(safebuffers)
     #define JKJ_FORCEINLINE __forceinline
 #else
-    #define JKJ_SAFEBUFFERS
     #define JKJ_FORCEINLINE inline
 #endif
 
@@ -143,9 +62,6 @@ namespace jkj {
                 using add_rvalue_reference = std::add_rvalue_reference<T>;
                 template <bool cond, class T_true, class T_false>
                 using conditional = std::conditional<cond, T_true, T_false>;
-#if JKJ_USE_IS_CONSTANT_EVALUATED
-                using std::is_constant_evaluated;
-#endif
                 template <class T1, class T2>
                 using is_same = std::is_same<T1, T2>;
                 template <class T>
@@ -344,12 +260,12 @@ namespace jkj {
                                                               ieee754_binary32, ieee754_binary64>::type;
 
             // Converts the floating-point type into the bit-carrier unsigned integer type.
-            static JKJ_CONSTEXPR20 carrier_uint float_to_carrier(Float x) noexcept {
+            static constexpr carrier_uint float_to_carrier(Float x) noexcept {
                 return detail::bit_cast<carrier_uint>(x);
             }
 
             // Converts the bit-carrier unsigned integer type into the floating-point type.
-            static JKJ_CONSTEXPR20 Float carrier_to_float(carrier_uint x) noexcept {
+            static constexpr Float carrier_to_float(carrier_uint x) noexcept {
                 return detail::bit_cast<Float>(x);
             }
         };
@@ -451,7 +367,7 @@ namespace jkj {
                   class ConversionTraits = default_float_bit_carrier_conversion_traits<Float>,
                   class FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
                                                              typename ConversionTraits::carrier_uint>>
-        JKJ_CONSTEXPR20 float_bits<FormatTraits> make_float_bits(Float x) noexcept {
+        constexpr float_bits<FormatTraits> make_float_bits(Float x) noexcept {
             return float_bits<FormatTraits>(ConversionTraits::float_to_carrier(x));
         }
 
@@ -513,7 +429,7 @@ namespace jkj {
                     }
                 };
 
-                inline JKJ_CONSTEXPR20 stdr::uint_least64_t umul64(stdr::uint_least32_t x,
+                inline constexpr stdr::uint_least64_t umul64(stdr::uint_least32_t x,
                                                                    stdr::uint_least32_t y) noexcept {
 #if defined(_MSC_VER) && defined(_M_IX86)
                     JKJ_IF_NOT_CONSTEVAL { return __emulu(x, y); }
@@ -522,7 +438,7 @@ namespace jkj {
                 }
 
                 // Get 128-bit result of multiplication of two 64-bit unsigned integers.
-                JKJ_SAFEBUFFERS inline JKJ_CONSTEXPR20 uint128
+                inline constexpr uint128
                 umul128(stdr::uint_least64_t x, stdr::uint_least64_t y) noexcept {
                     auto const generic_impl = [=]() -> uint128 {
                         auto const a = stdr::uint_least32_t(x >> 32);
@@ -568,7 +484,7 @@ namespace jkj {
 
                 // Get high half of the 128-bit result of multiplication of two 64-bit unsigned
                 // integers.
-                JKJ_SAFEBUFFERS inline JKJ_CONSTEXPR20 stdr::uint_least64_t
+                inline constexpr stdr::uint_least64_t
                 umul128_upper64(stdr::uint_least64_t x, stdr::uint_least64_t y) noexcept {
                     auto const generic_impl = [=]() -> stdr::uint_least64_t {
                         auto const a = stdr::uint_least32_t(x >> 32);
@@ -613,7 +529,7 @@ namespace jkj {
 
                 // Get upper 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
                 // unsigned integer.
-                JKJ_SAFEBUFFERS inline JKJ_CONSTEXPR20 uint128 umul192_upper128(stdr::uint_least64_t x,
+                inline constexpr uint128 umul192_upper128(stdr::uint_least64_t x,
                                                                                 uint128 y) noexcept {
                     auto r = umul128(x, y.high());
                     r += umul128_upper64(x, y.low());
@@ -622,7 +538,7 @@ namespace jkj {
 
                 // Get upper 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit
                 // unsigned integer.
-                inline JKJ_CONSTEXPR20 stdr::uint_least64_t
+                inline constexpr stdr::uint_least64_t
                 umul96_upper64(stdr::uint_least32_t x, stdr::uint_least64_t y) noexcept {
 #if defined(__SIZEOF_INT128__) || (defined(_MSC_VER) && defined(_M_X64))
                     return umul128_upper64(stdr::uint_least64_t(x) << 32, y);
@@ -639,7 +555,7 @@ namespace jkj {
 
                 // Get lower 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
                 // unsigned integer.
-                JKJ_SAFEBUFFERS inline JKJ_CONSTEXPR20 uint128 umul192_lower128(stdr::uint_least64_t x,
+                inline constexpr uint128 umul192_lower128(stdr::uint_least64_t x,
                                                                                 uint128 y) noexcept {
                     auto const high = x * y.high();
                     auto const high_low = umul128(x, y.low());
@@ -811,7 +727,7 @@ namespace jkj {
                 // Compute floor(n / 10^N) for small N.
                 // Precondition: n <= n_max
                 template <int N, class UInt, UInt n_max>
-                JKJ_CONSTEXPR20 UInt divide_by_pow10(UInt n) noexcept {
+                constexpr UInt divide_by_pow10(UInt n) noexcept {
                     static_assert(N >= 0, "");
 
                     // Specialize for 32-bit division by 10.
@@ -820,27 +736,27 @@ namespace jkj {
                     // code for 32-bit or smaller architectures. Even for 64-bit architectures, it seems
                     // compilers tend to generate mov + mul instead of a single imul for an unknown
                     // reason if we just write n / 10.
-                    JKJ_IF_CONSTEXPR(stdr::is_same<UInt, stdr::uint_least32_t>::value && N == 1 &&
+                    if constexpr (stdr::is_same<UInt, stdr::uint_least32_t>::value && N == 1 &&
                                      n_max <= UINT32_C(1073741828)) {
                         return UInt(wuint::umul64(n, UINT32_C(429496730)) >> 32);
                     }
                     // Specialize for 64-bit division by 10.
                     // Without the bound on n_max (which compilers these days never leverage), the
                     // minimum needed amount of shift is larger than 64.
-                    else JKJ_IF_CONSTEXPR(stdr::is_same<UInt, stdr::uint_least64_t>::value && N == 1 &&
+                    else if constexpr (stdr::is_same<UInt, stdr::uint_least64_t>::value && N == 1 &&
                                           n_max <= UINT64_C(4611686018427387908)) {
                         return UInt(wuint::umul128_upper64(n, UINT64_C(1844674407370955162)));
                     }
                     // Specialize for 32-bit division by 100.
                     // It seems compilers tend to generate mov + mul instead of a single imul for an
                     // unknown reason if we just write n / 100.
-                    else JKJ_IF_CONSTEXPR(stdr::is_same<UInt, stdr::uint_least32_t>::value && N == 2) {
+                    else if constexpr (stdr::is_same<UInt, stdr::uint_least32_t>::value && N == 2) {
                         return UInt(wuint::umul64(n, UINT32_C(1374389535)) >> 37);
                     }
                     // Specialize for 64-bit division by 1000.
                     // Without the bound on n_max (which compilers these days never leverage), the
                     // smallest magic number for this computation does not fit into 64-bits.
-                    else JKJ_IF_CONSTEXPR(stdr::is_same<UInt, stdr::uint_least64_t>::value && N == 3 &&
+                    else if constexpr (stdr::is_same<UInt, stdr::uint_least64_t>::value && N == 3 &&
                                           n_max <= UINT64_C(15534100272597517998)) {
                         return UInt(wuint::umul128_upper64(n, UINT64_C(4722366482869645214)) >> 8);
                     }
@@ -1656,7 +1572,7 @@ namespace jkj {
             }();
 
             template <class ShiftAmountType, class DecimalExponentType>
-            static JKJ_CONSTEXPR20 cache_entry_type get_cache(DecimalExponentType k) noexcept {
+            static constexpr cache_entry_type get_cache(DecimalExponentType k) noexcept {
                 // Compute the base index.
                 // Supposed to compute (k - min_k) / compression_ratio.
                 static_assert(max_k - min_k <= 89 && compression_ratio == 13, "");
@@ -1734,7 +1650,7 @@ namespace jkj {
             }();
 
             template <class ShiftAmountType, class DecimalExponentType>
-            static JKJ_CONSTEXPR20 cache_entry_type get_cache(DecimalExponentType k) noexcept {
+            static constexpr cache_entry_type get_cache(DecimalExponentType k) noexcept {
                 // Compute the base index.
                 // Supposed to compute (k - min_k) / compression_ratio.
                 static_assert(max_k - min_k <= 619 && compression_ratio == 27, "");
@@ -2146,7 +2062,7 @@ namespace jkj {
                     using cache_holder_type = compressed_cache_holder<FloatFormat>;
 
                     template <class FloatFormat, class ShiftAmountType, class DecimalExponentType>
-                    static JKJ_CONSTEXPR20 typename cache_holder<FloatFormat>::cache_entry_type
+                    static constexpr typename cache_holder<FloatFormat>::cache_entry_type
                     get_cache(DecimalExponentType k) noexcept {
                         assert(k >= cache_holder<FloatFormat>::min_k &&
                                k <= cache_holder<FloatFormat>::max_k);
@@ -2280,7 +2196,7 @@ namespace jkj {
             : public multiplication_traits_base<
                   ieee754_binary_traits<ieee754_binary32, detail::stdr::uint_least32_t>,
                   detail::stdr::uint_least64_t, 64> {
-            static JKJ_CONSTEXPR20 compute_mul_result
+            static constexpr compute_mul_result
             compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept {
                 auto const r = detail::wuint::umul96_upper64(u, cache);
                 return {carrier_uint(r >> 32), carrier_uint(r) == 0};
@@ -2293,7 +2209,7 @@ namespace jkj {
             }
 
             template <class ShiftAmountType>
-            static JKJ_CONSTEXPR20 compute_mul_parity_result compute_mul_parity(
+            static constexpr compute_mul_parity_result compute_mul_parity(
                 carrier_uint two_f, cache_entry_type const& cache, ShiftAmountType beta) noexcept {
                 assert(beta >= 1);
                 assert(beta <= 32);
@@ -2337,7 +2253,7 @@ namespace jkj {
             : public multiplication_traits_base<
                   ieee754_binary_traits<ieee754_binary64, detail::stdr::uint_least64_t>,
                   detail::wuint::uint128, 128> {
-            static JKJ_CONSTEXPR20 compute_mul_result
+            static constexpr compute_mul_result
             compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept {
                 auto const r = detail::wuint::umul192_upper128(u, cache);
                 return {r.high(), r.low() == 0};
@@ -2351,7 +2267,7 @@ namespace jkj {
             }
 
             template <class ShiftAmountType>
-            static JKJ_CONSTEXPR20 compute_mul_parity_result compute_mul_parity(
+            static constexpr compute_mul_parity_result compute_mul_parity(
                 carrier_uint two_f, cache_entry_type const& cache, ShiftAmountType beta) noexcept {
                 assert(beta >= 1);
                 assert(beta < 64);
@@ -2836,7 +2752,7 @@ namespace jkj {
 
                 //// The main algorithm assumes the input is a normal/subnormal finite number.
 
-                JKJ_SAFEBUFFERS JKJ_CONSTEXPR20
+                constexpr
                 return_type nearest(interval normal_interval, interval shorter_interval) noexcept {
 
                     auto two_fc = s.remove_sign_bit_and_shift();
@@ -3010,7 +2926,7 @@ namespace jkj {
                             // Exclude the right endpoint if necessary.
                             if ((r | remainder_type_(!z_result.is_integer) |
                                  remainder_type_(normal_interval.include_right_endpoint)) == 0) {
-                                JKJ_IF_CONSTEXPR(
+                                if constexpr (
                                     BinaryToDecimalRoundingPolicy::tag ==
                                     policy::binary_to_decimal_rounding::tag_t::do_not_care) {
                                     decimal_significand *= 10;
@@ -3054,7 +2970,7 @@ namespace jkj {
 
                     decimal_significand *= 10;
 
-                    JKJ_IF_CONSTEXPR(BinaryToDecimalRoundingPolicy::tag ==
+                    if constexpr (BinaryToDecimalRoundingPolicy::tag ==
                                      policy::binary_to_decimal_rounding::tag_t::do_not_care) {
                         // Normally, we want to compute
                         // significand += r / small_divisor
@@ -3118,7 +3034,7 @@ namespace jkj {
                                decimal_significand, decimal_exponent_type_(minus_k + kappa)));
                 }
 
-                JKJ_FORCEINLINE JKJ_SAFEBUFFERS JKJ_CONSTEXPR20
+                JKJ_FORCEINLINE constexpr
                 return_type left_closed_directed() noexcept {
 
                     auto two_fc = s.remove_sign_bit_and_shift();
@@ -3161,7 +3077,7 @@ namespace jkj {
                     // and 29711844 * 2^-81
                     // = 1.2288530660000000001731007559513386695471126586198806762695... * 10^-17
                     // for binary32.
-                    JKJ_IF_CONSTEXPR(stdr::is_same<format, ieee754_binary32>::value) {
+                    if constexpr (stdr::is_same<format, ieee754_binary32>::value) {
                         if (binary_exponent <= -80) {
                             x_result.is_integer = false;
                         }
@@ -3207,7 +3123,7 @@ namespace jkj {
                             // case, the recovered cache is two large to make compute_mul_parity
                             // mistakenly conclude that z is not an integer, but actually z = 16384 is
                             // an integer.
-                            JKJ_IF_CONSTEXPR(
+                            if constexpr (
                                 stdr::is_same<cache_holder_type,
                                               compressed_cache_holder<ieee754_binary32>>::value) {
                                 if (two_fc == 33554430 && binary_exponent == -10) {
@@ -3239,7 +3155,7 @@ namespace jkj {
                                decimal_significand, decimal_exponent_type_(minus_k + kappa)));
                 }
 
-                JKJ_FORCEINLINE JKJ_SAFEBUFFERS JKJ_CONSTEXPR20
+                JKJ_FORCEINLINE constexpr
                 return_type right_closed_directed() noexcept {
 
                     auto two_fc = s.remove_sign_bit_and_shift();
@@ -3351,7 +3267,7 @@ namespace jkj {
 
         template <class FormatTraits, class... Policies>
         JKJ_FORCEINLINE
-            JKJ_SAFEBUFFERS JKJ_CONSTEXPR20 typename detail::to_decimal_dispatch<FormatTraits, Policies...>::return_type
+            constexpr typename detail::to_decimal_dispatch<FormatTraits, Policies...>::return_type
             to_decimal_ex(signed_significand_bits<FormatTraits> s, typename FormatTraits::exponent_int exponent_bits,
                           Policies...) noexcept {
 
@@ -3364,7 +3280,7 @@ namespace jkj {
                                                              typename ConversionTraits::carrier_uint>,
                   class... Policies>
         JKJ_FORCEINLINE
-            JKJ_SAFEBUFFERS JKJ_CONSTEXPR20 typename detail::to_decimal_dispatch<FormatTraits, Policies...>::return_type
+            constexpr typename detail::to_decimal_dispatch<FormatTraits, Policies...>::return_type
             to_decimal(Float x, Policies... policies) noexcept {
             auto const br = make_float_bits<Float, ConversionTraits, FormatTraits>(x);
             auto const exponent_bits = br.extract_exponent_bits();
@@ -3377,11 +3293,3 @@ namespace jkj {
 }
 
 #undef JKJ_FORCEINLINE
-#undef JKJ_SAFEBUFFERS
-#undef JKJ_CONSTEXPR20
-#undef JKJ_USE_IS_CONSTANT_EVALUATED
-#undef JKJ_CAN_BRANCH_ON_CONSTEVAL
-#undef JKJ_IF_NOT_CONSTEVAL
-#undef JKJ_IF_CONSTEVAL
-#undef JKJ_IF_CONSTEXPR
-#undef JKJ_HAS_IF_CONSTEXPR
