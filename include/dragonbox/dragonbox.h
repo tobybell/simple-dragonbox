@@ -1849,42 +1849,10 @@ namespace jkj {
           AwayFromZero,
         };
 
-        namespace interval_type {
-            struct symmetric_boundary {
-                static constexpr bool is_symmetric = true;
-                bool is_closed;
-                constexpr bool include_left_endpoint() const noexcept { return is_closed; }
-                constexpr bool include_right_endpoint() const noexcept { return is_closed; }
-            };
-            struct asymmetric_boundary {
-                static constexpr bool is_symmetric = false;
-                bool is_left_closed;
-                constexpr bool include_left_endpoint() const noexcept { return is_left_closed; }
-                constexpr bool include_right_endpoint() const noexcept {
-                    return !is_left_closed;
-                }
-            };
-            struct closed {
-                static constexpr bool is_symmetric = true;
-                static constexpr bool include_left_endpoint() noexcept { return true; }
-                static constexpr bool include_right_endpoint() noexcept { return true; }
-            };
-            struct open {
-                static constexpr bool is_symmetric = true;
-                static constexpr bool include_left_endpoint() noexcept { return false; }
-                static constexpr bool include_right_endpoint() noexcept { return false; }
-            };
-            struct left_closed_right_open {
-                static constexpr bool is_symmetric = false;
-                static constexpr bool include_left_endpoint() noexcept { return true; }
-                static constexpr bool include_right_endpoint() noexcept { return false; }
-            };
-            struct right_closed_left_open {
-                static constexpr bool is_symmetric = false;
-                static constexpr bool include_left_endpoint() noexcept { return false; }
-                static constexpr bool include_right_endpoint() noexcept { return true; }
-            };
-        }
+        struct interval {
+          bool include_left_endpoint;
+          bool include_right_endpoint;
+        };
 
         namespace policy {
             namespace sign {
@@ -2023,136 +1991,32 @@ namespace jkj {
                 inline constexpr struct nearest_to_even_t {
                     constexpr static auto round_mode = NearestToEven;
                     using decimal_to_binary_rounding_policy = nearest_to_even_t;
-                    using interval_type_provider = nearest_to_even_t;
-
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::symmetric_boundary
-                    normal_interval(SignedSignificandBits s) noexcept {
-                        return {s.has_even_significand_bits()};
-                    }
-
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::closed
-                    shorter_interval(SignedSignificandBits) noexcept {
-                        return {};
-                    }
                 } nearest_to_even = {};
 
                 inline constexpr struct nearest_to_odd_t {
                     constexpr static auto round_mode = NearestToOdd;
                     using decimal_to_binary_rounding_policy = nearest_to_odd_t;
-                    using interval_type_provider = nearest_to_odd_t;
-
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::symmetric_boundary
-                    normal_interval(SignedSignificandBits s) noexcept {
-                        return {!s.has_even_significand_bits()};
-                    }
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::open
-                    shorter_interval(SignedSignificandBits) noexcept {
-                        return {};
-                    }
                 } nearest_to_odd = {};
 
                 inline constexpr struct nearest_toward_plus_infinity_t {
                     constexpr static auto round_mode = NearestTowardPlusInfinity;
                     using decimal_to_binary_rounding_policy = nearest_toward_plus_infinity_t;
-                    using interval_type_provider = nearest_toward_plus_infinity_t;
-
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::asymmetric_boundary
-                    normal_interval(SignedSignificandBits s) noexcept {
-                        return {!s.is_negative()};
-                    }
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::asymmetric_boundary
-                    shorter_interval(SignedSignificandBits s) noexcept {
-                        return {!s.is_negative()};
-                    }
                 } nearest_toward_plus_infinity = {};
 
                 inline constexpr struct nearest_toward_minus_infinity_t {
                     using decimal_to_binary_rounding_policy = nearest_toward_minus_infinity_t;
                     constexpr static auto round_mode = NearestTowardMinusInfinity;
-                    using interval_type_provider = nearest_toward_minus_infinity_t;
-
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::asymmetric_boundary
-                    normal_interval(SignedSignificandBits s) noexcept {
-                        return {s.is_negative()};
-                    }
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::asymmetric_boundary
-                    shorter_interval(SignedSignificandBits s) noexcept {
-                        return {s.is_negative()};
-                    }
                 } nearest_toward_minus_infinity = {};
 
                 inline constexpr struct nearest_toward_zero_t {
                     using decimal_to_binary_rounding_policy = nearest_toward_zero_t;
                     constexpr static auto round_mode = NearestTowardZero;
-                    using interval_type_provider = nearest_toward_zero_t;
-
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::right_closed_left_open
-                    normal_interval(SignedSignificandBits) noexcept {
-                        return {};
-                    }
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::right_closed_left_open
-                    shorter_interval(SignedSignificandBits) noexcept {
-                        return {};
-                    }
                 } nearest_toward_zero = {};
 
                 inline constexpr struct nearest_away_from_zero_t {
                     using decimal_to_binary_rounding_policy = nearest_away_from_zero_t;
                     constexpr static auto round_mode = NearestAwayFromZero;
-                    using interval_type_provider = nearest_away_from_zero_t;
-
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::left_closed_right_open
-                    normal_interval(SignedSignificandBits) noexcept {
-                        return {};
-                    }
-                    template <class SignedSignificandBits>
-                    static constexpr interval_type::left_closed_right_open
-                    shorter_interval(SignedSignificandBits) noexcept {
-                        return {};
-                    }
                 } nearest_away_from_zero = {};
-
-                namespace detail {
-                    struct nearest_always_closed_t {
-                        using interval_type_provider = nearest_always_closed_t;
-
-                        template <class SignedSignificandBits>
-                        static constexpr interval_type::closed
-                        normal_interval(SignedSignificandBits) noexcept {
-                            return {};
-                        }
-                        template <class SignedSignificandBits>
-                        static constexpr interval_type::closed
-                        shorter_interval(SignedSignificandBits) noexcept {
-                            return {};
-                        }
-                    };
-                    struct nearest_always_open_t {
-                        using interval_type_provider = nearest_always_open_t;
-
-                        template <class SignedSignificandBits>
-                        static constexpr interval_type::open
-                        normal_interval(SignedSignificandBits) noexcept {
-                            return {};
-                        }
-                        template <class SignedSignificandBits>
-                        static constexpr interval_type::open
-                        shorter_interval(SignedSignificandBits) noexcept {
-                            return {};
-                        }
-                    };
-                }
 
                 inline constexpr struct nearest_to_even_static_boundary_t {
                     using decimal_to_binary_rounding_policy = nearest_to_even_static_boundary_t;
@@ -2525,9 +2389,6 @@ namespace jkj {
         };
 
         namespace detail {
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // The main algorithm.
-            ////////////////////////////////////////////////////////////////////////////////////////
 
             template <class FormatTraits>
             struct impl : private FormatTraits::format {
@@ -2862,11 +2723,8 @@ namespace jkj {
 
                 using carrier_uint = typename FormatTraits::carrier_uint;
                 using exponent_int = typename FormatTraits::exponent_int;
-
                 using remainder_type_ = typename FormatTraits::carrier_uint;
-
                 using decimal_exponent_type_ = typename FormatTraits::exponent_int;
-
                 using shift_amount_type = typename FormatTraits::exponent_int;
 
                 using return_type =
@@ -2891,51 +2749,39 @@ namespace jkj {
                 }
 
                 return_type nearest_to_even() {
-                    return nearest(
-                      interval_type::symmetric_boundary {s.has_even_significand_bits()},
-                      interval_type::closed {});
+                    bool even = s.has_even_significand_bits();
+                    return nearest({even, even}, {true, true});
                 }
 
                 return_type nearest_to_odd() {
-                    return nearest(
-                      interval_type::symmetric_boundary {!s.has_even_significand_bits()},
-                      interval_type::open {});
+                    bool even = s.has_even_significand_bits();
+                    return nearest({!even, even}, {false, false});
                 }
 
                 return_type nearest_toward_plus_infinity() {
-                    return nearest(
-                      interval_type::asymmetric_boundary {!s.is_negative()},
-                      interval_type::asymmetric_boundary {!s.is_negative()});
+                    bool negative = s.is_negative();
+                    return nearest({!negative, negative}, {!negative, negative});
                 }
 
                 return_type nearest_toward_minus_infinity() {
-                    return nearest(
-                      interval_type::asymmetric_boundary {s.is_negative()},
-                      interval_type::asymmetric_boundary {s.is_negative()});
+                    bool negative = s.is_negative();
+                    return nearest({negative, !negative}, {negative, !negative});
                 }
 
                 return_type nearest_toward_zero() {
-                    return nearest(
-                      interval_type::right_closed_left_open {},
-                      interval_type::right_closed_left_open {});
+                    return nearest({false, true}, {false, true});
                 }
 
                 return_type nearest_away_from_zero() {
-                    return nearest(
-                      interval_type::left_closed_right_open {},
-                      interval_type::left_closed_right_open {});
+                    return nearest({true, false}, {true, false});
                 }
 
                 return_type nearest_always_closed() {
-                    return nearest(
-                      interval_type::closed {},
-                      interval_type::closed {});
+                    return nearest({true, true}, {true, true});
                 }
 
                 return_type nearest_always_open() {
-                    return nearest(
-                      interval_type::open {},
-                      interval_type::open {});
+                    return nearest({false, false}, {false, false});
                 }
 
                 return_type run(RoundMode round_mode) {
@@ -2979,19 +2825,19 @@ namespace jkj {
                   }
                 }
 
+                using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
+                static_assert(
+                    min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
+
+                using multiplication_traits_ =
+                    multiplication_traits<FormatTraits,
+                                          typename cache_holder_type::cache_entry_type,
+                                          cache_holder_type::cache_bits>;
+
                 //// The main algorithm assumes the input is a normal/subnormal finite number.
 
-                template <class NormalInterval, class ShorterInterval>
                 JKJ_SAFEBUFFERS JKJ_CONSTEXPR20
-                return_type nearest(NormalInterval normal_interval, ShorterInterval shorter_interval) noexcept {
-                    using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
-                    static_assert(
-                        min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
-
-                    using multiplication_traits_ =
-                        multiplication_traits<FormatTraits,
-                                              typename cache_holder_type::cache_entry_type,
-                                              cache_holder_type::cache_bits>;
+                return_type nearest(interval normal_interval, interval shorter_interval) noexcept {
 
                     auto two_fc = s.remove_sign_bit_and_shift();
                     auto binary_exponent = exponent_bits;
@@ -3055,13 +2901,13 @@ namespace jkj {
 
                             // If we don't accept the right endpoint and
                             // if the right endpoint is an integer, decrease it.
-                            if (!shorter_interval.include_right_endpoint() &&
+                            if (!shorter_interval.include_right_endpoint &&
                                 is_right_endpoint_integer_shorter_interval(binary_exponent)) {
                                 --zi;
                             }
                             // If we don't accept the left endpoint or
                             // if the left endpoint is not an integer, increase it.
-                            if (!shorter_interval.include_left_endpoint() ||
+                            if (!shorter_interval.include_left_endpoint ||
                                 !is_left_endpoint_integer_shorter_interval(binary_exponent)) {
                                 ++xi;
                             }
@@ -3163,7 +3009,7 @@ namespace jkj {
                         if (r < deltai) {
                             // Exclude the right endpoint if necessary.
                             if ((r | remainder_type_(!z_result.is_integer) |
-                                 remainder_type_(normal_interval.include_right_endpoint())) == 0) {
+                                 remainder_type_(normal_interval.include_right_endpoint)) == 0) {
                                 JKJ_IF_CONSTEXPR(
                                     BinaryToDecimalRoundingPolicy::tag ==
                                     policy::binary_to_decimal_rounding::tag_t::do_not_care) {
@@ -3190,7 +3036,7 @@ namespace jkj {
                                 carrier_uint(two_fc - 1), cache, beta);
 
                             if (!(x_result.parity |
-                                  (x_result.is_integer & normal_interval.include_left_endpoint()))) {
+                                  (x_result.is_integer & normal_interval.include_left_endpoint))) {
                                 break;
                             }
                         }
@@ -3215,7 +3061,7 @@ namespace jkj {
                         // and return, but we need to take care of the case that the resulting
                         // value is exactly the right endpoint, while that is not included in the
                         // interval.
-                        if (!normal_interval.include_right_endpoint()) {
+                        if (!normal_interval.include_right_endpoint) {
                             // Is r divisible by 10^kappa?
                             if (div::check_divisibility_and_divide_by_pow10<kappa>(r) &&
                                 z_result.is_integer) {
@@ -3274,14 +3120,6 @@ namespace jkj {
 
                 JKJ_FORCEINLINE JKJ_SAFEBUFFERS JKJ_CONSTEXPR20
                 return_type left_closed_directed() noexcept {
-                    using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
-                    static_assert(
-                        min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
-
-                    using multiplication_traits_ =
-                        multiplication_traits<FormatTraits,
-                                              typename cache_holder_type::cache_entry_type,
-                                              cache_holder_type::cache_bits>;
 
                     auto two_fc = s.remove_sign_bit_and_shift();
                     auto binary_exponent = exponent_bits;
@@ -3403,14 +3241,6 @@ namespace jkj {
 
                 JKJ_FORCEINLINE JKJ_SAFEBUFFERS JKJ_CONSTEXPR20
                 return_type right_closed_directed() noexcept {
-                    using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
-                    static_assert(
-                        min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
-
-                    using multiplication_traits_ =
-                        multiplication_traits<FormatTraits,
-                                              typename cache_holder_type::cache_entry_type,
-                                              cache_holder_type::cache_bits>;
 
                     auto two_fc = s.remove_sign_bit_and_shift();
                     auto binary_exponent = exponent_bits;
