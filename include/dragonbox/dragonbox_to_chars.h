@@ -155,43 +155,41 @@ namespace jkj {
             }
         }
 
-        // Returns the next-to-end position
-        template <class Float,
-                  class ConversionTraits = default_float_bit_carrier_conversion_traits<Float>,
-                  class FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
-                                                             typename ConversionTraits::carrier_uint>,
-                  class... Policies>
-        constexpr char* to_chars_n(Float x, char* buffer, Policies...) noexcept {
-            using policy_holder = detail::make_policy_holder<
-                detail::detector_default_pair_list<
-                    detail::detector_default_pair<
-                        detail::is_decimal_to_binary_rounding_policy,
-                        policy::decimal_to_binary_rounding::nearest_to_even_t>,
-                    detail::detector_default_pair<detail::is_binary_to_decimal_rounding_policy,
-                                                  policy::binary_to_decimal_rounding::to_even_t>,
-                    detail::detector_default_pair<detail::is_cache_policy, policy::cache::full_t>,
-                    detail::detector_default_pair<detail::is_preferred_integer_types_policy,
-                                                  policy::preferred_integer_types::match_t>,
-                    detail::detector_default_pair<detail::is_digit_generation_policy,
-                                                  policy::digit_generation::fast_t>>,
-                Policies...>;
+template <class Float>
+struct ToCharsImpl {
+  using ConversionTraits = default_float_bit_carrier_conversion_traits<Float>;
+  using FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
+                                             typename ConversionTraits::carrier_uint>;
 
-            return detail::to_chars_n_impl<typename policy_holder::decimal_to_binary_rounding_policy,
-                                           typename policy_holder::binary_to_decimal_rounding_policy,
-                                           typename policy_holder::cache_policy,
-                                           typename policy_holder::preferred_integer_types_policy,
-                                           typename policy_holder::digit_generation_policy>(
-                make_float_bits<Float, ConversionTraits, FormatTraits>(x), buffer);
-        }
+  template <class... Policies>
+  constexpr static char* to_chars_n(Float x, char* buffer, Policies...) noexcept {
+    using policy_holder = detail::make_policy_holder<
+        detail::detector_default_pair_list<
+            detail::detector_default_pair<
+                detail::is_decimal_to_binary_rounding_policy,
+                policy::decimal_to_binary_rounding::nearest_to_even_t>,
+            detail::detector_default_pair<detail::is_binary_to_decimal_rounding_policy,
+                                          policy::binary_to_decimal_rounding::to_even_t>,
+            detail::detector_default_pair<detail::is_cache_policy, policy::cache::full_t>,
+            detail::detector_default_pair<detail::is_preferred_integer_types_policy,
+                                          policy::preferred_integer_types::match_t>,
+            detail::detector_default_pair<detail::is_digit_generation_policy,
+                                          policy::digit_generation::fast_t>>,
+        Policies...>;
+
+    return detail::to_chars_n_impl<typename policy_holder::decimal_to_binary_rounding_policy,
+                                   typename policy_holder::binary_to_decimal_rounding_policy,
+                                   typename policy_holder::cache_policy,
+                                   typename policy_holder::preferred_integer_types_policy,
+                                   typename policy_holder::digit_generation_policy>(
+        make_float_bits<Float, ConversionTraits, FormatTraits>(x), buffer);
+  }
+};
 
         // Null-terminate and bypass the return value of fp_to_chars_n
-        template <class Float,
-                  class ConversionTraits = default_float_bit_carrier_conversion_traits<Float>,
-                  class FormatTraits = ieee754_binary_traits<typename ConversionTraits::format,
-                                                             typename ConversionTraits::carrier_uint>,
-                  class... Policies>
+        template <class Float, class... Policies>
         constexpr char* to_chars(Float x, char* buffer, Policies... policies) noexcept {
-            auto ptr = to_chars_n<Float, ConversionTraits, FormatTraits>(x, buffer, policies...);
+            auto ptr = ToCharsImpl<Float>::to_chars_n(x, buffer, policies...);
             *ptr = '\0';
             return ptr;
         }
