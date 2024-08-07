@@ -2382,88 +2382,6 @@ namespace jkj {
                 } compact = {};
             }
 
-            namespace preferred_integer_types {
-                inline constexpr struct match_t {
-                    using preferred_integer_types_policy = match_t;
-
-                    template <class FormatTraits, detail::stdr::uint_least64_t upper_bound>
-                    using remainder_type = typename FormatTraits::carrier_uint;
-
-                    template <class FormatTraits, detail::stdr::int_least32_t lower_bound,
-                              detail::stdr::uint_least32_t upper_bound>
-                    using decimal_exponent_type = typename FormatTraits::exponent_int;
-
-                    template <class FormatTraits>
-                    using shift_amount_type = typename FormatTraits::exponent_int;
-                } match;
-
-                inline constexpr struct prefer_32_t {
-                    using preferred_integer_types_policy = prefer_32_t;
-
-                    template <class FormatTraits, detail::stdr::uint_least64_t upper_bound>
-                    using remainder_type = typename detail::stdr::conditional<
-                        upper_bound <=
-                            detail::stdr::numeric_limits<detail::stdr::uint_least32_t>::max(),
-                        detail::stdr::uint_least32_t, typename FormatTraits::carrier_uint>::type;
-
-                    template <class FormatTraits, detail::stdr::int_least32_t lower_bound,
-                              detail::stdr::uint_least32_t upper_bound>
-                    using decimal_exponent_type = typename detail::stdr::conditional<
-                        FormatTraits::format::exponent_bits <=
-                            detail::value_bits<detail::stdr::int_least32_t>::value,
-                        detail::stdr::int_least32_t, typename FormatTraits::exponent_int>::type;
-
-                    template <class FormatTraits>
-                    using shift_amount_type = detail::stdr::int_least32_t;
-                } prefer_32;
-
-                inline constexpr struct minimal_t {
-                    using preferred_integer_types_policy = minimal_t;
-
-                    template <class FormatTraits, detail::stdr::uint_least64_t upper_bound>
-                    using remainder_type = typename detail::stdr::conditional<
-                        upper_bound <= detail::stdr::numeric_limits<detail::stdr::uint_least8_t>::max(),
-                        detail::stdr::uint_least8_t,
-                        typename detail::stdr::conditional<
-                            upper_bound <=
-                                detail::stdr::numeric_limits<detail::stdr::uint_least16_t>::max(),
-                            detail::stdr::uint_least16_t,
-                            typename detail::stdr::conditional<
-                                upper_bound <=
-                                    detail::stdr::numeric_limits<detail::stdr::uint_least32_t>::max(),
-                                detail::stdr::uint_least32_t,
-                                typename detail::stdr::conditional<
-                                    upper_bound <= detail::stdr::numeric_limits<
-                                                       detail::stdr::uint_least64_t>::max(),
-                                    detail::stdr::uint_least64_t,
-                                    typename FormatTraits::carrier_uint>::type>::type>::type>::type;
-
-                    template <class FormatTraits, detail::stdr::int_least32_t lower_bound,
-                              detail::stdr::uint_least32_t upper_bound>
-                    using decimal_exponent_type = typename detail::stdr::conditional<
-                        lower_bound >=
-                                detail::stdr::numeric_limits<detail::stdr::int_least8_t>::min() &&
-                            upper_bound <=
-                                detail::stdr::numeric_limits<detail::stdr::int_least8_t>::max(),
-                        detail::stdr::int_least8_t,
-                        typename detail::stdr::conditional<
-                            lower_bound >=
-                                    detail::stdr::numeric_limits<detail::stdr::int_least16_t>::min() &&
-                                upper_bound <=
-                                    detail::stdr::numeric_limits<detail::stdr::int_least16_t>::max(),
-                            detail::stdr::int_least16_t,
-                            typename detail::stdr::conditional<
-                                lower_bound >= detail::stdr::numeric_limits<
-                                                   detail::stdr::int_least32_t>::min() &&
-                                    upper_bound <= detail::stdr::numeric_limits<
-                                                       detail::stdr::int_least32_t>::max(),
-                                detail::stdr::int_least32_t,
-                                typename FormatTraits::exponent_int>::type>::type>::type;
-
-                    template <class FormatTraits>
-                    using shift_amount_type = detail::stdr::int_least8_t;
-                } minimal;
-            }
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////
@@ -2754,38 +2672,29 @@ namespace jkj {
                 static constexpr int shorter_interval_tie_upper_threshold =
                     -log::floor_log5_pow2(significand_bits + 2) - 2 - significand_bits;
 
-                template <class PreferredIntegerTypesPolicy>
-                using remainder_type = typename PreferredIntegerTypesPolicy::template remainder_type<
-                    FormatTraits, compute_power<kappa + 1>(detail::stdr::uint_least64_t(10))>;
+                using remainder_type_ = typename FormatTraits::carrier_uint;
 
-                template <class PreferredIntegerTypesPolicy>
-                using decimal_exponent_type =
-                    typename PreferredIntegerTypesPolicy::template decimal_exponent_type<
-                        FormatTraits, detail::stdr::int_least32_t(min(-max_k, min_k)),
-                        detail::stdr::int_least32_t(max(max_k, -min_k + kappa + 1))>;
+                using decimal_exponent_type_ = typename FormatTraits::exponent_int;
 
-                template <class SignPolicy, class TrailingZeroPolicy, class PreferredIntegerTypesPolicy>
+                using shift_amount_type = typename FormatTraits::exponent_int;
+
+                template <class SignPolicy, class TrailingZeroPolicy>
                 using return_type =
-                    decimal_fp<carrier_uint, decimal_exponent_type<PreferredIntegerTypesPolicy>,
+                    decimal_fp<carrier_uint, decimal_exponent_type_,
                                SignPolicy::return_has_sign, TrailingZeroPolicy::report_trailing_zeros>;
 
                 //// The main algorithm assumes the input is a normal/subnormal finite number.
 
                 template <class SignPolicy, class TrailingZeroPolicy, class IntervalTypeProvider,
-                          class BinaryToDecimalRoundingPolicy, class CachePolicy,
-                          class PreferredIntegerTypesPolicy>
+                          class BinaryToDecimalRoundingPolicy, class CachePolicy>
                 JKJ_SAFEBUFFERS static JKJ_CONSTEXPR20
-                    return_type<SignPolicy, TrailingZeroPolicy, PreferredIntegerTypesPolicy>
+                    return_type<SignPolicy, TrailingZeroPolicy>
                     compute_nearest(signed_significand_bits<FormatTraits> s,
                                     exponent_int exponent_bits) noexcept {
                     using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
                     static_assert(
                         min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
 
-                    using remainder_type_ = remainder_type<PreferredIntegerTypesPolicy>;
-                    using decimal_exponent_type_ = decimal_exponent_type<PreferredIntegerTypesPolicy>;
-                    using shift_amount_type =
-                        typename PreferredIntegerTypesPolicy::template shift_amount_type<FormatTraits>;
 
                     using multiplication_traits_ =
                         multiplication_traits<FormatTraits,
@@ -3074,20 +2983,14 @@ namespace jkj {
                                decimal_significand, decimal_exponent_type_(minus_k + kappa)));
                 }
 
-                template <class SignPolicy, class TrailingZeroPolicy, class CachePolicy,
-                          class PreferredIntegerTypesPolicy>
+                template <class SignPolicy, class TrailingZeroPolicy, class CachePolicy>
                 JKJ_FORCEINLINE JKJ_SAFEBUFFERS static JKJ_CONSTEXPR20
-                    return_type<SignPolicy, TrailingZeroPolicy, PreferredIntegerTypesPolicy>
+                    return_type<SignPolicy, TrailingZeroPolicy>
                     compute_left_closed_directed(signed_significand_bits<FormatTraits> s,
                                                  exponent_int exponent_bits) noexcept {
                     using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
                     static_assert(
                         min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
-
-                    using remainder_type_ = remainder_type<PreferredIntegerTypesPolicy>;
-                    using decimal_exponent_type_ = decimal_exponent_type<PreferredIntegerTypesPolicy>;
-                    using shift_amount_type =
-                        typename PreferredIntegerTypesPolicy::template shift_amount_type<FormatTraits>;
 
                     using multiplication_traits_ =
                         multiplication_traits<FormatTraits,
@@ -3212,20 +3115,14 @@ namespace jkj {
                                decimal_significand, decimal_exponent_type_(minus_k + kappa)));
                 }
 
-                template <class SignPolicy, class TrailingZeroPolicy, class CachePolicy,
-                          class PreferredIntegerTypesPolicy>
+                template <class SignPolicy, class TrailingZeroPolicy, class CachePolicy>
                 JKJ_FORCEINLINE JKJ_SAFEBUFFERS static JKJ_CONSTEXPR20
-                    return_type<SignPolicy, TrailingZeroPolicy, PreferredIntegerTypesPolicy>
+                    return_type<SignPolicy, TrailingZeroPolicy>
                     compute_right_closed_directed(signed_significand_bits<FormatTraits> s,
                                                   exponent_int exponent_bits) noexcept {
                     using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
                     static_assert(
                         min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
-
-                    using remainder_type_ = remainder_type<PreferredIntegerTypesPolicy>;
-                    using decimal_exponent_type_ = decimal_exponent_type<PreferredIntegerTypesPolicy>;
-                    using shift_amount_type =
-                        typename PreferredIntegerTypesPolicy::template shift_amount_type<FormatTraits>;
 
                     using multiplication_traits_ =
                         multiplication_traits<FormatTraits,
@@ -3581,13 +3478,6 @@ namespace jkj {
                     return true;
                 }
             };
-            struct is_preferred_integer_types_policy {
-                constexpr bool operator()(...) noexcept { return false; }
-                template <class Policy, class = typename Policy::preferred_integer_types_policy>
-                constexpr bool operator()(dummy<Policy>) noexcept {
-                    return true;
-                }
-            };
 
             template <class... Policies>
             using to_decimal_policy_holder = make_policy_holder<
@@ -3598,16 +3488,13 @@ namespace jkj {
                                           policy::decimal_to_binary_rounding::nearest_to_even_t>,
                     detector_default_pair<is_binary_to_decimal_rounding_policy,
                                           policy::binary_to_decimal_rounding::to_even_t>,
-                    detector_default_pair<is_cache_policy, policy::cache::full_t>,
-                    detector_default_pair<is_preferred_integer_types_policy,
-                                          policy::preferred_integer_types::match_t>>,
+                    detector_default_pair<is_cache_policy, policy::cache::full_t>>,
                 Policies...>;
 
             template <class FormatTraits, class... Policies>
             using to_decimal_return_type = typename impl<FormatTraits>::template return_type<
                 typename to_decimal_policy_holder<Policies...>::sign_policy,
-                typename to_decimal_policy_holder<Policies...>::trailing_zero_policy,
-                typename to_decimal_policy_holder<Policies...>::preferred_integer_types_policy>;
+                typename to_decimal_policy_holder<Policies...>::trailing_zero_policy>;
 
             template <class FormatTraits, class PolicyHolder>
             struct to_decimal_dispatcher {
@@ -3616,11 +3503,8 @@ namespace jkj {
                 using binary_to_decimal_rounding_policy =
                     typename PolicyHolder::binary_to_decimal_rounding_policy;
                 using cache_policy = typename PolicyHolder::cache_policy;
-                using preferred_integer_types_policy =
-                    typename PolicyHolder::preferred_integer_types_policy;
                 using return_type =
-                    typename impl<FormatTraits>::template return_type<sign_policy, trailing_zero_policy,
-                                                                      preferred_integer_types_policy>;
+                    typename impl<FormatTraits>::template return_type<sign_policy, trailing_zero_policy>;
 
                 template <class IntervalTypeProvider>
                 JKJ_FORCEINLINE JKJ_SAFEBUFFERS JKJ_CONSTEXPR20 return_type
@@ -3631,14 +3515,12 @@ namespace jkj {
                     JKJ_IF_CONSTEXPR(tag == policy::decimal_to_binary_rounding::tag_t::to_nearest) {
                         return impl<FormatTraits>::template compute_nearest<
                             sign_policy, trailing_zero_policy, IntervalTypeProvider,
-                            binary_to_decimal_rounding_policy, cache_policy,
-                            preferred_integer_types_policy>(s, exponent_bits);
+                            binary_to_decimal_rounding_policy, cache_policy>(s, exponent_bits);
                     }
                     else JKJ_IF_CONSTEXPR(
                         tag == policy::decimal_to_binary_rounding::tag_t::left_closed_directed) {
                         return impl<FormatTraits>::template compute_left_closed_directed<
-                            sign_policy, trailing_zero_policy, cache_policy,
-                            preferred_integer_types_policy>(s, exponent_bits);
+                            sign_policy, trailing_zero_policy, cache_policy>(s, exponent_bits);
                     }
                     else {
 #if JKJ_HAS_IF_CONSTEXPR
@@ -3647,8 +3529,7 @@ namespace jkj {
                             "");
 #endif
                         return impl<FormatTraits>::template compute_right_closed_directed<
-                            sign_policy, trailing_zero_policy, cache_policy,
-                            preferred_integer_types_policy>(s, exponent_bits);
+                            sign_policy, trailing_zero_policy, cache_policy>(s, exponent_bits);
                     }
                 }
             };
