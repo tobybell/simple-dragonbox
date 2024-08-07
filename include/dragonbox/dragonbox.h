@@ -1832,6 +1832,23 @@ namespace jkj {
             struct dummy {};
         }
 
+        enum RoundMode {
+          NearestToEven,
+          NearestToOdd,
+          NearestTowardPlusInfinity,
+          NearestTowardMinusInfinity,
+          NearestTowardZero,
+          NearestAwayFromZero,
+          NearestToEvenStaticBoundary,
+          NearestToOddStaticBoundary,
+          NearestTowardPlusInfinityStaticBoundary,
+          NearestTowardMinusInfinityStaticBoundary,
+          TowardPlusInfinity,
+          TowardMinusInfinity,
+          TowardZero,
+          AwayFromZero,
+        };
+
         namespace policy {
             namespace sign {
                 inline constexpr struct ignore_t {
@@ -1965,7 +1982,6 @@ namespace jkj {
             }
 
             namespace decimal_to_binary_rounding {
-                enum class tag_t { to_nearest, left_closed_directed, right_closed_directed };
 
                 namespace interval_type {
                     struct symmetric_boundary {
@@ -2005,16 +2021,9 @@ namespace jkj {
                 }
 
                 inline constexpr struct nearest_to_even_t {
+                    constexpr static auto round_mode = NearestToEven;
                     using decimal_to_binary_rounding_policy = nearest_to_even_t;
                     using interval_type_provider = nearest_to_even_t;
-                    static constexpr auto tag = tag_t::to_nearest;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        dragonbox::detail::declval<nearest_to_even_t>(), Args{}...))
-                    delegate(SignedSignificandBits, Func f, Args... args) noexcept {
-                        return f(nearest_to_even_t{}, args...);
-                    }
 
                     template <class SignedSignificandBits>
                     static constexpr interval_type::symmetric_boundary
@@ -2030,16 +2039,9 @@ namespace jkj {
                 } nearest_to_even = {};
 
                 inline constexpr struct nearest_to_odd_t {
+                    constexpr static auto round_mode = NearestToOdd;
                     using decimal_to_binary_rounding_policy = nearest_to_odd_t;
                     using interval_type_provider = nearest_to_odd_t;
-                    static constexpr auto tag = tag_t::to_nearest;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        dragonbox::detail::declval<nearest_to_odd_t>(), Args{}...))
-                    delegate(SignedSignificandBits, Func f, Args... args) noexcept {
-                        return f(nearest_to_odd_t{}, args...);
-                    }
 
                     template <class SignedSignificandBits>
                     static constexpr interval_type::symmetric_boundary
@@ -2054,16 +2056,9 @@ namespace jkj {
                 } nearest_to_odd = {};
 
                 inline constexpr struct nearest_toward_plus_infinity_t {
+                    constexpr static auto round_mode = NearestTowardPlusInfinity;
                     using decimal_to_binary_rounding_policy = nearest_toward_plus_infinity_t;
                     using interval_type_provider = nearest_toward_plus_infinity_t;
-                    static constexpr auto tag = tag_t::to_nearest;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        dragonbox::detail::declval<nearest_toward_plus_infinity_t>(), Args{}...))
-                    delegate(SignedSignificandBits, Func f, Args... args) noexcept {
-                        return f(nearest_toward_plus_infinity_t{}, args...);
-                    }
 
                     template <class SignedSignificandBits>
                     static constexpr interval_type::asymmetric_boundary
@@ -2079,15 +2074,8 @@ namespace jkj {
 
                 inline constexpr struct nearest_toward_minus_infinity_t {
                     using decimal_to_binary_rounding_policy = nearest_toward_minus_infinity_t;
+                    constexpr static auto round_mode = NearestTowardMinusInfinity;
                     using interval_type_provider = nearest_toward_minus_infinity_t;
-                    static constexpr auto tag = tag_t::to_nearest;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        dragonbox::detail::declval<nearest_toward_minus_infinity_t>(), Args{}...))
-                    delegate(SignedSignificandBits, Func f, Args... args) noexcept {
-                        return f(nearest_toward_minus_infinity_t{}, args...);
-                    }
 
                     template <class SignedSignificandBits>
                     static constexpr interval_type::asymmetric_boundary
@@ -2103,15 +2091,8 @@ namespace jkj {
 
                 inline constexpr struct nearest_toward_zero_t {
                     using decimal_to_binary_rounding_policy = nearest_toward_zero_t;
+                    constexpr static auto round_mode = NearestTowardZero;
                     using interval_type_provider = nearest_toward_zero_t;
-                    static constexpr auto tag = tag_t::to_nearest;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        dragonbox::detail::declval<nearest_toward_zero_t>(), Args{}...))
-                    delegate(SignedSignificandBits, Func f, Args... args) noexcept {
-                        return f(nearest_toward_zero_t{}, args...);
-                    }
 
                     template <class SignedSignificandBits>
                     static constexpr interval_type::right_closed_left_open
@@ -2127,15 +2108,8 @@ namespace jkj {
 
                 inline constexpr struct nearest_away_from_zero_t {
                     using decimal_to_binary_rounding_policy = nearest_away_from_zero_t;
+                    constexpr static auto round_mode = NearestAwayFromZero;
                     using interval_type_provider = nearest_away_from_zero_t;
-                    static constexpr auto tag = tag_t::to_nearest;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        dragonbox::detail::declval<nearest_away_from_zero_t>(), Args{}...))
-                    delegate(SignedSignificandBits, Func f, Args... args) noexcept {
-                        return f(nearest_away_from_zero_t{}, args...);
-                    }
 
                     template <class SignedSignificandBits>
                     static constexpr interval_type::left_closed_right_open
@@ -2152,7 +2126,6 @@ namespace jkj {
                 namespace detail {
                     struct nearest_always_closed_t {
                         using interval_type_provider = nearest_always_closed_t;
-                        static constexpr auto tag = tag_t::to_nearest;
 
                         template <class SignedSignificandBits>
                         static constexpr interval_type::closed
@@ -2167,7 +2140,6 @@ namespace jkj {
                     };
                     struct nearest_always_open_t {
                         using interval_type_provider = nearest_always_open_t;
-                        static constexpr auto tag = tag_t::to_nearest;
 
                         template <class SignedSignificandBits>
                         static constexpr interval_type::open
@@ -2184,111 +2156,49 @@ namespace jkj {
 
                 inline constexpr struct nearest_to_even_static_boundary_t {
                     using decimal_to_binary_rounding_policy = nearest_to_even_static_boundary_t;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        detail::nearest_always_closed_t{}, Args{}...))
-                    delegate(SignedSignificandBits s, Func f, Args... args) noexcept {
-                        return s.has_even_significand_bits()
-                                   ? f(detail::nearest_always_closed_t{}, args...)
-                                   : f(detail::nearest_always_open_t{}, args...);
-                    }
+                    constexpr static auto round_mode = NearestToEvenStaticBoundary;
                 } nearest_to_even_static_boundary = {};
 
                 inline constexpr struct nearest_to_odd_static_boundary_t {
                     using decimal_to_binary_rounding_policy = nearest_to_odd_static_boundary_t;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        detail::nearest_always_closed_t{}, Args{}...))
-                    delegate(SignedSignificandBits s, Func f, Args... args) noexcept {
-                        return s.has_even_significand_bits()
-                                   ? f(detail::nearest_always_open_t{}, args...)
-                                   : f(detail::nearest_always_closed_t{}, args...);
-                    }
+                    constexpr static auto round_mode = NearestToOddStaticBoundary;
                 } nearest_to_odd_static_boundary = {};
 
                 inline constexpr struct nearest_toward_plus_infinity_static_boundary_t {
-                    using decimal_to_binary_rounding_policy =
-                        nearest_toward_plus_infinity_static_boundary_t;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE
-                        JKJ_SAFEBUFFERS static constexpr decltype(Func{}(nearest_toward_zero,
-                                                                         Args{}...))
-                        delegate(SignedSignificandBits s, Func f, Args... args) noexcept {
-                        return s.is_negative() ? f(nearest_toward_zero, args...)
-                                               : f(nearest_away_from_zero, args...);
-                    }
+                    using decimal_to_binary_rounding_policy = nearest_toward_plus_infinity_static_boundary_t;
+                    constexpr static auto round_mode = NearestTowardPlusInfinityStaticBoundary;
                 } nearest_toward_plus_infinity_static_boundary = {};
 
                 inline constexpr struct nearest_toward_minus_infinity_static_boundary_t {
-                    using decimal_to_binary_rounding_policy =
-                        nearest_toward_minus_infinity_static_boundary_t;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE
-                        JKJ_SAFEBUFFERS static constexpr decltype(Func{}(nearest_toward_zero,
-                                                                         Args{}...))
-                        delegate(SignedSignificandBits s, Func f, Args... args) noexcept {
-                        return s.is_negative() ? f(nearest_away_from_zero, args...)
-                                               : f(nearest_toward_zero, args...);
-                    }
+                    using decimal_to_binary_rounding_policy = nearest_toward_minus_infinity_static_boundary_t;
+                    constexpr static auto round_mode = NearestTowardMinusInfinityStaticBoundary;
                 } nearest_toward_minus_infinity_static_boundary = {};
 
                 namespace detail {
                     struct left_closed_directed_t {
-                        static constexpr auto tag = tag_t::left_closed_directed;
                     };
                     struct right_closed_directed_t {
-                        static constexpr auto tag = tag_t::right_closed_directed;
                     };
                 }
 
                 inline constexpr struct toward_plus_infinity_t {
                     using decimal_to_binary_rounding_policy = toward_plus_infinity_t;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        detail::left_closed_directed_t{}, Args{}...))
-                    delegate(SignedSignificandBits s, Func f, Args... args) noexcept {
-                        return s.is_negative() ? f(detail::left_closed_directed_t{}, args...)
-                                               : f(detail::right_closed_directed_t{}, args...);
-                    }
+                    constexpr static auto round_mode = TowardPlusInfinity;
                 } toward_plus_infinity = {};
 
                 inline constexpr struct toward_minus_infinity_t {
                     using decimal_to_binary_rounding_policy = toward_minus_infinity_t;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        detail::left_closed_directed_t{}, Args{}...))
-                    delegate(SignedSignificandBits s, Func f, Args... args) noexcept {
-                        return s.is_negative() ? f(detail::right_closed_directed_t{}, args...)
-                                               : f(detail::left_closed_directed_t{}, args...);
-                    }
+                    constexpr static auto round_mode = TowardMinusInfinity;
                 } toward_minus_infinity = {};
 
                 inline constexpr struct toward_zero_t {
                     using decimal_to_binary_rounding_policy = toward_zero_t;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        detail::left_closed_directed_t{}, Args{}...))
-                    delegate(SignedSignificandBits, Func f, Args... args) noexcept {
-                        return f(detail::left_closed_directed_t{}, args...);
-                    }
+                    constexpr static auto round_mode = TowardZero;
                 } toward_zero = {};
 
                 inline constexpr struct away_from_zero_t {
                     using decimal_to_binary_rounding_policy = away_from_zero_t;
-
-                    template <class SignedSignificandBits, class Func, class... Args>
-                    JKJ_FORCEINLINE JKJ_SAFEBUFFERS static constexpr decltype(Func{}(
-                        detail::right_closed_directed_t{}, Args{}...))
-                    delegate(SignedSignificandBits, Func f, Args... args) noexcept {
-                        return f(detail::right_closed_directed_t{}, args...);
-                    }
+                    constexpr static auto round_mode = AwayFromZero;
                 } away_from_zero = {};
             }
 
@@ -2671,6 +2581,287 @@ namespace jkj {
                     -log::floor_log5_pow2_minus_log5_3(significand_bits + 4) - 2 - significand_bits;
                 static constexpr int shorter_interval_tie_upper_threshold =
                     -log::floor_log5_pow2(significand_bits + 2) - 2 - significand_bits;
+            };
+
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            // Policy holder.
+            ////////////////////////////////////////////////////////////////////////////////////////
+
+            // The library will specify a list of accepted kinds of policies and their defaults,
+            // and the user will pass a list of policies parameters. The policy parameters are
+            // supposed to be stateless and only convey information through their types.
+            // The aim of the helper classes/functions given below is to do the following:
+            //   1. Check if the policy parameters given by the user are all valid; that means,
+            //      each of them should be at least of one of the kinds specified by the library.
+            //      If that's not the case, then the compilation fails.
+            //   2. Check if multiple policy parameters for the same kind is specified by the
+            //      user. If that's the case, then the compilation fails.
+            //   3. Build a class deriving from all policies the user have given, and also from
+            //      the default policies if the user did not specify one for some kinds.
+            // The library considers a certain policy parameter to belong to a specific kind if and only
+            // if the parameter's type has a member type with a specific name; for example, it belongs
+            // to "sign policy" kind if there is a member type sign_policy.
+
+            // For a given kind, find a policy belonging to that kind.
+            // Check if there are more than one such policies.
+            enum class policy_found_info { not_found, unique, repeated };
+            template <class Policy, policy_found_info info>
+            struct found_policy_pair {
+                // Either the policy parameter type given by the user, or the default policy.
+                using policy = Policy;
+                static constexpr auto found_info = info;
+            };
+
+            template <class KindDetector, class DefaultPolicy>
+            struct detector_default_pair {
+                using kind_detector = KindDetector;
+
+                // Iterate through all given policy parameter types and see if there is a policy
+                // parameter type belonging to the policy kind specified by KindDetector.
+                // 1. If there is none, get_found_policy_pair returns
+                //    found_policy_pair<DefaultPolicy, policy_found_info::not_found>.
+                // 2. If there is only one parameter type belonging to the specified kind, then
+                //    get_found_policy_pair returns
+                //    found_policy_pair<Policy, policy_found_info::unique>
+                //    where Policy is the unique parameter type belonging to the specified kind.
+                // 3. If there are multiple parameter types belonging to the specified kind, then
+                //    get_found_policy_pair returns
+                //    found_policy_pair<FirstPolicy, policy_found_info::repeated>
+                //    where FirstPolicy is the first parameter type belonging to the specified kind.
+                //    The compilation must fail if this happens.
+                // This is done by first setting FoundPolicyInfo below to
+                // found_policy_pair<DefaultPolicy, policy_found_info::not_found>, and then iterate
+                // over Policies, replacing FoundPolicyInfo by the appropriate one if a parameter
+                // type belonging to the specified kind is found.
+
+                template <class FoundPolicyInfo, class... Policies>
+                struct get_found_policy_pair_impl;
+
+                template <class FoundPolicyInfo>
+                struct get_found_policy_pair_impl<FoundPolicyInfo> {
+                    using type = FoundPolicyInfo;
+                };
+
+                template <class FoundPolicyInfo, class FirstPolicy, class... RemainingPolicies>
+                struct get_found_policy_pair_impl<FoundPolicyInfo, FirstPolicy, RemainingPolicies...> {
+                    using type = typename stdr::conditional<
+                        KindDetector{}(dummy<FirstPolicy>{}),
+                        typename stdr::conditional<
+                            FoundPolicyInfo::found_info == policy_found_info::not_found,
+                            typename get_found_policy_pair_impl<
+                                found_policy_pair<FirstPolicy, policy_found_info::unique>,
+                                RemainingPolicies...>::type,
+                            typename get_found_policy_pair_impl<
+                                found_policy_pair<FirstPolicy, policy_found_info::repeated>,
+                                RemainingPolicies...>::type>::type,
+                        typename get_found_policy_pair_impl<FoundPolicyInfo,
+                                                            RemainingPolicies...>::type>::type;
+                };
+
+                template <class... Policies>
+                using get_found_policy_pair = typename get_found_policy_pair_impl<
+                    found_policy_pair<DefaultPolicy, policy_found_info::not_found>, Policies...>::type;
+            };
+
+            // Simple typelist of detector_default_pair's.
+            template <class... DetectorDefaultPairs>
+            struct detector_default_pair_list {};
+
+            // Check if a given policy belongs to one of the kinds specified by the library.
+            template <class Policy>
+            constexpr bool check_policy_validity(dummy<Policy>, detector_default_pair_list<>) noexcept {
+                return false;
+            }
+            template <class Policy, class FirstDetectorDefaultPair,
+                      class... RemainingDetectorDefaultPairs>
+            constexpr bool check_policy_validity(
+                dummy<Policy>, detector_default_pair_list<FirstDetectorDefaultPair,
+                                                          RemainingDetectorDefaultPairs...>) noexcept {
+                return typename FirstDetectorDefaultPair::kind_detector{}(dummy<Policy>{}) ||
+                       check_policy_validity(
+                           dummy<Policy>{},
+                           detector_default_pair_list<RemainingDetectorDefaultPairs...>{});
+            }
+
+            // Check if all of policies belong to some of the kinds specified by the library.
+            template <class DetectorDefaultPairList>
+            constexpr bool check_policy_list_validity(DetectorDefaultPairList) noexcept {
+                return true;
+            }
+            template <class DetectorDefaultPairList, class FirstPolicy, class... RemainingPolicies>
+            constexpr bool check_policy_list_validity(DetectorDefaultPairList,
+                                                      dummy<FirstPolicy> first_policy,
+                                                      dummy<RemainingPolicies>... remaining_policies) {
+                return check_policy_validity(first_policy, DetectorDefaultPairList{}) &&
+                       check_policy_list_validity(DetectorDefaultPairList{}, remaining_policies...);
+            }
+
+            // Actual policy holder class deriving from all specified policy types.
+            template <class... Policies>
+            struct policy_holder : Policies... {};
+
+            // Iterate through the library-specified list of base-default pairs, i.e., the list of
+            // policy kinds and their defaults. For each base-default pair, call
+            // base_default_pair::get_found_policy_pair on the list of user-specified list of
+            // policies to get found_policy_pair, and build the list of them.
+
+            template <bool repeated_, class... FoundPolicyPairs>
+            struct found_policy_pair_list {
+                // This will be set to be true if and only if there exists at least one
+                // found_policy_pair inside FoundPolicyPairs with
+                // found_info == policy_found_info::repeated, in which case the compilation must
+                // fail.
+                static constexpr bool repeated = repeated_;
+            };
+
+            // Iterate through DetectorDefaultPairList and augment FoundPolicyPairList by one at each
+            // iteration.
+            template <class DetectorDefaultPairList, class FoundPolicyPairList, class... Policies>
+            struct make_policy_pair_list_impl;
+
+            // When there is no more detector-default pair to iterate, then the current
+            // found_policy_pair_list is the final result.
+            template <bool repeated, class... FoundPolicyPairs, class... Policies>
+            struct make_policy_pair_list_impl<detector_default_pair_list<>,
+                                              found_policy_pair_list<repeated, FoundPolicyPairs...>,
+                                              Policies...> {
+                using type = found_policy_pair_list<repeated, FoundPolicyPairs...>;
+            };
+
+            // For the first detector-default pair in the remaining list, call
+            // detector_default_pair::get_found_policy_pair on Policies and add the returned
+            // found_policy_pair into the current list of found_policy_pair's, and move to the next
+            // detector-default pair.
+            template <class FirstDetectorDefaultPair, class... RemainingDetectorDefaultPairs,
+                      bool repeated, class... FoundPolicyPairs, class... Policies>
+            struct make_policy_pair_list_impl<
+                detector_default_pair_list<FirstDetectorDefaultPair, RemainingDetectorDefaultPairs...>,
+                found_policy_pair_list<repeated, FoundPolicyPairs...>, Policies...> {
+                using new_found_policy_pair =
+                    typename FirstDetectorDefaultPair::template get_found_policy_pair<Policies...>;
+
+                using type = typename make_policy_pair_list_impl<
+                    detector_default_pair_list<RemainingDetectorDefaultPairs...>,
+                    found_policy_pair_list<(repeated || new_found_policy_pair::found_info ==
+                                                            policy_found_info::repeated),
+                                           new_found_policy_pair, FoundPolicyPairs...>,
+                    Policies...>::type;
+            };
+
+            template <class DetectorDefaultPairList, class... Policies>
+            using policy_pair_list =
+                typename make_policy_pair_list_impl<DetectorDefaultPairList,
+                                                    found_policy_pair_list<false>, Policies...>::type;
+
+            // Unpack FoundPolicyPairList into found_policy_pair's and build the policy_holder type
+            // from the corresponding typelist of found_policy_pair::policy's.
+            template <class FoundPolicyPairList, class... RawPolicies>
+            struct convert_to_policy_holder_impl;
+
+            template <bool repeated, class... RawPolicies>
+            struct convert_to_policy_holder_impl<found_policy_pair_list<repeated>, RawPolicies...> {
+                using type = policy_holder<RawPolicies...>;
+            };
+
+            template <bool repeated, class FirstFoundPolicyPair, class... RemainingFoundPolicyPairs,
+                      class... RawPolicies>
+            struct convert_to_policy_holder_impl<
+                found_policy_pair_list<repeated, FirstFoundPolicyPair, RemainingFoundPolicyPairs...>,
+                RawPolicies...> {
+                using type = typename convert_to_policy_holder_impl<
+                    found_policy_pair_list<repeated, RemainingFoundPolicyPairs...>,
+                    typename FirstFoundPolicyPair::policy, RawPolicies...>::type;
+            };
+
+            template <class FoundPolicyPairList>
+            using convert_to_policy_holder =
+                typename convert_to_policy_holder_impl<FoundPolicyPairList>::type;
+
+            template <class DetectorDefaultPairList, class... Policies>
+            struct make_policy_holder_impl {
+                static_assert(check_policy_list_validity(DetectorDefaultPairList{},
+                                                         dummy<Policies>{}...),
+                              "jkj::dragonbox: an invalid policy is specified");
+
+                static_assert(
+                    !policy_pair_list<DetectorDefaultPairList, Policies...>::repeated,
+                    "jkj::dragonbox: at most one policy should be specified for each policy kind");
+
+                using type =
+                    convert_to_policy_holder<policy_pair_list<DetectorDefaultPairList, Policies...>>;
+            };
+
+            template <class DetectorDefaultPairList, class... Policies>
+            using make_policy_holder =
+                typename make_policy_holder_impl<DetectorDefaultPairList, Policies...>::type;
+
+
+            // Policy kind detectors.
+            struct is_sign_policy {
+                constexpr bool operator()(...) noexcept { return false; }
+                template <class Policy, class = typename Policy::sign_policy>
+                constexpr bool operator()(dummy<Policy>) noexcept {
+                    return true;
+                }
+            };
+            struct is_trailing_zero_policy {
+                constexpr bool operator()(...) noexcept { return false; }
+                template <class Policy, class = typename Policy::trailing_zero_policy>
+                constexpr bool operator()(dummy<Policy>) noexcept {
+                    return true;
+                }
+            };
+            struct is_binary_to_decimal_rounding_policy {
+                constexpr bool operator()(...) noexcept { return false; }
+                template <class Policy, class = typename Policy::binary_to_decimal_rounding_policy>
+                constexpr bool operator()(dummy<Policy>) noexcept {
+                    return true;
+                }
+            };
+            struct is_decimal_to_binary_rounding_policy {
+                constexpr bool operator()(...) noexcept { return false; }
+                template <class Policy, class = typename Policy::decimal_to_binary_rounding_policy>
+                constexpr bool operator()(dummy<Policy>) noexcept {
+                    return true;
+                }
+            };
+            struct is_cache_policy {
+                constexpr bool operator()(...) noexcept { return false; }
+                template <class Policy, class = typename Policy::cache_policy>
+                constexpr bool operator()(dummy<Policy>) noexcept {
+                    return true;
+                }
+            };
+
+            template <class... Policies>
+            using to_decimal_policy_holder = make_policy_holder<
+                detector_default_pair_list<
+                    detector_default_pair<is_sign_policy, policy::sign::return_sign_t>,
+                    detector_default_pair<is_trailing_zero_policy, policy::trailing_zero::remove_t>,
+                    detector_default_pair<is_decimal_to_binary_rounding_policy,
+                                          policy::decimal_to_binary_rounding::nearest_to_even_t>,
+                    detector_default_pair<is_binary_to_decimal_rounding_policy,
+                                          policy::binary_to_decimal_rounding::to_even_t>,
+                    detector_default_pair<is_cache_policy, policy::cache::full_t>>,
+                Policies...>;
+
+            template <class FormatTraits, class... Policies>
+            struct to_decimal_dispatch : FormatTraits::format {
+                using Impl = impl<FormatTraits>;
+                using format = typename FormatTraits::format;
+                using PolicyHolder = detail::to_decimal_policy_holder<Policies...>;
+                using SignPolicy = typename PolicyHolder::sign_policy;
+                using TrailingZeroPolicy = typename PolicyHolder::trailing_zero_policy;
+                using BinaryToDecimalRoundingPolicy =
+                    typename PolicyHolder::binary_to_decimal_rounding_policy;
+                using CachePolicy = typename PolicyHolder::cache_policy;
+
+                signed_significand_bits<FormatTraits> s;
+                typename FormatTraits::exponent_int exponent_bits;
+
+                using carrier_uint = typename FormatTraits::carrier_uint;
+                using exponent_int = typename FormatTraits::exponent_int;
 
                 using remainder_type_ = typename FormatTraits::carrier_uint;
 
@@ -2678,23 +2869,76 @@ namespace jkj {
 
                 using shift_amount_type = typename FormatTraits::exponent_int;
 
-                template <class SignPolicy, class TrailingZeroPolicy>
                 using return_type =
                     decimal_fp<carrier_uint, decimal_exponent_type_,
                                SignPolicy::return_has_sign, TrailingZeroPolicy::report_trailing_zeros>;
+                
+                enum {
+                  min_k = Impl::min_k,
+                  max_k = Impl::max_k,
+                  significand_bits = format::significand_bits,
+                  shorter_interval_tie_lower_threshold = Impl::shorter_interval_tie_lower_threshold,
+                  shorter_interval_tie_upper_threshold = Impl::shorter_interval_tie_upper_threshold,
+                  kappa = Impl::kappa,
+                  case_shorter_interval_right_endpoint_lower_threshold = Impl::case_shorter_interval_right_endpoint_lower_threshold,
+                  case_shorter_interval_right_endpoint_upper_threshold = Impl::case_shorter_interval_right_endpoint_upper_threshold,
+                  case_shorter_interval_left_endpoint_lower_threshold = Impl::case_shorter_interval_left_endpoint_lower_threshold,
+                  case_shorter_interval_left_endpoint_upper_threshold = Impl::case_shorter_interval_left_endpoint_upper_threshold,
+                };
+
+                return_type run() {
+                  return run(PolicyHolder::decimal_to_binary_rounding_policy::round_mode);
+                }
+
+                return_type run(RoundMode round_mode) {
+                  switch (round_mode) {
+                    case NearestToEven:
+                      return nearest<policy::decimal_to_binary_rounding::nearest_to_even_t>();
+                    case NearestToOdd:
+                      return nearest<policy::decimal_to_binary_rounding::nearest_to_odd_t>();
+                    case NearestTowardPlusInfinity:
+                      return nearest<policy::decimal_to_binary_rounding::nearest_toward_plus_infinity_t>();
+                    case NearestTowardMinusInfinity:
+                      return nearest<policy::decimal_to_binary_rounding::nearest_toward_minus_infinity_t>();
+                    case NearestTowardZero:
+                      return nearest<policy::decimal_to_binary_rounding::nearest_toward_zero_t>();
+                    case NearestAwayFromZero:
+                      return nearest<policy::decimal_to_binary_rounding::nearest_away_from_zero_t>();
+                    case NearestToEvenStaticBoundary:
+                      return s.has_even_significand_bits()
+                                 ? nearest<policy::decimal_to_binary_rounding::detail::nearest_always_closed_t>()
+                                 : nearest<policy::decimal_to_binary_rounding::detail::nearest_always_open_t>();
+                    case NearestToOddStaticBoundary:
+                      return s.has_even_significand_bits()
+                                 ? nearest<policy::decimal_to_binary_rounding::detail::nearest_always_open_t>()
+                                 : nearest<policy::decimal_to_binary_rounding::detail::nearest_always_closed_t>();
+                    case NearestTowardPlusInfinityStaticBoundary:
+                      return s.is_negative() ? nearest<policy::decimal_to_binary_rounding::nearest_toward_zero_t>()
+                                             : nearest<policy::decimal_to_binary_rounding::nearest_away_from_zero_t>();
+                    case NearestTowardMinusInfinityStaticBoundary:
+                      return s.is_negative() ? nearest<policy::decimal_to_binary_rounding::nearest_away_from_zero_t>()
+                                             : nearest<policy::decimal_to_binary_rounding::nearest_toward_zero_t>();
+                    case TowardPlusInfinity:
+                      return s.is_negative() ? left_closed_directed()
+                                             : right_closed_directed();
+                    case TowardMinusInfinity:
+                      return s.is_negative() ? right_closed_directed()
+                                             : right_closed_directed();
+                    case TowardZero:
+                      return left_closed_directed();
+                    case AwayFromZero:
+                      return right_closed_directed();
+                  }
+                }
 
                 //// The main algorithm assumes the input is a normal/subnormal finite number.
 
-                template <class SignPolicy, class TrailingZeroPolicy, class IntervalTypeProvider,
-                          class BinaryToDecimalRoundingPolicy, class CachePolicy>
-                JKJ_SAFEBUFFERS static JKJ_CONSTEXPR20
-                    return_type<SignPolicy, TrailingZeroPolicy>
-                    compute_nearest(signed_significand_bits<FormatTraits> s,
-                                    exponent_int exponent_bits) noexcept {
+                template <class IntervalTypeProvider>
+                JKJ_SAFEBUFFERS JKJ_CONSTEXPR20
+                return_type nearest() noexcept {
                     using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
                     static_assert(
                         min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
-
 
                     using multiplication_traits_ =
                         multiplication_traits<FormatTraits,
@@ -2983,11 +3227,8 @@ namespace jkj {
                                decimal_significand, decimal_exponent_type_(minus_k + kappa)));
                 }
 
-                template <class SignPolicy, class TrailingZeroPolicy, class CachePolicy>
-                JKJ_FORCEINLINE JKJ_SAFEBUFFERS static JKJ_CONSTEXPR20
-                    return_type<SignPolicy, TrailingZeroPolicy>
-                    compute_left_closed_directed(signed_significand_bits<FormatTraits> s,
-                                                 exponent_int exponent_bits) noexcept {
+                JKJ_FORCEINLINE JKJ_SAFEBUFFERS JKJ_CONSTEXPR20
+                return_type left_closed_directed() noexcept {
                     using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
                     static_assert(
                         min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
@@ -3115,11 +3356,8 @@ namespace jkj {
                                decimal_significand, decimal_exponent_type_(minus_k + kappa)));
                 }
 
-                template <class SignPolicy, class TrailingZeroPolicy, class CachePolicy>
-                JKJ_FORCEINLINE JKJ_SAFEBUFFERS static JKJ_CONSTEXPR20
-                    return_type<SignPolicy, TrailingZeroPolicy>
-                    compute_right_closed_directed(signed_significand_bits<FormatTraits> s,
-                                                  exponent_int exponent_bits) noexcept {
+                JKJ_FORCEINLINE JKJ_SAFEBUFFERS JKJ_CONSTEXPR20
+                return_type right_closed_directed() noexcept {
                     using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
                     static_assert(
                         min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
@@ -3226,312 +3464,8 @@ namespace jkj {
                     return binary_exponent >= case_shorter_interval_left_endpoint_lower_threshold &&
                            binary_exponent <= case_shorter_interval_left_endpoint_upper_threshold;
                 }
-            };
 
 
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Policy holder.
-            ////////////////////////////////////////////////////////////////////////////////////////
-
-            // The library will specify a list of accepted kinds of policies and their defaults,
-            // and the user will pass a list of policies parameters. The policy parameters are
-            // supposed to be stateless and only convey information through their types.
-            // The aim of the helper classes/functions given below is to do the following:
-            //   1. Check if the policy parameters given by the user are all valid; that means,
-            //      each of them should be at least of one of the kinds specified by the library.
-            //      If that's not the case, then the compilation fails.
-            //   2. Check if multiple policy parameters for the same kind is specified by the
-            //      user. If that's the case, then the compilation fails.
-            //   3. Build a class deriving from all policies the user have given, and also from
-            //      the default policies if the user did not specify one for some kinds.
-            // The library considers a certain policy parameter to belong to a specific kind if and only
-            // if the parameter's type has a member type with a specific name; for example, it belongs
-            // to "sign policy" kind if there is a member type sign_policy.
-
-            // For a given kind, find a policy belonging to that kind.
-            // Check if there are more than one such policies.
-            enum class policy_found_info { not_found, unique, repeated };
-            template <class Policy, policy_found_info info>
-            struct found_policy_pair {
-                // Either the policy parameter type given by the user, or the default policy.
-                using policy = Policy;
-                static constexpr auto found_info = info;
-            };
-
-            template <class KindDetector, class DefaultPolicy>
-            struct detector_default_pair {
-                using kind_detector = KindDetector;
-
-                // Iterate through all given policy parameter types and see if there is a policy
-                // parameter type belonging to the policy kind specified by KindDetector.
-                // 1. If there is none, get_found_policy_pair returns
-                //    found_policy_pair<DefaultPolicy, policy_found_info::not_found>.
-                // 2. If there is only one parameter type belonging to the specified kind, then
-                //    get_found_policy_pair returns
-                //    found_policy_pair<Policy, policy_found_info::unique>
-                //    where Policy is the unique parameter type belonging to the specified kind.
-                // 3. If there are multiple parameter types belonging to the specified kind, then
-                //    get_found_policy_pair returns
-                //    found_policy_pair<FirstPolicy, policy_found_info::repeated>
-                //    where FirstPolicy is the first parameter type belonging to the specified kind.
-                //    The compilation must fail if this happens.
-                // This is done by first setting FoundPolicyInfo below to
-                // found_policy_pair<DefaultPolicy, policy_found_info::not_found>, and then iterate
-                // over Policies, replacing FoundPolicyInfo by the appropriate one if a parameter
-                // type belonging to the specified kind is found.
-
-                template <class FoundPolicyInfo, class... Policies>
-                struct get_found_policy_pair_impl;
-
-                template <class FoundPolicyInfo>
-                struct get_found_policy_pair_impl<FoundPolicyInfo> {
-                    using type = FoundPolicyInfo;
-                };
-
-                template <class FoundPolicyInfo, class FirstPolicy, class... RemainingPolicies>
-                struct get_found_policy_pair_impl<FoundPolicyInfo, FirstPolicy, RemainingPolicies...> {
-                    using type = typename stdr::conditional<
-                        KindDetector{}(dummy<FirstPolicy>{}),
-                        typename stdr::conditional<
-                            FoundPolicyInfo::found_info == policy_found_info::not_found,
-                            typename get_found_policy_pair_impl<
-                                found_policy_pair<FirstPolicy, policy_found_info::unique>,
-                                RemainingPolicies...>::type,
-                            typename get_found_policy_pair_impl<
-                                found_policy_pair<FirstPolicy, policy_found_info::repeated>,
-                                RemainingPolicies...>::type>::type,
-                        typename get_found_policy_pair_impl<FoundPolicyInfo,
-                                                            RemainingPolicies...>::type>::type;
-                };
-
-                template <class... Policies>
-                using get_found_policy_pair = typename get_found_policy_pair_impl<
-                    found_policy_pair<DefaultPolicy, policy_found_info::not_found>, Policies...>::type;
-            };
-
-            // Simple typelist of detector_default_pair's.
-            template <class... DetectorDefaultPairs>
-            struct detector_default_pair_list {};
-
-            // Check if a given policy belongs to one of the kinds specified by the library.
-            template <class Policy>
-            constexpr bool check_policy_validity(dummy<Policy>, detector_default_pair_list<>) noexcept {
-                return false;
-            }
-            template <class Policy, class FirstDetectorDefaultPair,
-                      class... RemainingDetectorDefaultPairs>
-            constexpr bool check_policy_validity(
-                dummy<Policy>, detector_default_pair_list<FirstDetectorDefaultPair,
-                                                          RemainingDetectorDefaultPairs...>) noexcept {
-                return typename FirstDetectorDefaultPair::kind_detector{}(dummy<Policy>{}) ||
-                       check_policy_validity(
-                           dummy<Policy>{},
-                           detector_default_pair_list<RemainingDetectorDefaultPairs...>{});
-            }
-
-            // Check if all of policies belong to some of the kinds specified by the library.
-            template <class DetectorDefaultPairList>
-            constexpr bool check_policy_list_validity(DetectorDefaultPairList) noexcept {
-                return true;
-            }
-            template <class DetectorDefaultPairList, class FirstPolicy, class... RemainingPolicies>
-            constexpr bool check_policy_list_validity(DetectorDefaultPairList,
-                                                      dummy<FirstPolicy> first_policy,
-                                                      dummy<RemainingPolicies>... remaining_policies) {
-                return check_policy_validity(first_policy, DetectorDefaultPairList{}) &&
-                       check_policy_list_validity(DetectorDefaultPairList{}, remaining_policies...);
-            }
-
-            // Actual policy holder class deriving from all specified policy types.
-            template <class... Policies>
-            struct policy_holder : Policies... {};
-
-            // Iterate through the library-specified list of base-default pairs, i.e., the list of
-            // policy kinds and their defaults. For each base-default pair, call
-            // base_default_pair::get_found_policy_pair on the list of user-specified list of
-            // policies to get found_policy_pair, and build the list of them.
-
-            template <bool repeated_, class... FoundPolicyPairs>
-            struct found_policy_pair_list {
-                // This will be set to be true if and only if there exists at least one
-                // found_policy_pair inside FoundPolicyPairs with
-                // found_info == policy_found_info::repeated, in which case the compilation must
-                // fail.
-                static constexpr bool repeated = repeated_;
-            };
-
-            // Iterate through DetectorDefaultPairList and augment FoundPolicyPairList by one at each
-            // iteration.
-            template <class DetectorDefaultPairList, class FoundPolicyPairList, class... Policies>
-            struct make_policy_pair_list_impl;
-
-            // When there is no more detector-default pair to iterate, then the current
-            // found_policy_pair_list is the final result.
-            template <bool repeated, class... FoundPolicyPairs, class... Policies>
-            struct make_policy_pair_list_impl<detector_default_pair_list<>,
-                                              found_policy_pair_list<repeated, FoundPolicyPairs...>,
-                                              Policies...> {
-                using type = found_policy_pair_list<repeated, FoundPolicyPairs...>;
-            };
-
-            // For the first detector-default pair in the remaining list, call
-            // detector_default_pair::get_found_policy_pair on Policies and add the returned
-            // found_policy_pair into the current list of found_policy_pair's, and move to the next
-            // detector-default pair.
-            template <class FirstDetectorDefaultPair, class... RemainingDetectorDefaultPairs,
-                      bool repeated, class... FoundPolicyPairs, class... Policies>
-            struct make_policy_pair_list_impl<
-                detector_default_pair_list<FirstDetectorDefaultPair, RemainingDetectorDefaultPairs...>,
-                found_policy_pair_list<repeated, FoundPolicyPairs...>, Policies...> {
-                using new_found_policy_pair =
-                    typename FirstDetectorDefaultPair::template get_found_policy_pair<Policies...>;
-
-                using type = typename make_policy_pair_list_impl<
-                    detector_default_pair_list<RemainingDetectorDefaultPairs...>,
-                    found_policy_pair_list<(repeated || new_found_policy_pair::found_info ==
-                                                            policy_found_info::repeated),
-                                           new_found_policy_pair, FoundPolicyPairs...>,
-                    Policies...>::type;
-            };
-
-            template <class DetectorDefaultPairList, class... Policies>
-            using policy_pair_list =
-                typename make_policy_pair_list_impl<DetectorDefaultPairList,
-                                                    found_policy_pair_list<false>, Policies...>::type;
-
-            // Unpack FoundPolicyPairList into found_policy_pair's and build the policy_holder type
-            // from the corresponding typelist of found_policy_pair::policy's.
-            template <class FoundPolicyPairList, class... RawPolicies>
-            struct convert_to_policy_holder_impl;
-
-            template <bool repeated, class... RawPolicies>
-            struct convert_to_policy_holder_impl<found_policy_pair_list<repeated>, RawPolicies...> {
-                using type = policy_holder<RawPolicies...>;
-            };
-
-            template <bool repeated, class FirstFoundPolicyPair, class... RemainingFoundPolicyPairs,
-                      class... RawPolicies>
-            struct convert_to_policy_holder_impl<
-                found_policy_pair_list<repeated, FirstFoundPolicyPair, RemainingFoundPolicyPairs...>,
-                RawPolicies...> {
-                using type = typename convert_to_policy_holder_impl<
-                    found_policy_pair_list<repeated, RemainingFoundPolicyPairs...>,
-                    typename FirstFoundPolicyPair::policy, RawPolicies...>::type;
-            };
-
-            template <class FoundPolicyPairList>
-            using convert_to_policy_holder =
-                typename convert_to_policy_holder_impl<FoundPolicyPairList>::type;
-
-            template <class DetectorDefaultPairList, class... Policies>
-            struct make_policy_holder_impl {
-                static_assert(check_policy_list_validity(DetectorDefaultPairList{},
-                                                         dummy<Policies>{}...),
-                              "jkj::dragonbox: an invalid policy is specified");
-
-                static_assert(
-                    !policy_pair_list<DetectorDefaultPairList, Policies...>::repeated,
-                    "jkj::dragonbox: at most one policy should be specified for each policy kind");
-
-                using type =
-                    convert_to_policy_holder<policy_pair_list<DetectorDefaultPairList, Policies...>>;
-            };
-
-            template <class DetectorDefaultPairList, class... Policies>
-            using make_policy_holder =
-                typename make_policy_holder_impl<DetectorDefaultPairList, Policies...>::type;
-
-
-            // Policy kind detectors.
-            struct is_sign_policy {
-                constexpr bool operator()(...) noexcept { return false; }
-                template <class Policy, class = typename Policy::sign_policy>
-                constexpr bool operator()(dummy<Policy>) noexcept {
-                    return true;
-                }
-            };
-            struct is_trailing_zero_policy {
-                constexpr bool operator()(...) noexcept { return false; }
-                template <class Policy, class = typename Policy::trailing_zero_policy>
-                constexpr bool operator()(dummy<Policy>) noexcept {
-                    return true;
-                }
-            };
-            struct is_decimal_to_binary_rounding_policy {
-                constexpr bool operator()(...) noexcept { return false; }
-                template <class Policy, class = typename Policy::decimal_to_binary_rounding_policy>
-                constexpr bool operator()(dummy<Policy>) noexcept {
-                    return true;
-                }
-            };
-            struct is_binary_to_decimal_rounding_policy {
-                constexpr bool operator()(...) noexcept { return false; }
-                template <class Policy, class = typename Policy::binary_to_decimal_rounding_policy>
-                constexpr bool operator()(dummy<Policy>) noexcept {
-                    return true;
-                }
-            };
-            struct is_cache_policy {
-                constexpr bool operator()(...) noexcept { return false; }
-                template <class Policy, class = typename Policy::cache_policy>
-                constexpr bool operator()(dummy<Policy>) noexcept {
-                    return true;
-                }
-            };
-
-            template <class... Policies>
-            using to_decimal_policy_holder = make_policy_holder<
-                detector_default_pair_list<
-                    detector_default_pair<is_sign_policy, policy::sign::return_sign_t>,
-                    detector_default_pair<is_trailing_zero_policy, policy::trailing_zero::remove_t>,
-                    detector_default_pair<is_decimal_to_binary_rounding_policy,
-                                          policy::decimal_to_binary_rounding::nearest_to_even_t>,
-                    detector_default_pair<is_binary_to_decimal_rounding_policy,
-                                          policy::binary_to_decimal_rounding::to_even_t>,
-                    detector_default_pair<is_cache_policy, policy::cache::full_t>>,
-                Policies...>;
-
-            template <class FormatTraits, class... Policies>
-            using to_decimal_return_type = typename impl<FormatTraits>::template return_type<
-                typename to_decimal_policy_holder<Policies...>::sign_policy,
-                typename to_decimal_policy_holder<Policies...>::trailing_zero_policy>;
-
-            template <class FormatTraits, class PolicyHolder>
-            struct to_decimal_dispatcher {
-                using sign_policy = typename PolicyHolder::sign_policy;
-                using trailing_zero_policy = typename PolicyHolder::trailing_zero_policy;
-                using binary_to_decimal_rounding_policy =
-                    typename PolicyHolder::binary_to_decimal_rounding_policy;
-                using cache_policy = typename PolicyHolder::cache_policy;
-                using return_type =
-                    typename impl<FormatTraits>::template return_type<sign_policy, trailing_zero_policy>;
-
-                template <class IntervalTypeProvider>
-                JKJ_FORCEINLINE JKJ_SAFEBUFFERS JKJ_CONSTEXPR20 return_type
-                operator()(IntervalTypeProvider, signed_significand_bits<FormatTraits> s,
-                           typename FormatTraits::exponent_int exponent_bits) noexcept {
-                    constexpr auto tag = IntervalTypeProvider::tag;
-
-                    JKJ_IF_CONSTEXPR(tag == policy::decimal_to_binary_rounding::tag_t::to_nearest) {
-                        return impl<FormatTraits>::template compute_nearest<
-                            sign_policy, trailing_zero_policy, IntervalTypeProvider,
-                            binary_to_decimal_rounding_policy, cache_policy>(s, exponent_bits);
-                    }
-                    else JKJ_IF_CONSTEXPR(
-                        tag == policy::decimal_to_binary_rounding::tag_t::left_closed_directed) {
-                        return impl<FormatTraits>::template compute_left_closed_directed<
-                            sign_policy, trailing_zero_policy, cache_policy>(s, exponent_bits);
-                    }
-                    else {
-#if JKJ_HAS_IF_CONSTEXPR
-                        static_assert(
-                            tag == policy::decimal_to_binary_rounding::tag_t::right_closed_directed,
-                            "");
-#endif
-                        return impl<FormatTraits>::template compute_right_closed_directed<
-                            sign_policy, trailing_zero_policy, cache_policy>(s, exponent_bits);
-                    }
-                }
             };
         }
 
@@ -3540,16 +3474,13 @@ namespace jkj {
         // The interface function.
         ////////////////////////////////////////////////////////////////////////////////////////
 
-        template <class FormatTraits, class ExponentBits, class... Policies>
+        template <class FormatTraits, class... Policies>
         JKJ_FORCEINLINE
-            JKJ_SAFEBUFFERS JKJ_CONSTEXPR20 detail::to_decimal_return_type<FormatTraits, Policies...>
-            to_decimal_ex(signed_significand_bits<FormatTraits> s, ExponentBits exponent_bits,
+            JKJ_SAFEBUFFERS JKJ_CONSTEXPR20 typename detail::to_decimal_dispatch<FormatTraits, Policies...>::return_type
+            to_decimal_ex(signed_significand_bits<FormatTraits> s, typename FormatTraits::exponent_int exponent_bits,
                           Policies...) noexcept {
-            // Build policy holder type.
-            using policy_holder = detail::to_decimal_policy_holder<Policies...>;
 
-            return policy_holder::delegate(
-                s, detail::to_decimal_dispatcher<FormatTraits, policy_holder>{}, s, exponent_bits);
+            return detail::to_decimal_dispatch<FormatTraits, Policies...>{{}, s, exponent_bits}.run();
         }
 
         template <class Float,
@@ -3558,7 +3489,7 @@ namespace jkj {
                                                              typename ConversionTraits::carrier_uint>,
                   class... Policies>
         JKJ_FORCEINLINE
-            JKJ_SAFEBUFFERS JKJ_CONSTEXPR20 detail::to_decimal_return_type<FormatTraits, Policies...>
+            JKJ_SAFEBUFFERS JKJ_CONSTEXPR20 typename detail::to_decimal_dispatch<FormatTraits, Policies...>::return_type
             to_decimal(Float x, Policies... policies) noexcept {
             auto const br = make_float_bits<Float, ConversionTraits, FormatTraits>(x);
             auto const exponent_bits = br.extract_exponent_bits();
