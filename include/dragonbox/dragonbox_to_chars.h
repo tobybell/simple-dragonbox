@@ -78,19 +78,17 @@ struct ToCharsImpl {
   // Avoid needless ABI overhead incurred by tag dispatch.
   template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
             class CachePolicy>
-  constexpr static char* to_chars_n_impl(float_bits<FormatTraits> br, char* buffer) noexcept {
-      auto const exponent_bits = br.extract_exponent_bits();
-      auto const s = br.remove_exponent_bits();
-      bool sign = s.is_negative();
+  constexpr static char* to_chars_n_impl(float_bits<Float> br, char* buffer) noexcept {
+      auto const [significand, exponent, sign] = br;
 
-      if (br.is_finite(exponent_bits)) {
-          if (s.is_negative()) {
+      if (br.is_finite()) {
+          if (sign) {
               *buffer = '-';
               ++buffer;
           }
-          if (br.is_nonzero()) {
+          if (significand || exponent) {
             return compact_to_chars<DecimalToBinaryRoundingPolicy,
-              BinaryToDecimalRoundingPolicy, CachePolicy, FormatTraits>(sign, exponent_bits, s.significand(), buffer);
+              BinaryToDecimalRoundingPolicy, CachePolicy, FormatTraits>(sign, exponent, significand, buffer);
           }
           else {
               buffer[0] = '0';
@@ -100,8 +98,8 @@ struct ToCharsImpl {
           }
       }
       else {
-          if (s.has_all_zero_significand_bits()) {
-              if (s.is_negative()) {
+          if (!significand) {
+              if (sign) {
                   *buffer = '-';
                   ++buffer;
               }
@@ -131,8 +129,7 @@ struct ToCharsImpl {
 
     return to_chars_n_impl<typename policy_holder::decimal_to_binary_rounding_policy,
                            typename policy_holder::binary_to_decimal_rounding_policy,
-                           typename policy_holder::cache_policy>(
-        detail::impl<Float>::make_float_bits(x), buffer);
+                           typename policy_holder::cache_policy>(float_bits(x), buffer);
   }
 };
 

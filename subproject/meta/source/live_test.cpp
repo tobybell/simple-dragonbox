@@ -46,15 +46,15 @@ static void live_test(std::streamsize hex_width) {
             break;
         }
 
-        auto xx = jkj::dragonbox::detail::impl<Float>::make_float_bits(x);
-        std::cout << "              sign: " << (xx.is_negative() ? "-" : "+") << std::endl;
+        auto xx = jkj::dragonbox::float_bits(x);
+        std::cout << "              sign: " << (xx.sign ? "-" : "+") << std::endl;
         std::cout << "     exponent bits: "
-                  << "0x" << std::hex << std::setfill('0') << xx.extract_exponent_bits() << std::dec
+                  << "0x" << std::hex << std::setfill('0') << xx.exponent << std::dec
                   << " (value: " << xx.binary_exponent() << ")\n";
         std::cout << "  significand bits: "
                   << "0x" << std::hex << std::setfill('0');
         std::cout << std::setw(hex_width);
-        std::cout << xx.extract_significand_bits() << " (value: 0x" << xx.binary_significand()
+        std::cout << xx.significand << " (value: 0x" << xx.binary_significand()
                   << ")\n"
                   << std::dec;
 

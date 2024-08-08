@@ -199,38 +199,12 @@ namespace jkj {
                                           << format::significand_bits));
             }
 
-            // Shift the obtained signed significand bits to the left by 1 to remove the sign bit.
-            static constexpr carrier_uint remove_sign_bit_and_shift(carrier_uint u) noexcept {
-                return carrier_uint((carrier_uint(u) << 1) &
-                                    ((((carrier_uint(1) << (Format::total_bits - 1)) - 1u) << 1) | 1u));
-            }
-
-            // Obtain the actual value of the binary exponent from the extracted exponent bits.
-            static constexpr exponent_int binary_exponent(exponent_int exponent_bits) noexcept {
-                return exponent_int(exponent_bits == 0 ? format::min_exponent
-                                                       : exponent_bits + format::exponent_bias);
-            }
-
-            // Obtain the actual value of the binary significand from the extracted significand bits
-            // and exponent bits.
-            static constexpr carrier_uint binary_significand(carrier_uint significand_bits,
-                                                             exponent_int exponent_bits) noexcept {
-                return carrier_uint(
-                    exponent_bits == 0
-                        ? significand_bits
-                        : (significand_bits | (carrier_uint(1) << format::significand_bits)));
-            }
-
             /* Various boolean observer functions */
 
             static constexpr bool is_nonzero(carrier_uint u) noexcept {
                 return (u & ((carrier_uint(1) << (format::significand_bits + format::exponent_bits)) -
                              1u)) != 0;
             }
-            static constexpr bool is_positive(carrier_uint u) noexcept {
-                return u < (carrier_uint(1) << (format::significand_bits + format::exponent_bits));
-            }
-            static constexpr bool is_negative(carrier_uint u) noexcept { return !is_positive(u); }
             static constexpr bool is_finite(exponent_int exponent_bits) noexcept {
                 return exponent_bits != ((exponent_int(1) << format::exponent_bits) - 1);
             }
@@ -238,105 +212,40 @@ namespace jkj {
                 return ((u << 1) &
                         ((((carrier_uint(1) << (Format::total_bits - 1)) - 1u) << 1) | 1u)) == 0;
             }
-            static constexpr bool has_even_significand_bits(carrier_uint u) noexcept {
-                return u % 2 == 0;
-            }
         };
 
-        // Convenient wrappers for floating-point traits classes.
-        // In order to reduce the argument passing overhead, these classes should be as simple as
-        // possible (e.g., no inheritance, no private non-static data member, etc.; this is an
-        // unfortunate fact about common ABI convention).
-
-        template <class FormatTraits>
-        struct signed_significand_bits {
-            using format_traits = FormatTraits;
-            using carrier_uint = typename format_traits::carrier_uint;
-
-            carrier_uint u;
-
-            signed_significand_bits() = default;
-            constexpr explicit signed_significand_bits(carrier_uint bit_pattern) noexcept
-                : u{bit_pattern} {}
-
-            // Shift the obtained signed significand bits to the left by 1 to remove the sign bit.
-            constexpr carrier_uint remove_sign_bit_and_shift() const noexcept {
-                return format_traits::remove_sign_bit_and_shift(u);
-            }
-
-            constexpr bool is_positive() const noexcept { return format_traits::is_positive(u); }
-            constexpr bool is_negative() const noexcept { return format_traits::is_negative(u); }
-            constexpr bool has_all_zero_significand_bits() const noexcept {
-                return format_traits::has_all_zero_significand_bits(u);
-            }
-            constexpr bool has_even_significand_bits() const noexcept {
-                return format_traits::has_even_significand_bits(u);
-            }
-            constexpr carrier_uint significand() const noexcept {
-                return carrier_uint(u & ((carrier_uint(1) << format_traits::format::significand_bits) - 1u));
-            }
-        };
-
-        template <class FormatTraits>
+        template <class Float>
         struct float_bits {
-            using format_traits = FormatTraits;
-            using carrier_uint = typename format_traits::carrier_uint;
-            using exponent_int = typename format_traits::exponent_int;
+          using format = FloatFormat<Float>;
+          using carrier_uint = typename format::carrier_uint;
 
-            carrier_uint u;
+          carrier_uint significand;
+          unsigned exponent;
+          bool sign;
 
-            float_bits() = default;
-            constexpr explicit float_bits(carrier_uint bit_pattern) noexcept : u{bit_pattern} {}
+          constexpr explicit float_bits(Float x) {
+            carrier_uint bits;
+            static_assert(sizeof(x) == sizeof(bits));
+            memcpy(&bits, &x, sizeof(x));
+            significand = bits & ((carrier_uint(1) << format::significand_bits) - 1);
+            exponent = bits >> format::significand_bits & ((1u << format::exponent_bits) - 1);
+            sign = bits >> (format::significand_bits + format::exponent_bits);
+          }
 
-            // Extract exponent bits from a bit pattern.
-            // The result must be aligned to the LSB so that there is no additional zero paddings
-            // on the right. This function does not do bias adjustment.
-            constexpr exponent_int extract_exponent_bits() const noexcept {
-                return format_traits::extract_exponent_bits(u);
-            }
+          constexpr bool is_finite() const noexcept {
+              return exponent != (1u << format::exponent_bits) - 1;
+          }
 
-            // Extract significand bits from a bit pattern.
-            // The result must be aligned to the LSB so that there is no additional zero paddings
-            // on the right. The result does not contain the implicit bit.
-            constexpr carrier_uint extract_significand_bits() const noexcept {
-                return format_traits::extract_significand_bits(u);
-            }
+          constexpr int binary_exponent() noexcept {
+            return exponent == 0 ? format::min_exponent
+                                 : exponent + format::exponent_bias;
+          }
 
-            // Remove the exponent bits and extract significand bits together with the sign bit.
-            constexpr signed_significand_bits<format_traits> remove_exponent_bits() const noexcept {
-                return signed_significand_bits<format_traits>(format_traits::remove_exponent_bits(u));
-            }
-
-            // Obtain the actual value of the binary exponent from the extracted exponent bits.
-            static constexpr exponent_int binary_exponent(exponent_int exponent_bits) noexcept {
-                return format_traits::binary_exponent(exponent_bits);
-            }
-            constexpr exponent_int binary_exponent() const noexcept {
-                return binary_exponent(extract_exponent_bits());
-            }
-
-            // Obtain the actual value of the binary exponent from the extracted significand bits
-            // and exponent bits.
-            static constexpr carrier_uint binary_significand(carrier_uint significand_bits,
-                                                             exponent_int exponent_bits) noexcept {
-                return format_traits::binary_significand(significand_bits, exponent_bits);
-            }
-            constexpr carrier_uint binary_significand() const noexcept {
-                return binary_significand(extract_significand_bits(), extract_exponent_bits());
-            }
-
-            constexpr bool is_nonzero() const noexcept { return format_traits::is_nonzero(u); }
-            constexpr bool is_positive() const noexcept { return format_traits::is_positive(u); }
-            constexpr bool is_negative() const noexcept { return format_traits::is_negative(u); }
-            constexpr bool is_finite(exponent_int exponent_bits) const noexcept {
-                return format_traits::is_finite(exponent_bits);
-            }
-            constexpr bool is_finite() const noexcept {
-                return format_traits::is_finite(extract_exponent_bits());
-            }
-            constexpr bool has_even_significand_bits() const noexcept {
-                return format_traits::has_even_significand_bits(u);
-            }
+          constexpr carrier_uint binary_significand() noexcept {
+            return exponent == 0
+              ? significand
+              : significand | (carrier_uint(1) << format::significand_bits);
+          }
         };
 
         namespace detail {
@@ -2289,20 +2198,14 @@ namespace jkj {
                             "jkj::dragonbox: Float may not be of IEEE-754 binary32/binary64");
 
                 using FormatTraits = ieee754_binary_traits<Float>;
-                using format = typename FormatTraits::format;
-                using carrier_uint = typename FormatTraits::carrier_uint;
+                using format = FloatFormat<Float>;
+                using carrier_uint = typename format::carrier_uint;
                 static constexpr int carrier_bits = FormatTraits::carrier_bits;
                 using exponent_int = typename FormatTraits::exponent_int;
-
-              constexpr static float_bits<FormatTraits> make_float_bits(Float x) noexcept {
-                  carrier_uint carrier = detail::bit_cast<carrier_uint>(x);
-                  return float_bits<FormatTraits>(carrier);
-              }
 
               constexpr static Float carrier_to_float(carrier_uint u) noexcept {
                 return detail::bit_cast<Float>(u);
               }
-
 
                 enum {
                   significand_bits = format::significand_bits,
@@ -3270,13 +3173,9 @@ namespace jkj {
         JKJ_FORCEINLINE
         constexpr typename detail::to_decimal_dispatch<Float, Policies...>::return_type
         to_decimal(Float x, Policies... policies) noexcept {
-            using FormatTraits = ieee754_binary_traits<Float>;
-            auto const br = detail::impl<Float>::make_float_bits(x);
-            auto const exponent_bits = br.extract_exponent_bits();
-            auto const s = br.remove_exponent_bits();
-            assert(br.is_finite() && br.is_nonzero());
-
-            return to_decimal_ex<Float, Policies...>(s.is_negative(), s.significand(), exponent_bits);
+            auto const bits = float_bits(x);
+            assert(bits.is_finite() && (bits.significand || bits.exponent));
+            return to_decimal_ex<Float, Policies...>(bits.sign, bits.exponent, bits.significand);
         }
     }
 }
