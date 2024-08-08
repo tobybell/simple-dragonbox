@@ -29,7 +29,7 @@ static bool verify_fast_multiplication_xz(CachePolicy&& cache_policy) {
     using cache_holder_type =
         typename std::decay<CachePolicy>::type::template cache_holder_type<format>;
     using multiplication_traits = jkj::dragonbox::multiplication_traits<
-        typename impl::FormatTraits, typename cache_holder_type::cache_entry_type, cache_holder_type::cache_bits>;
+        Float, typename cache_holder_type::cache_entry_type, cache_holder_type::cache_bits>;
 
 
     constexpr auto four_fl = (carrier_uint(1) << (impl::significand_bits + 2)) - 1;

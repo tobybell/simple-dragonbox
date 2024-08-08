@@ -61,18 +61,68 @@ namespace jkj {
 
 template <class Float>
 struct ToCharsImpl {
-  using FormatTraits = ieee754_binary_traits<Float>;
+  using format = FloatFormat<Float>;
+  using carrier_uint = typename format::carrier_uint;
+
+            template <unsigned max_digits>
+            static constexpr char* print_integer_naive(carrier_uint n, char* buffer) noexcept {
+                char temp[max_digits]{};
+                auto ptr = temp + sizeof(temp) - 1;
+                do {
+                    *ptr = char('0' + n % 10);
+                    n /= 10;
+                    --ptr;
+                } while (n != 0);
+                while (++ptr != temp + sizeof(temp)) {
+                    *buffer = *ptr;
+                    ++buffer;
+                }
+                return buffer;
+            }
+
+            static constexpr char* to_chars_naive(carrier_uint significand, int exponent,
+                                                 char* buffer) noexcept {
+                // Print significand.
+                {
+                    auto ptr = print_integer_naive<format::decimal_significand_digits>(significand,
+                                                                                            buffer);
+
+                    // Insert decimal dot.
+                    if (ptr > buffer + 1) {
+                        auto next = *++buffer;
+                        ++exponent;
+                        *buffer = '.';
+                        while (++buffer != ptr) {
+                            auto const temp = *buffer;
+                            *buffer = next;
+                            next = temp;
+                            ++exponent;
+                        }
+                        *buffer = next;
+                    }
+                    ++buffer;
+                }
+
+                // Print exponent.
+                *buffer = 'E';
+                ++buffer;
+                if (exponent < 0) {
+                    *buffer = '-';
+                    ++buffer;
+                    exponent = -exponent;
+                }
+                return print_integer_naive<format::decimal_exponent_digits>(unsigned(exponent),
+                                                                                 buffer);
+            }
 
   template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
-            class CachePolicy, class FormatTraits>
+            class CachePolicy>
   static constexpr char*
-  compact_to_chars(bool sign,
-           typename FormatTraits::exponent_int exponent,
-           typename FormatTraits::carrier_uint significand, char* buffer) noexcept {
+  compact_to_chars(bool sign, int exponent,
+           typename format::carrier_uint significand, char* buffer) noexcept {
       auto result = to_decimal_ex<Float, policy::sign::ignore_t, policy::trailing_zero::remove_compact_t, DecimalToBinaryRoundingPolicy, BinaryToDecimalRoundingPolicy, CachePolicy>(sign, exponent, significand);
 
-      return detail::to_chars_naive<typename FormatTraits::format>(
-          result.significand, result.exponent, buffer);
+      return to_chars_naive(result.significand, result.exponent, buffer);
   }
 
   // Avoid needless ABI overhead incurred by tag dispatch.
@@ -88,7 +138,7 @@ struct ToCharsImpl {
           }
           if (significand || exponent) {
             return compact_to_chars<DecimalToBinaryRoundingPolicy,
-              BinaryToDecimalRoundingPolicy, CachePolicy, FormatTraits>(sign, exponent, significand, buffer);
+              BinaryToDecimalRoundingPolicy, CachePolicy>(sign, exponent, significand, buffer);
           }
           else {
               buffer[0] = '0';

@@ -67,8 +67,6 @@ namespace jkj {
                 template <class T>
                 using is_integral = std::is_integral<T>;
                 template <class T>
-                using is_signed = std::is_signed<T>;
-                template <class T>
                 using is_unsigned = std::is_unsigned<T>;
             }
         }
@@ -149,70 +147,6 @@ namespace jkj {
 
         using ieee754_binary32 = FloatFormat<float>;
         using ieee754_binary64 = FloatFormat<double>;
-
-        // A floating-point format traits class defines ways to interpret a bit pattern of given size as
-        // an encoding of floating-point number. This is an implementation of such a traits class,
-        // supporting ways to interpret IEEE-754 binary floating-point numbers.
-        template <class Float, class ExponentInt = int>
-        struct ieee754_binary_traits {
-            using Format = FloatFormat<Float>;
-            using CarrierUInt = typename Format::carrier_uint;
-
-            // CarrierUInt needs to have enough size to hold the entire contents of floating-point
-            // numbers. The actual bits are assumed to be aligned to the LSB, and every other bits are
-            // assumed to be zeroed.
-            static_assert(detail::value_bits<CarrierUInt>::value >= Format::total_bits,
-                          "jkj::dragonbox: insufficient number of bits");
-            static_assert(detail::stdr::is_unsigned<CarrierUInt>::value, "");
-
-            // ExponentUInt needs to be large enough to hold (unsigned) exponent bits as well as the
-            // (signed) actual exponent.
-            // TODO: static overflow guard against intermediate computations.
-            static_assert(detail::value_bits<ExponentInt>::value >= Format::exponent_bits + 1,
-                          "jkj::dragonbox: insufficient number of bits");
-            static_assert(detail::stdr::is_signed<ExponentInt>::value, "");
-
-            using format = Format;
-            using carrier_uint = CarrierUInt;
-            static constexpr int carrier_bits = int(detail::value_bits<carrier_uint>::value);
-            using exponent_int = ExponentInt;
-            using significand_int = CarrierUInt;
-
-            // Extract exponent bits from a bit pattern.
-            // The result must be aligned to the LSB so that there is no additional zero paddings
-            // on the right. This function does not do bias adjustment.
-            static constexpr exponent_int extract_exponent_bits(carrier_uint u) noexcept {
-                return exponent_int((u >> format::significand_bits) &
-                                    ((exponent_int(1) << format::exponent_bits) - 1));
-            }
-
-            // Extract significand bits from a bit pattern.
-            // The result must be aligned to the LSB so that there is no additional zero paddings
-            // on the right. The result does not contain the implicit bit.
-            static constexpr carrier_uint extract_significand_bits(carrier_uint u) noexcept {
-                return carrier_uint(u & ((carrier_uint(1) << format::significand_bits) - 1u));
-            }
-
-            // Remove the exponent bits and extract significand bits together with the sign bit.
-            static constexpr carrier_uint remove_exponent_bits(carrier_uint u) noexcept {
-                return carrier_uint(u & ~(((carrier_uint(1) << format::exponent_bits) - 1u)
-                                          << format::significand_bits));
-            }
-
-            /* Various boolean observer functions */
-
-            static constexpr bool is_nonzero(carrier_uint u) noexcept {
-                return (u & ((carrier_uint(1) << (format::significand_bits + format::exponent_bits)) -
-                             1u)) != 0;
-            }
-            static constexpr bool is_finite(exponent_int exponent_bits) noexcept {
-                return exponent_bits != ((exponent_int(1) << format::exponent_bits) - 1);
-            }
-            static constexpr bool has_all_zero_significand_bits(carrier_uint u) noexcept {
-                return ((u << 1) &
-                        ((((carrier_uint(1) << (Format::total_bits - 1)) - 1u) << 1) | 1u)) == 0;
-            }
-        };
 
         template <class Float>
         struct float_bits {
@@ -1596,12 +1530,12 @@ namespace jkj {
         struct multiplication_traits;
 
         // A collection of some common definitions to reduce boilerplate.
-        template <class FormatTraits, class CacheEntryType, detail::stdr::size_t cache_bits_>
+        template <class Float, class CacheEntryType, detail::stdr::size_t cache_bits_>
         struct multiplication_traits_base {
-            using format = typename FormatTraits::format;
+            using format = FloatFormat<Float>;
             static constexpr int significand_bits = format::significand_bits;
             static constexpr int total_bits = format::total_bits;
-            using carrier_uint = typename FormatTraits::carrier_uint;
+            using carrier_uint = typename format::carrier_uint;
             using cache_entry_type = CacheEntryType;
             static constexpr int cache_bits = int(cache_bits_);
 
@@ -2066,13 +2000,9 @@ namespace jkj {
             }
         };
 
-        template <class ExponentInt>
-        struct multiplication_traits<
-            ieee754_binary_traits<float, ExponentInt>,
-            detail::stdr::uint_least64_t, 64>
-            : public multiplication_traits_base<
-                  ieee754_binary_traits<float>,
-                  detail::stdr::uint_least64_t, 64> {
+        template <>
+        struct multiplication_traits<float, detail::stdr::uint_least64_t, 64>
+            : public multiplication_traits_base<float, detail::stdr::uint_least64_t, 64> {
             static constexpr compute_mul_result
             compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept {
                 auto const r = detail::wuint::umul96_upper64(u, cache);
@@ -2123,13 +2053,9 @@ namespace jkj {
             }
         };
 
-        template <class ExponentInt>
-        struct multiplication_traits<
-            ieee754_binary_traits<double, ExponentInt>,
-            detail::wuint::uint128, 128>
-            : public multiplication_traits_base<
-                  ieee754_binary_traits<double>,
-                  detail::wuint::uint128, 128> {
+        template <>
+        struct multiplication_traits<double, detail::wuint::uint128, 128>
+            : public multiplication_traits_base<double, detail::wuint::uint128, 128> {
             static constexpr compute_mul_result
             compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept {
                 auto const r = detail::wuint::umul192_upper128(u, cache);
@@ -2197,11 +2123,9 @@ namespace jkj {
                                  detail::physical_bits<Float> == 64),
                             "jkj::dragonbox: Float may not be of IEEE-754 binary32/binary64");
 
-                using FormatTraits = ieee754_binary_traits<Float>;
                 using format = FloatFormat<Float>;
                 using carrier_uint = typename format::carrier_uint;
-                static constexpr int carrier_bits = FormatTraits::carrier_bits;
-                using exponent_int = typename FormatTraits::exponent_int;
+                using exponent_int = int;
 
               constexpr static Float carrier_to_float(carrier_uint u) noexcept {
                 return detail::bit_cast<Float>(u);
@@ -2212,6 +2136,7 @@ namespace jkj {
                   min_exponent = format::min_exponent,
                   max_exponent = format::max_exponent,
                   exponent_bias = format::exponent_bias,
+                  carrier_bits = detail::value_bits<carrier_uint>::value,
                 };
 
                 static constexpr int kappa =
@@ -2521,9 +2446,8 @@ namespace jkj {
 
             template <class Float, class... Policies>
             struct to_decimal_dispatch {
-                using FormatTraits = ieee754_binary_traits<Float>;
                 using Impl = impl<Float>;
-                using format = typename FormatTraits::format;
+                using format = FloatFormat<Float>;
                 using PolicyHolder = detail::to_decimal_policy_holder<Policies...>;
                 using SignPolicy = typename PolicyHolder::sign_policy;
                 using TrailingZeroPolicy = typename PolicyHolder::trailing_zero_policy;
@@ -2531,19 +2455,19 @@ namespace jkj {
                     typename PolicyHolder::binary_to_decimal_rounding_policy;
                 using CachePolicy = typename PolicyHolder::cache_policy;
 
-                using carrier_uint = typename FormatTraits::carrier_uint;
-                using exponent_int = typename FormatTraits::exponent_int;
-                using remainder_type_ = typename FormatTraits::carrier_uint;
-                using decimal_exponent_type_ = typename FormatTraits::exponent_int;
-                using shift_amount_type = typename FormatTraits::exponent_int;
+                using carrier_uint = typename format::carrier_uint;
+                using exponent_int = int;
+                using remainder_type_ = carrier_uint;
+                using decimal_exponent_type_ = int;
+                using shift_amount_type = int;
 
                 using return_type =
                     decimal_fp<carrier_uint, decimal_exponent_type_,
                                SignPolicy::return_has_sign, TrailingZeroPolicy::report_trailing_zeros>;
 
                 bool negative;
-                typename FormatTraits::exponent_int exponent_bits;
-                typename FormatTraits::significand_int significand;
+                exponent_int exponent_bits;
+                carrier_uint significand;
                 
                 enum {
                   min_k = Impl::min_k,
@@ -2641,7 +2565,7 @@ namespace jkj {
                     min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
 
                 using multiplication_traits_ =
-                    multiplication_traits<FormatTraits,
+                    multiplication_traits<Float,
                                           typename cache_holder_type::cache_entry_type,
                                           cache_holder_type::cache_bits>;
 

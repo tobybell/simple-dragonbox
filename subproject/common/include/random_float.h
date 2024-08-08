@@ -77,7 +77,6 @@ template <class Float, class RandGen>
 Float uniformly_randomly_generate_finite_float(RandGen& rg) {
     using format = typename jkj::dragonbox::FloatFormat<Float>;
     using carrier_uint = typename format::carrier_uint;
-    using format_traits = jkj::dragonbox::ieee754_binary_traits<Float>;
     using uniform_distribution = std::uniform_int_distribution<carrier_uint>;
 
     // Generate sign bit
@@ -88,10 +87,10 @@ Float uniformly_randomly_generate_finite_float(RandGen& rg) {
 
     // Generate significand bits
     auto significand_bits =
-        uniform_distribution{0, (carrier_uint(1) << format_traits::significand_bits) - 1}(rg);
+        uniform_distribution{0, (carrier_uint(1) << format::significand_bits) - 1}(rg);
 
-    auto bit_representation = (sign_bit << (format_traits::carrier_bits - 1)) |
-                              (exponent_bits << (format_traits::significand_bits)) | significand_bits;
+    auto bit_representation = (sign_bit << (format::carrier_bits - 1)) |
+                              (exponent_bits << (format::significand_bits)) | significand_bits;
 
     return jkj::dragonbox::detail::impl<Float>::carrier_to_float(bit_representation);
 }
