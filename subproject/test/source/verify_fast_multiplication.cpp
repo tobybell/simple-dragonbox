@@ -21,13 +21,13 @@
 
 #include <iostream>
 
-template <class Float, class CachePolicy>
-static bool verify_fast_multiplication_xz(CachePolicy cache_policy) {
+template <class Float, jkj::dragonbox::cache_policy CachePolicy>
+static bool verify_fast_multiplication_xz() {
     using impl = jkj::dragonbox::detail::impl<Float>;
     using format = typename impl::format;
     using carrier_uint = typename impl::carrier_uint;
 
-    static constexpr jkj::dragonbox::cache_holder<Float, CachePolicy::compact> cache_;
+    static constexpr jkj::dragonbox::cache_holder<Float, CachePolicy> cache_;
 
     constexpr auto four_fl = (carrier_uint(1) << (impl::significand_bits + 2)) - 1;
     constexpr auto two_fr = (carrier_uint(1) << (impl::significand_bits + 1)) + 1;
@@ -91,12 +91,12 @@ static bool verify_fast_multiplication_xz(CachePolicy cache_policy) {
     return success;
 }
 
-template <class Float, class CachePolicy>
-static bool verify_fast_multiplication_yru(CachePolicy cache_policy) {
+template <class Float, jkj::dragonbox::cache_policy CachePolicy>
+static bool verify_fast_multiplication_yru() {
     using impl = jkj::dragonbox::detail::impl<Float>;
     using format = typename impl::format;
 
-    static constexpr jkj::dragonbox::cache_holder<Float, CachePolicy::compact> cache_;
+    static constexpr jkj::dragonbox::cache_holder<Float, CachePolicy> cache_;
 
     bool success = true;
 
@@ -139,50 +139,42 @@ int main() {
 
     std::cout << "[Verifying fast computation of xi and zi for the shorter interval case "
                  "with full cache (binary32)...]\n";
-    success &= verify_fast_multiplication_xz<float>(
-        jkj::dragonbox::policy::cache::full);
+    success &= verify_fast_multiplication_xz<float, jkj::dragonbox::cache_compact>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of xi and zi for the shorter interval case "
                  "with compressed cache (binary32)...]\n";
-    success &= verify_fast_multiplication_xz<float>(
-        jkj::dragonbox::policy::cache::compact);
+    success &= verify_fast_multiplication_xz<float, jkj::dragonbox::cache_compact>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of yru for the shorter interval case "
                  "with full cache (binary32)...]\n";
-    success &= verify_fast_multiplication_yru<float>(
-        jkj::dragonbox::policy::cache::full);
+    success &= verify_fast_multiplication_yru<float, jkj::dragonbox::cache_compact>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of yru for the shorter interval case "
                  "with compressed cache (binary32)...]\n";
-    success &= verify_fast_multiplication_yru<float>(
-        jkj::dragonbox::policy::cache::compact);
+    success &= verify_fast_multiplication_yru<float, jkj::dragonbox::cache_compact>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of xi and zi for the shorter interval case "
                  "with full cache (binary64)...]\n";
-    success &= verify_fast_multiplication_xz<double>(
-        jkj::dragonbox::policy::cache::full);
+    success &= verify_fast_multiplication_xz<double, jkj::dragonbox::cache_compact>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of xi and zi for the shorter interval case "
                  "with compressed cache (binary64)...]\n";
-    success &= verify_fast_multiplication_xz<double>(
-        jkj::dragonbox::policy::cache::compact);
+    success &= verify_fast_multiplication_xz<double, jkj::dragonbox::cache_compact>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of yru for the shorter interval case "
                  "with full cache (binary64)...]\n";
-    success &= verify_fast_multiplication_yru<double>(
-        jkj::dragonbox::policy::cache::full);
+    success &= verify_fast_multiplication_yru<double, jkj::dragonbox::cache_compact>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying fast computation of yru for the shorter interval case "
                  "with compressed cache (binary64)...]\n";
-    success &= verify_fast_multiplication_yru<double>(
-        jkj::dragonbox::policy::cache::compact);
+    success &= verify_fast_multiplication_yru<double, jkj::dragonbox::cache_compact>();
     std::cout << "Done.\n\n\n";
 
     if (!success) {

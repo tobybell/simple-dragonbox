@@ -64,129 +64,101 @@ struct ToCharsImpl {
   using format = FloatFormat<Float>;
   using carrier_uint = typename format::carrier_uint;
 
-            template <unsigned max_digits>
-            static constexpr char* print_integer_naive(carrier_uint n, char* buffer) noexcept {
-                char temp[max_digits]{};
-                auto ptr = temp + sizeof(temp) - 1;
-                do {
-                    *ptr = char('0' + n % 10);
-                    n /= 10;
-                    --ptr;
-                } while (n != 0);
-                while (++ptr != temp + sizeof(temp)) {
-                    *buffer = *ptr;
-                    ++buffer;
-                }
-                return buffer;
-            }
-
-            static constexpr char* to_chars_naive(carrier_uint significand, int exponent,
-                                                 char* buffer) noexcept {
-                // Print significand.
-                {
-                    auto ptr = print_integer_naive<format::decimal_significand_digits>(significand,
-                                                                                            buffer);
-
-                    // Insert decimal dot.
-                    if (ptr > buffer + 1) {
-                        auto next = *++buffer;
-                        ++exponent;
-                        *buffer = '.';
-                        while (++buffer != ptr) {
-                            auto const temp = *buffer;
-                            *buffer = next;
-                            next = temp;
-                            ++exponent;
-                        }
-                        *buffer = next;
-                    }
-                    ++buffer;
-                }
-
-                // Print exponent.
-                *buffer = 'E';
-                ++buffer;
-                if (exponent < 0) {
-                    *buffer = '-';
-                    ++buffer;
-                    exponent = -exponent;
-                }
-                return print_integer_naive<format::decimal_exponent_digits>(unsigned(exponent),
-                                                                                 buffer);
-            }
-
-  template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
-            class CachePolicy>
-  static constexpr char*
-  compact_to_chars(bool sign, int exponent,
-           typename format::carrier_uint significand, char* buffer) noexcept {
-      auto result = to_decimal_ex<Float, DecimalToBinaryRoundingPolicy, BinaryToDecimalRoundingPolicy, CachePolicy>(sign, exponent, significand);
-
-      return to_chars_naive(result.significand, result.exponent, buffer);
+  template <unsigned max_digits>
+  static constexpr char* print_integer_naive(carrier_uint n, char* buffer) noexcept {
+      char temp[max_digits]{};
+      auto ptr = temp + sizeof(temp) - 1;
+      do {
+          *ptr = char('0' + n % 10);
+          n /= 10;
+          --ptr;
+      } while (n != 0);
+      while (++ptr != temp + sizeof(temp)) {
+          *buffer = *ptr;
+          ++buffer;
+      }
+      return buffer;
   }
 
-  // Avoid needless ABI overhead incurred by tag dispatch.
-  template <class DecimalToBinaryRoundingPolicy, class BinaryToDecimalRoundingPolicy,
-            class CachePolicy>
-  constexpr static char* to_chars_n_impl(float_bits<Float> br, char* buffer) noexcept {
-      auto const [significand, exponent, sign] = br;
+  static constexpr char* to_chars_naive(carrier_uint significand, int exponent,
+                                       char* buffer) noexcept {
+      // Print significand.
+      {
+          auto ptr = print_integer_naive<format::decimal_significand_digits>(significand,
+                                                                                  buffer);
 
-      if (br.is_finite()) {
-          if (sign) {
-              *buffer = '-';
-              ++buffer;
-          }
-          if (significand || exponent) {
-            return compact_to_chars<DecimalToBinaryRoundingPolicy,
-              BinaryToDecimalRoundingPolicy, CachePolicy>(sign, exponent, significand, buffer);
-          }
-          else {
-              buffer[0] = '0';
-              buffer[1] = 'E';
-              buffer[2] = '0';
-              return buffer + 3;
-          }
-      }
-      else {
-          if (!significand) {
-              if (sign) {
-                  *buffer = '-';
-                  ++buffer;
+          // Insert decimal dot.
+          if (ptr > buffer + 1) {
+              auto next = *++buffer;
+              ++exponent;
+              *buffer = '.';
+              while (++buffer != ptr) {
+                  auto const temp = *buffer;
+                  *buffer = next;
+                  next = temp;
+                  ++exponent;
               }
-              std::memcpy(buffer, "Infinity", 8);
-              return buffer + 8;
+              *buffer = next;
           }
-          else {
-              buffer[0] = 'N';
-              buffer[1] = 'a';
-              buffer[2] = 'N';
-              return buffer + 3;
-          }
+          ++buffer;
       }
+
+      // Print exponent.
+      *buffer = 'E';
+      ++buffer;
+      if (exponent < 0) {
+          *buffer = '-';
+          ++buffer;
+          exponent = -exponent;
+      }
+      return print_integer_naive<format::decimal_exponent_digits>(unsigned(exponent),
+                                                                       buffer);
   }
 
   template <class... Policies>
-  constexpr static char* to_chars_n(Float x, char* buffer, Policies...) noexcept {
-    using policy_holder = detail::make_policy_holder<
-        detail::detector_default_pair_list<
-            detail::detector_default_pair<
-                detail::is_decimal_to_binary_rounding_policy,
-                policy::decimal_to_binary_rounding::nearest_to_even_t>,
-            detail::detector_default_pair<detail::is_binary_to_decimal_rounding_policy,
-                                          policy::binary_to_decimal_rounding::to_even_t>,
-            detail::detector_default_pair<detail::is_cache_policy, policy::cache::full_t>>,
-        Policies...>;
+  constexpr static char* to_chars(Float x, char* buffer) noexcept {
+    auto br = float_bits(x);
+    auto const [significand, exponent, sign] = br;
 
-    return to_chars_n_impl<typename policy_holder::decimal_to_binary_rounding_policy,
-                           typename policy_holder::binary_to_decimal_rounding_policy,
-                           typename policy_holder::cache_policy>(float_bits(x), buffer);
+    if (br.is_finite()) {
+        if (sign) {
+            *buffer = '-';
+            ++buffer;
+        }
+        if (significand || exponent) {
+          auto decimal = to_decimal_ex<Float, Policies...>(sign, exponent, significand);
+          return to_chars_naive(decimal.significand, decimal.exponent, buffer);
+        }
+        else {
+            buffer[0] = '0';
+            buffer[1] = 'E';
+            buffer[2] = '0';
+            return buffer + 3;
+        }
+    }
+    else {
+        if (!significand) {
+            if (sign) {
+                *buffer = '-';
+                ++buffer;
+            }
+            std::memcpy(buffer, "Infinity", 8);
+            return buffer + 8;
+        }
+        else {
+            buffer[0] = 'N';
+            buffer[1] = 'a';
+            buffer[2] = 'N';
+            return buffer + 3;
+        }
+    }
   }
 };
 
         // Null-terminate and bypass the return value of fp_to_chars_n
         template <class Float, class... Policies>
         constexpr char* to_chars(Float x, char* buffer, Policies... policies) noexcept {
-            auto ptr = ToCharsImpl<Float>::to_chars_n(x, buffer, policies...);
+            auto ptr = ToCharsImpl<Float>::template to_chars<Policies...>(x, buffer);
             *ptr = '\0';
             return ptr;
         }
