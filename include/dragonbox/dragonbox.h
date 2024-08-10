@@ -1708,8 +1708,6 @@ namespace jkj {
                 using carrier_uint = typename format::carrier_uint;
                 using remainder_type_ = carrier_uint;
 
-                using return_type = decimal_fp;
-
                 static constexpr auto binary_round_policy_ = get_policy<binary_round_policy, Policies...>::value;
                 static constexpr auto decimal_round_policy_ = get_policy<decimal_round_policy, Policies...>::value;
                 static constexpr auto cache_policy_ = get_policy<cache_policy, Policies...>::value;
