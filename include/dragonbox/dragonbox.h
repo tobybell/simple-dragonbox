@@ -2280,7 +2280,7 @@ namespace jkj {
                                       : right_closed_directed();
                     case TowardMinusInfinity:
                       return negative ? right_closed_directed()
-                                      : right_closed_directed();
+                                      : left_closed_directed();
                     case TowardZero:
                       return left_closed_directed();
                     case AwayFromZero:
