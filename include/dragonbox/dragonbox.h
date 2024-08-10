@@ -115,33 +115,33 @@ namespace jkj {
                     return count;
                 }
 
-                template <class Return = stdr::int_fast16_t, class Int>
-                constexpr Return floor_log10_pow2(Int e) noexcept {
+                template <class Return = stdr::int_fast16_t>
+                constexpr Return floor_log10_pow2(int e) noexcept {
                     assert(-2620 <= e && e <= 2620);
                     return static_cast<Return>((e * 315653) >> 20);
                 }
 
-                template <class Return = stdr::int_fast16_t, class Int>
-                constexpr Return floor_log2_pow10(Int e) noexcept {
+                template <class Return = stdr::int_fast16_t>
+                constexpr Return floor_log2_pow10(int e) noexcept {
                     // Formula itself holds on [-4003,4003]; [-1233,1233] is to ensure no overflow.
                     assert(-1233 <= e && e <= 1233);
                     return static_cast<Return>((e * 1741647) >> 19);
                 }
 
-                template <class Return = stdr::int_fast16_t, class Int>
-                constexpr Return floor_log10_pow2_minus_log10_4_over_3(Int e) noexcept {
+                template <class Return = stdr::int_fast16_t>
+                constexpr Return floor_log10_pow2_minus_log10_4_over_3(int e) noexcept {
                     assert(-2985 <= e && e <= 2936);
                     return static_cast<Return>((e * 631305 - 261663) >> 21);
                 }
 
-                template <class Return = stdr::int_fast32_t, class Int>
-                constexpr Return floor_log5_pow2(Int e) noexcept {
+                template <class Return = stdr::int_fast32_t>
+                constexpr Return floor_log5_pow2(int e) noexcept {
                     assert(-1831 <= e && e <= 1831);
                     return static_cast<Return>((e * 225799) >> 19);
                 }
 
-                template <class Return = stdr::int_fast32_t, class Int>
-                constexpr Return floor_log5_pow2_minus_log5_3(Int e) noexcept {
+                template <class Return = stdr::int_fast32_t>
+                constexpr Return floor_log5_pow2_minus_log5_3(int e) noexcept {
                     assert(-3543 <= e && e <= 2427);
                     return static_cast<Return>((e * 451597 - 715764) >> 20);
                 }
@@ -1455,7 +1455,7 @@ namespace jkj {
                 template <int N, class UInt>
                 constexpr bool check_divisibility_and_divide_by_pow10(UInt& n) noexcept {
                     // Make sure the computation for max_n does not overflow.
-                    static_assert(N + 1 <= log::floor_log10_pow2(int(value_bits<UInt>::value)), "");
+                    static_assert(N + 1 <= log::floor_log10_pow2(value_bits<UInt>::value), "");
                     assert(n <= compute_power<N + 1>(UInt(10)));
 
                     using info = divide_by_pow10_info<N, UInt>;
@@ -1475,7 +1475,7 @@ namespace jkj {
                 template <int N, class UInt>
                 constexpr UInt small_division_by_pow10(UInt n) noexcept {
                     // Make sure the computation for max_n does not overflow.
-                    static_assert(N + 1 <= log::floor_log10_pow2(int(value_bits<UInt>::value)), "");
+                    static_assert(N + 1 <= log::floor_log10_pow2(value_bits<UInt>::value), "");
                     assert(n <= compute_power<N + 1>(UInt(10)));
 
                     return UInt((n * divide_by_pow10_info<N, UInt>::magic_number) >>
@@ -1626,7 +1626,6 @@ namespace jkj {
 
                 using format = FloatFormat<Float>;
                 using carrier_uint = typename format::carrier_uint;
-                using exponent_int = int;
 
               constexpr static Float carrier_to_float(carrier_uint u) noexcept {
                 Float x;
@@ -1708,9 +1707,6 @@ namespace jkj {
 
                 using carrier_uint = typename format::carrier_uint;
                 using remainder_type_ = carrier_uint;
-                using exponent_int = int;
-                using decimal_exponent_type_ = int;
-                using shift_amount_type = int;
 
                 using return_type = decimal_fp;
 
@@ -1719,7 +1715,7 @@ namespace jkj {
                 static constexpr auto cache_policy_ = get_policy<cache_policy, Policies...>::value;
 
                 bool negative;
-                exponent_int exponent_bits;
+                int exponent_bits;
                 carrier_uint significand;
                 
                 enum {
@@ -1858,19 +1854,14 @@ namespace jkj {
                         if (two_fc == 0) {
 
                             // Compute k and beta.
-                            auto const minus_k = log::floor_log10_pow2_minus_log10_4_over_3<
-                                decimal_exponent_type_>(
-                                binary_exponent);
-                            auto const beta = shift_amount_type(
-                                binary_exponent +
-                                log::floor_log2_pow10(decimal_exponent_type_(-minus_k)));
+                            int const minus_k = log::floor_log10_pow2_minus_log10_4_over_3(binary_exponent);
+                            int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
 
                             // Compute xi and zi.
                             auto const cache = cache_.get_cache(-minus_k);
 
                             auto xi =
-                                format::compute_left_endpoint_for_shorter_interval_case(
-                                    cache, beta);
+                                format::compute_left_endpoint_for_shorter_interval_case(cache, beta);
                             auto zi = format::
                                 compute_right_endpoint_for_shorter_interval_case(cache, beta);
 
@@ -1934,13 +1925,9 @@ namespace jkj {
                     //////////////////////////////////////////////////////////////////////
 
                     // Compute k and beta.
-                    auto const minus_k = decimal_exponent_type_(
-                        log::floor_log10_pow2<decimal_exponent_type_>(binary_exponent) -
-                        kappa);
+                    int const minus_k = log::floor_log10_pow2(binary_exponent) - kappa;
                     auto const cache = cache_.get_cache(-minus_k);
-                    auto const beta =
-                        shift_amount_type(binary_exponent + log::floor_log2_pow10(
-                                                                decimal_exponent_type_(-minus_k)));
+                    int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
 
                     // Compute zi and deltai.
                     // 10^kappa <= deltai < 10^(kappa + 1)
@@ -2096,13 +2083,9 @@ namespace jkj {
                     //////////////////////////////////////////////////////////////////////
 
                     // Compute k and beta.
-                    auto const minus_k = decimal_exponent_type_(
-                        log::floor_log10_pow2<decimal_exponent_type_>(binary_exponent) -
-                        kappa);
+                    int const minus_k = log::floor_log10_pow2(binary_exponent) - kappa;
                     auto const cache = cache_.get_cache(-minus_k);
-                    auto const beta =
-                        shift_amount_type(binary_exponent + log::floor_log2_pow10(
-                                                                decimal_exponent_type_(-minus_k)));
+                    int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
 
                     // Compute xi and deltai.
                     // 10^kappa <= deltai < 10^(kappa + 1)
@@ -2213,18 +2196,13 @@ namespace jkj {
                     //////////////////////////////////////////////////////////////////////
 
                     // Compute k and beta.
-                    auto const minus_k = decimal_exponent_type_(
-                        log::floor_log10_pow2<decimal_exponent_type_>(
-                            exponent_int(binary_exponent - (shorter_interval ? 1 : 0))) -
-                        kappa);
+                    int const minus_k = log::floor_log10_pow2(binary_exponent - (shorter_interval ? 1 : 0)) - kappa;
                     auto const cache = cache_.get_cache(-minus_k);
-                    auto const beta = shift_amount_type(
-                        binary_exponent + log::floor_log2_pow10(decimal_exponent_type_(-minus_k)));
+                    int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
 
                     // Compute zi and deltai.
                     // 10^kappa <= deltai < 10^(kappa + 1)
-                    auto const deltai = format::compute_delta(
-                        cache, shift_amount_type(beta - (shorter_interval ? 1 : 0)));
+                    auto const deltai = format::compute_delta(cache, beta - (shorter_interval ? 1 : 0));
                     carrier_uint const zi =
                         format::compute_mul(carrier_uint(two_fc << beta), cache)
                             .integer_part;
@@ -2272,13 +2250,13 @@ namespace jkj {
                 }
 
                 static constexpr bool
-                is_right_endpoint_integer_shorter_interval(exponent_int binary_exponent) noexcept {
+                is_right_endpoint_integer_shorter_interval(int binary_exponent) noexcept {
                     return binary_exponent >= case_shorter_interval_right_endpoint_lower_threshold &&
                            binary_exponent <= case_shorter_interval_right_endpoint_upper_threshold;
                 }
 
                 static constexpr bool
-                is_left_endpoint_integer_shorter_interval(exponent_int binary_exponent) noexcept {
+                is_left_endpoint_integer_shorter_interval(int binary_exponent) noexcept {
                     return binary_exponent >= case_shorter_interval_left_endpoint_lower_threshold &&
                            binary_exponent <= case_shorter_interval_left_endpoint_upper_threshold;
                 }
