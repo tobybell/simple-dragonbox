@@ -104,12 +104,17 @@ namespace jkj {
                     typename stdr::enable_if<stdr::is_integral<T>::value, T>::type>::digits;
             };
 
-            template <typename To, typename From>
-            To bit_cast(const From& from) {
-                static_assert(sizeof(From) == sizeof(To));
-                To to;
-                stdr::memcpy(&to, &from, sizeof(To));
-                return to;
+            namespace bits {
+                // Most compilers should be able to optimize this into the ROR instruction.
+                // n is assumed to be at most of bit_width bits.
+                template <stdr::size_t bit_width, class UInt>
+                constexpr UInt rotr(UInt n, unsigned int r) noexcept {
+                    static_assert(bit_width > 0, "jkj::dragonbox: rotation bit-width must be positive");
+                    static_assert(bit_width <= value_bits<UInt>::value,
+                                  "jkj::dragonbox: rotation bit-width is too large");
+                    r &= (bit_width - 1);
+                    return (n >> r) | (n << ((bit_width - r) & (bit_width - 1)));
+                }
             }
         }
 
@@ -130,6 +135,32 @@ namespace jkj {
             static constexpr int decimal_significand_digits = 9;
             static constexpr int decimal_exponent_digits = 2;
             using carrier_uint = detail::stdr::uint_least32_t;
+
+            static void remove_trailing_zeros(carrier_uint& significand, int& exponent) noexcept {
+                // See https://github.com/jk-jeon/rtz_benchmark.
+                // The idea of branchless search below is by reddit users r/pigeon768 and
+                // r/TheoreticalDumbass.
+
+                auto r = detail::bits::rotr<32>(
+                    carrier_uint(significand * UINT32_C(184254097)), 4);
+                auto b = r < UINT32_C(429497);
+                auto s = detail::stdr::size_t(b);
+                significand = b ? r : significand;
+
+                r = detail::bits::rotr<32>(
+                    carrier_uint(significand * UINT32_C(42949673)), 2);
+                b = r < UINT32_C(42949673);
+                s = s * 2 + b;
+                significand = b ? r : significand;
+
+                r = detail::bits::rotr<32>(
+                    carrier_uint(significand * UINT32_C(1288490189)), 1);
+                b = r < UINT32_C(429496730);
+                s = s * 2 + b;
+                significand = b ? r : significand;
+
+                exponent += s;
+            }
         };
 
         template <>
@@ -143,6 +174,38 @@ namespace jkj {
             static constexpr int decimal_significand_digits = 17;
             static constexpr int decimal_exponent_digits = 3;
             using carrier_uint = detail::stdr::uint_least64_t;
+
+            static void remove_trailing_zeros(carrier_uint& significand, int& exponent) noexcept {
+                // See https://github.com/jk-jeon/rtz_benchmark.
+                // The idea of branchless search below is by reddit users r/pigeon768 and
+                // r/TheoreticalDumbass.
+
+                auto r = detail::bits::rotr<64>(
+                    carrier_uint(significand * UINT64_C(28999941890838049)), 8);
+                auto b = r < UINT64_C(184467440738);
+                auto s = detail::stdr::size_t(b);
+                significand = b ? r : significand;
+
+                r = detail::bits::rotr<64>(
+                    carrier_uint(significand * UINT64_C(182622766329724561)), 4);
+                b = r < UINT64_C(1844674407370956);
+                s = s * 2 + b;
+                significand = b ? r : significand;
+
+                r = detail::bits::rotr<64>(
+                    carrier_uint(significand * UINT64_C(10330176681277348905)), 2);
+                b = r < UINT64_C(184467440737095517);
+                s = s * 2 + b;
+                significand = b ? r : significand;
+
+                r = detail::bits::rotr<64>(
+                    carrier_uint(significand * UINT32_C(14757395258967641293)), 1);
+                b = r < UINT64_C(1844674407370955162);
+                s = s * 2 + b;
+                significand = b ? r : significand;
+
+                exponent += s;
+            }
         };
 
         using ieee754_binary32 = FloatFormat<float>;
@@ -183,23 +246,6 @@ namespace jkj {
         };
 
         namespace detail {
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Bit operation intrinsics.
-            ////////////////////////////////////////////////////////////////////////////////////////
-
-            namespace bits {
-                // Most compilers should be able to optimize this into the ROR instruction.
-                // n is assumed to be at most of bit_width bits.
-                template <stdr::size_t bit_width, class UInt>
-                constexpr UInt rotr(UInt n, unsigned int r) noexcept {
-                    static_assert(bit_width > 0, "jkj::dragonbox: rotation bit-width must be positive");
-                    static_assert(bit_width <= value_bits<UInt>::value,
-                                  "jkj::dragonbox: rotation bit-width is too large");
-                    r &= (bit_width - 1);
-                    return (n >> r) | (n << ((bit_width - r) & (bit_width - 1)));
-                }
-            }
-
             ////////////////////////////////////////////////////////////////////////////////////////
             // Utilities for wide unsigned integer arithmetic.
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -583,73 +629,11 @@ namespace jkj {
         // Return types for the main interface function.
         ////////////////////////////////////////////////////////////////////////////////////////
 
-        template <class SignificandType, class ExponentType, bool is_signed, bool trailing_zero_flag>
-        struct decimal_fp;
-
-        template <class SignificandType, class ExponentType>
-        struct decimal_fp<SignificandType, ExponentType, false, false> {
-            SignificandType significand;
-            ExponentType exponent;
-        };
-
-        template <class SignificandType, class ExponentType>
-        struct decimal_fp<SignificandType, ExponentType, true, false> {
-            SignificandType significand;
-            ExponentType exponent;
+        struct decimal_fp {
+            unsigned long long significand;
+            int exponent;
             bool is_negative;
         };
-
-        template <class SignificandType, class ExponentType>
-        struct decimal_fp<SignificandType, ExponentType, false, true> {
-            SignificandType significand;
-            ExponentType exponent;
-            bool may_have_trailing_zeros;
-        };
-
-        template <class SignificandType, class ExponentType>
-        struct decimal_fp<SignificandType, ExponentType, true, true> {
-            SignificandType significand;
-            ExponentType exponent;
-            bool may_have_trailing_zeros;
-            bool is_negative;
-        };
-
-        template <class SignificandType, class ExponentType, bool trailing_zero_flag = false>
-        using unsigned_decimal_fp =
-            decimal_fp<SignificandType, ExponentType, false, trailing_zero_flag>;
-
-        template <class SignificandType, class ExponentType, bool trailing_zero_flag = false>
-        using signed_decimal_fp = decimal_fp<SignificandType, ExponentType, true, trailing_zero_flag>;
-
-        template <class SignificandType, class ExponentType>
-        constexpr signed_decimal_fp<SignificandType, ExponentType, false>
-        add_sign_to_unsigned_decimal_fp(
-            bool is_negative, unsigned_decimal_fp<SignificandType, ExponentType, false> r) noexcept {
-            return {r.significand, r.exponent, is_negative};
-        }
-
-        template <class SignificandType, class ExponentType>
-        constexpr signed_decimal_fp<SignificandType, ExponentType, true>
-        add_sign_to_unsigned_decimal_fp(
-            bool is_negative, unsigned_decimal_fp<SignificandType, ExponentType, true> r) noexcept {
-            return {r.significand, r.exponent, r.may_have_trailing_zeros, is_negative};
-        }
-
-        namespace detail {
-            template <class UnsignedDecimalFp>
-            struct unsigned_decimal_fp_to_signed;
-
-            template <class SignificandType, class ExponentType, bool trailing_zero_flag>
-            struct unsigned_decimal_fp_to_signed<
-                unsigned_decimal_fp<SignificandType, ExponentType, trailing_zero_flag>> {
-                using type = signed_decimal_fp<SignificandType, ExponentType, trailing_zero_flag>;
-            };
-
-            template <class UnsignedDecimalFp>
-            using unsigned_decimal_fp_to_signed_t =
-                typename unsigned_decimal_fp_to_signed<UnsignedDecimalFp>::type;
-        }
-
 
         ////////////////////////////////////////////////////////////////////////////////////////
         // Computed cache entries.
@@ -1517,12 +1501,6 @@ namespace jkj {
         // Forward declarations of user-specializable templates used in the main algorithm.
         ////////////////////////////////////////////////////////////////////////////////////////
 
-        // Remove trailing zeros from significand and add the number of removed zeros into
-        // exponent.
-        template <class TrailingZeroPolicy, class Format, class DecimalSignificand,
-                  class DecimalExponentType>
-        struct remove_trailing_zeros_traits;
-
         // Users can specialize this traits class to make Dragonbox work with their own formats.
         // However, this requires detailed knowledge on how the algorithm works, so it is recommended to
         // read through the paper.
@@ -1582,137 +1560,6 @@ namespace jkj {
         };
 
         namespace policy {
-            namespace sign {
-                inline constexpr struct ignore_t {
-                    using sign_policy = ignore_t;
-                    static constexpr bool return_has_sign = false;
-
-#if defined(_MSC_VER) && !defined(__clang__)
-                    // See
-                    // https://developercommunity.visualstudio.com/t/Failure-to-optimize-intrinsics/10628226
-                    template <class DecimalSignificand,
-                              class DecimalExponentType>
-                    static constexpr decimal_fp<DecimalSignificand, DecimalExponentType, false, false>
-                    handle_sign(
-                        bool,
-                        decimal_fp<DecimalSignificand, DecimalExponentType, false, false> r) noexcept {
-                        return {r.significand, r.exponent};
-                    }
-                    template <class DecimalSignificand,
-                              class DecimalExponentType>
-                    static constexpr decimal_fp<DecimalSignificand, DecimalExponentType, false, true>
-                    handle_sign(
-                        bool,
-                        decimal_fp<DecimalSignificand, DecimalExponentType, false, true> r) noexcept {
-                        return {r.significand, r.exponent, r.may_have_trailing_zeros};
-                    }
-#else
-                    template <class UnsignedDecimalFp>
-                    static constexpr UnsignedDecimalFp handle_sign(bool,
-                                                                   UnsignedDecimalFp r) noexcept {
-                        return r;
-                    }
-#endif
-                } ignore = {};
-
-                inline constexpr struct return_sign_t {
-                    using sign_policy = return_sign_t;
-                    static constexpr bool return_has_sign = true;
-
-                    template <class UnsignedDecimalFp>
-                    static constexpr detail::unsigned_decimal_fp_to_signed_t<UnsignedDecimalFp>
-                    handle_sign(bool sign, UnsignedDecimalFp r) noexcept {
-                        return add_sign_to_unsigned_decimal_fp(sign, r);
-                    }
-                } return_sign = {};
-            }
-
-            namespace trailing_zero {
-                inline constexpr struct ignore_t {
-                    using trailing_zero_policy = ignore_t;
-                    static constexpr bool report_trailing_zeros = false;
-
-                    template <class Format, class DecimalSignificand, class DecimalExponentType>
-                    static constexpr unsigned_decimal_fp<DecimalSignificand, DecimalExponentType, false>
-                    on_trailing_zeros(DecimalSignificand significand,
-                                      DecimalExponentType exponent) noexcept {
-                        return {significand, exponent};
-                    }
-
-                    template <class Format, class DecimalSignificand, class DecimalExponentType>
-                    static constexpr unsigned_decimal_fp<DecimalSignificand, DecimalExponentType, false>
-                    no_trailing_zeros(DecimalSignificand significand,
-                                      DecimalExponentType exponent) noexcept {
-                        return {significand, exponent};
-                    }
-                } ignore = {};
-
-                inline constexpr struct remove_t {
-                    using trailing_zero_policy = remove_t;
-                    static constexpr bool report_trailing_zeros = false;
-
-                    template <class Format, class DecimalSignificand, class DecimalExponentType>
-                    JKJ_FORCEINLINE static constexpr
-                        unsigned_decimal_fp<DecimalSignificand, DecimalExponentType, false>
-                        on_trailing_zeros(DecimalSignificand significand,
-                                          DecimalExponentType exponent) noexcept {
-                        remove_trailing_zeros_traits<
-                            remove_t, Format, DecimalSignificand,
-                            DecimalExponentType>::remove_trailing_zeros(significand, exponent);
-                        return {significand, exponent};
-                    }
-
-                    template <class Format, class DecimalSignificand, class DecimalExponentType>
-                    static constexpr unsigned_decimal_fp<DecimalSignificand, DecimalExponentType, false>
-                    no_trailing_zeros(DecimalSignificand significand,
-                                      DecimalExponentType exponent) noexcept {
-                        return {significand, exponent};
-                    }
-                } remove = {};
-
-                inline constexpr struct remove_compact_t {
-                    using trailing_zero_policy = remove_compact_t;
-                    static constexpr bool report_trailing_zeros = false;
-
-                    template <class Format, class DecimalSignificand, class DecimalExponentType>
-                    JKJ_FORCEINLINE static constexpr
-                        unsigned_decimal_fp<DecimalSignificand, DecimalExponentType, false>
-                        on_trailing_zeros(DecimalSignificand significand,
-                                          DecimalExponentType exponent) noexcept {
-                        remove_trailing_zeros_traits<
-                            remove_compact_t, Format, DecimalSignificand,
-                            DecimalExponentType>::remove_trailing_zeros(significand, exponent);
-                        return {significand, exponent};
-                    }
-
-                    template <class Format, class DecimalSignificand, class DecimalExponentType>
-                    static constexpr unsigned_decimal_fp<DecimalSignificand, DecimalExponentType, false>
-                    no_trailing_zeros(DecimalSignificand significand,
-                                      DecimalExponentType exponent) noexcept {
-                        return {significand, exponent};
-                    }
-                } remove_compact = {};
-
-                inline constexpr struct report_t {
-                    using trailing_zero_policy = report_t;
-                    static constexpr bool report_trailing_zeros = true;
-
-                    template <class Format, class DecimalSignificand, class DecimalExponentType>
-                    static constexpr unsigned_decimal_fp<DecimalSignificand, DecimalExponentType, true>
-                    on_trailing_zeros(DecimalSignificand significand,
-                                      DecimalExponentType exponent) noexcept {
-                        return {significand, exponent, true};
-                    }
-
-                    template <class Format, class DecimalSignificand, class DecimalExponentType>
-                    static constexpr unsigned_decimal_fp<DecimalSignificand, DecimalExponentType, true>
-                    no_trailing_zeros(DecimalSignificand significand,
-                                      DecimalExponentType exponent) noexcept {
-                        return {significand, exponent, false};
-                    }
-                } report = {};
-            }
-
             namespace decimal_to_binary_rounding {
 
                 inline constexpr struct nearest_to_even_t {
@@ -1889,117 +1736,6 @@ namespace jkj {
         // Specializations of user-specializable templates used in the main algorithm.
         ////////////////////////////////////////////////////////////////////////////////////////
 
-        template <class DecimalExponentType>
-        struct remove_trailing_zeros_traits<policy::trailing_zero::remove_t, ieee754_binary32,
-                                            detail::stdr::uint_least32_t, DecimalExponentType> {
-            JKJ_FORCEINLINE static constexpr void
-            remove_trailing_zeros(detail::stdr::uint_least32_t& significand,
-                                  DecimalExponentType& exponent) noexcept {
-                // See https://github.com/jk-jeon/rtz_benchmark.
-                // The idea of branchless search below is by reddit users r/pigeon768 and
-                // r/TheoreticalDumbass.
-
-                auto r = detail::bits::rotr<32>(
-                    detail::stdr::uint_least32_t(significand * UINT32_C(184254097)), 4);
-                auto b = r < UINT32_C(429497);
-                auto s = detail::stdr::size_t(b);
-                significand = b ? r : significand;
-
-                r = detail::bits::rotr<32>(
-                    detail::stdr::uint_least32_t(significand * UINT32_C(42949673)), 2);
-                b = r < UINT32_C(42949673);
-                s = s * 2 + b;
-                significand = b ? r : significand;
-
-                r = detail::bits::rotr<32>(
-                    detail::stdr::uint_least32_t(significand * UINT32_C(1288490189)), 1);
-                b = r < UINT32_C(429496730);
-                s = s * 2 + b;
-                significand = b ? r : significand;
-
-                exponent += s;
-            }
-        };
-
-        template <class DecimalExponentType>
-        struct remove_trailing_zeros_traits<policy::trailing_zero::remove_t, ieee754_binary64,
-                                            detail::stdr::uint_least64_t, DecimalExponentType> {
-            JKJ_FORCEINLINE static constexpr void
-            remove_trailing_zeros(detail::stdr::uint_least64_t& significand,
-                                  DecimalExponentType& exponent) noexcept {
-                // See https://github.com/jk-jeon/rtz_benchmark.
-                // The idea of branchless search below is by reddit users r/pigeon768 and
-                // r/TheoreticalDumbass.
-
-                auto r = detail::bits::rotr<64>(
-                    detail::stdr::uint_least64_t(significand * UINT64_C(28999941890838049)), 8);
-                auto b = r < UINT64_C(184467440738);
-                auto s = detail::stdr::size_t(b);
-                significand = b ? r : significand;
-
-                r = detail::bits::rotr<64>(
-                    detail::stdr::uint_least64_t(significand * UINT64_C(182622766329724561)), 4);
-                b = r < UINT64_C(1844674407370956);
-                s = s * 2 + b;
-                significand = b ? r : significand;
-
-                r = detail::bits::rotr<64>(
-                    detail::stdr::uint_least64_t(significand * UINT64_C(10330176681277348905)), 2);
-                b = r < UINT64_C(184467440737095517);
-                s = s * 2 + b;
-                significand = b ? r : significand;
-
-                r = detail::bits::rotr<64>(
-                    detail::stdr::uint_least64_t(significand * UINT32_C(14757395258967641293)), 1);
-                b = r < UINT64_C(1844674407370955162);
-                s = s * 2 + b;
-                significand = b ? r : significand;
-
-                exponent += s;
-            }
-        };
-
-        template <class DecimalExponentType>
-        struct remove_trailing_zeros_traits<policy::trailing_zero::remove_compact_t, ieee754_binary32,
-                                            detail::stdr::uint_least32_t, DecimalExponentType> {
-            JKJ_FORCEINLINE static constexpr void
-            remove_trailing_zeros(detail::stdr::uint_least32_t& significand,
-                                  DecimalExponentType& exponent) noexcept {
-                // See https://github.com/jk-jeon/rtz_benchmark.
-                while (true) {
-                    auto const r = detail::stdr::uint_least32_t(significand * UINT32_C(1288490189));
-                    if (r < UINT32_C(429496731)) {
-                        significand = detail::stdr::uint_least32_t(r >> 1);
-                        exponent += 1;
-                    }
-                    else {
-                        break;
-                    }
-                }
-            }
-        };
-
-        template <class DecimalExponentType>
-        struct remove_trailing_zeros_traits<policy::trailing_zero::remove_compact_t, ieee754_binary64,
-                                            detail::stdr::uint_least64_t, DecimalExponentType> {
-            JKJ_FORCEINLINE static constexpr void
-            remove_trailing_zeros(detail::stdr::uint_least64_t& significand,
-                                  DecimalExponentType& exponent) noexcept {
-                // See https://github.com/jk-jeon/rtz_benchmark.
-                while (true) {
-                    auto const r =
-                        detail::stdr::uint_least64_t(significand * UINT64_C(5534023222112865485));
-                    if (r < UINT64_C(1844674407370955163)) {
-                        significand = detail::stdr::uint_least64_t(r >> 1);
-                        exponent += 1;
-                    }
-                    else {
-                        break;
-                    }
-                }
-            }
-        };
-
         template <>
         struct multiplication_traits<float, detail::stdr::uint_least64_t, 64>
             : public multiplication_traits_base<float, detail::stdr::uint_least64_t, 64> {
@@ -2128,7 +1864,10 @@ namespace jkj {
                 using exponent_int = int;
 
               constexpr static Float carrier_to_float(carrier_uint u) noexcept {
-                return detail::bit_cast<Float>(u);
+                Float x;
+                static_assert(sizeof(u) == sizeof(x));
+                std::memcpy(&x, &u, sizeof(u));
+                return x;
               }
 
                 enum {
@@ -2396,20 +2135,6 @@ namespace jkj {
 
 
             // Policy kind detectors.
-            struct is_sign_policy {
-                constexpr bool operator()(...) noexcept { return false; }
-                template <class Policy, class = typename Policy::sign_policy>
-                constexpr bool operator()(dummy<Policy>) noexcept {
-                    return true;
-                }
-            };
-            struct is_trailing_zero_policy {
-                constexpr bool operator()(...) noexcept { return false; }
-                template <class Policy, class = typename Policy::trailing_zero_policy>
-                constexpr bool operator()(dummy<Policy>) noexcept {
-                    return true;
-                }
-            };
             struct is_binary_to_decimal_rounding_policy {
                 constexpr bool operator()(...) noexcept { return false; }
                 template <class Policy, class = typename Policy::binary_to_decimal_rounding_policy>
@@ -2435,8 +2160,6 @@ namespace jkj {
             template <class... Policies>
             using to_decimal_policy_holder = make_policy_holder<
                 detector_default_pair_list<
-                    detector_default_pair<is_sign_policy, policy::sign::return_sign_t>,
-                    detector_default_pair<is_trailing_zero_policy, policy::trailing_zero::remove_t>,
                     detector_default_pair<is_decimal_to_binary_rounding_policy,
                                           policy::decimal_to_binary_rounding::nearest_to_even_t>,
                     detector_default_pair<is_binary_to_decimal_rounding_policy,
@@ -2449,8 +2172,6 @@ namespace jkj {
                 using Impl = impl<Float>;
                 using format = FloatFormat<Float>;
                 using PolicyHolder = detail::to_decimal_policy_holder<Policies...>;
-                using SignPolicy = typename PolicyHolder::sign_policy;
-                using TrailingZeroPolicy = typename PolicyHolder::trailing_zero_policy;
                 using BinaryToDecimalRoundingPolicy =
                     typename PolicyHolder::binary_to_decimal_rounding_policy;
                 using CachePolicy = typename PolicyHolder::cache_policy;
@@ -2461,9 +2182,7 @@ namespace jkj {
                 using decimal_exponent_type_ = int;
                 using shift_amount_type = int;
 
-                using return_type =
-                    decimal_fp<carrier_uint, decimal_exponent_type_,
-                               SignPolicy::return_has_sign, TrailingZeroPolicy::report_trailing_zeros>;
+                using return_type = decimal_fp;
 
                 bool negative;
                 exponent_int exponent_bits;
@@ -2482,45 +2201,54 @@ namespace jkj {
                   case_shorter_interval_left_endpoint_upper_threshold = Impl::case_shorter_interval_left_endpoint_upper_threshold,
                 };
 
-                return_type run() {
+                decimal_fp run() {
                   return run(PolicyHolder::decimal_to_binary_rounding_policy::round_mode);
                 }
 
-                return_type nearest_to_even() {
+                decimal_fp no_trailing_zeros(carrier_uint significand, int exponent) {
+                  return {significand, exponent, negative};
+                }
+
+                decimal_fp may_have_trailing_zeros(carrier_uint significand, int exponent) {
+                  format::remove_trailing_zeros(significand, exponent);
+                  return {significand, exponent, negative};
+                }
+
+                decimal_fp nearest_to_even() {
                     bool even = significand % 2 == 0;
                     return nearest({even, even}, {true, true});
                 }
 
-                return_type nearest_to_odd() {
+                decimal_fp nearest_to_odd() {
                     bool even = significand % 2 == 0;
                     return nearest({!even, even}, {false, false});
                 }
 
-                return_type nearest_toward_plus_infinity() {
+                decimal_fp nearest_toward_plus_infinity() {
                     return nearest({!negative, negative}, {!negative, negative});
                 }
 
-                return_type nearest_toward_minus_infinity() {
+                decimal_fp nearest_toward_minus_infinity() {
                     return nearest({negative, !negative}, {negative, !negative});
                 }
 
-                return_type nearest_toward_zero() {
+                decimal_fp nearest_toward_zero() {
                     return nearest({false, true}, {false, true});
                 }
 
-                return_type nearest_away_from_zero() {
+                decimal_fp nearest_away_from_zero() {
                     return nearest({true, false}, {true, false});
                 }
 
-                return_type nearest_always_closed() {
+                decimal_fp nearest_always_closed() {
                     return nearest({true, true}, {true, true});
                 }
 
-                return_type nearest_always_open() {
+                decimal_fp nearest_always_open() {
                     return nearest({false, false}, {false, false});
                 }
 
-                return_type run(RoundMode round_mode) {
+                decimal_fp run(RoundMode round_mode) {
                   bool even = significand % 2 == 0;
                   switch (round_mode) {
                     case NearestToEven:
@@ -2572,7 +2300,7 @@ namespace jkj {
                 //// The main algorithm assumes the input is a normal/subnormal finite number.
 
                 constexpr
-                return_type nearest(interval normal_interval, interval shorter_interval) noexcept {
+                decimal_fp nearest(interval normal_interval, interval shorter_interval) noexcept {
 
                     carrier_uint two_fc = significand * 2;
                     auto binary_exponent = exponent_bits;
@@ -2660,9 +2388,7 @@ namespace jkj {
 
                             // If succeed, remove trailing zeros if necessary and return.
                             if (decimal_significand * 10 >= xi) {
-                                return SignPolicy::handle_sign(
-                                    negative, TrailingZeroPolicy::template on_trailing_zeros<format>(
-                                           decimal_significand, decimal_exponent_type_(minus_k + 1)));
+                                return may_have_trailing_zeros(decimal_significand, minus_k + 1);
                             }
 
                             // Otherwise, compute the round-up of y.
@@ -2679,9 +2405,7 @@ namespace jkj {
                             else if (decimal_significand < xi) {
                                 ++decimal_significand;
                             }
-                            return SignPolicy::handle_sign(
-                                negative, TrailingZeroPolicy::template no_trailing_zeros<format>(
-                                       decimal_significand, decimal_exponent_type_(minus_k)));
+                            return no_trailing_zeros(decimal_significand, minus_k);
                         }
 
                         // Normal interval case.
@@ -2750,10 +2474,7 @@ namespace jkj {
                                     policy::binary_to_decimal_rounding::tag_t::do_not_care) {
                                     decimal_significand *= 10;
                                     --decimal_significand;
-                                    return SignPolicy::handle_sign(
-                                        negative, TrailingZeroPolicy::template no_trailing_zeros<format>(
-                                               decimal_significand,
-                                               decimal_exponent_type_(minus_k + kappa)));
+                                    return no_trailing_zeros(decimal_significand, minus_k + kappa);
                                 }
                                 else {
                                     --decimal_significand;
@@ -2777,9 +2498,7 @@ namespace jkj {
                         }
 
                         // We may need to remove trailing zeros.
-                        return SignPolicy::handle_sign(
-                            negative, TrailingZeroPolicy::template on_trailing_zeros<format>(
-                                   decimal_significand, decimal_exponent_type_(minus_k + kappa + 1)));
+                        return may_have_trailing_zeros(decimal_significand, minus_k + kappa + 1);
                     } while (false);
 
 
@@ -2848,13 +2567,11 @@ namespace jkj {
                             }
                         }
                     }
-                    return SignPolicy::handle_sign(
-                        negative, TrailingZeroPolicy::template no_trailing_zeros<format>(
-                               decimal_significand, decimal_exponent_type_(minus_k + kappa)));
+                    return no_trailing_zeros(decimal_significand, minus_k + kappa);
                 }
 
                 JKJ_FORCEINLINE constexpr
-                return_type left_closed_directed() noexcept {
+                decimal_fp left_closed_directed() noexcept {
 
                     carrier_uint two_fc = significand * 2;
                     auto binary_exponent = exponent_bits;
@@ -2957,9 +2674,7 @@ namespace jkj {
                         }
 
                         // The ceiling is inside, so we are done.
-                        return SignPolicy::handle_sign(
-                            negative, TrailingZeroPolicy::template on_trailing_zeros<format>(
-                                   decimal_significand, decimal_exponent_type_(minus_k + kappa + 1)));
+                        return may_have_trailing_zeros(decimal_significand, minus_k + kappa + 1);
                     } while (false);
 
 
@@ -2969,13 +2684,11 @@ namespace jkj {
 
                     decimal_significand *= 10;
                     decimal_significand -= div::small_division_by_pow10<kappa>(r);
-                    return SignPolicy::handle_sign(
-                        negative, TrailingZeroPolicy::template no_trailing_zeros<format>(
-                               decimal_significand, decimal_exponent_type_(minus_k + kappa)));
+                    return no_trailing_zeros(decimal_significand, minus_k + kappa);
                 }
 
                 JKJ_FORCEINLINE constexpr
-                return_type right_closed_directed() noexcept {
+                decimal_fp right_closed_directed() noexcept {
 
                     carrier_uint two_fc = significand * 2;
                     auto binary_exponent = exponent_bits;
@@ -3046,9 +2759,7 @@ namespace jkj {
                         }
 
                         // The floor is inside, so we are done.
-                        return SignPolicy::handle_sign(
-                            negative, TrailingZeroPolicy::template on_trailing_zeros<format>(
-                                   decimal_significand, decimal_exponent_type_(minus_k + kappa + 1)));
+                        return may_have_trailing_zeros(decimal_significand, minus_k + kappa + 1);
                     } while (false);
 
 
@@ -3058,9 +2769,7 @@ namespace jkj {
 
                     decimal_significand *= 10;
                     decimal_significand += div::small_division_by_pow10<kappa>(r);
-                    return SignPolicy::handle_sign(
-                        negative, TrailingZeroPolicy::template no_trailing_zeros<format>(
-                               decimal_significand, decimal_exponent_type_(minus_k + kappa)));
+                    return no_trailing_zeros(decimal_significand, minus_k + kappa);
                 }
 
                 static constexpr bool

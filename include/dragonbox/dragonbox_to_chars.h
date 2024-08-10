@@ -120,7 +120,7 @@ struct ToCharsImpl {
   static constexpr char*
   compact_to_chars(bool sign, int exponent,
            typename format::carrier_uint significand, char* buffer) noexcept {
-      auto result = to_decimal_ex<Float, policy::sign::ignore_t, policy::trailing_zero::remove_compact_t, DecimalToBinaryRoundingPolicy, BinaryToDecimalRoundingPolicy, CachePolicy>(sign, exponent, significand);
+      auto result = to_decimal_ex<Float, DecimalToBinaryRoundingPolicy, BinaryToDecimalRoundingPolicy, CachePolicy>(sign, exponent, significand);
 
       return to_chars_naive(result.significand, result.exponent, buffer);
   }
