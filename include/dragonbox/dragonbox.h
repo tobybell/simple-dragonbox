@@ -71,33 +71,10 @@ namespace jkj {
             }
         }
 
-
-        ////////////////////////////////////////////////////////////////////////////////////////
-        // Some general utilities for C++11-compatibility.
-        ////////////////////////////////////////////////////////////////////////////////////////
-        namespace detail {
-
-            // Available since C++11, but including <utility> just for this is an overkill.
-            template <class T>
-            typename stdr::add_rvalue_reference<T>::type declval() noexcept;
-
-            // Similarly, including <array> is an overkill.
-            template <class T, stdr::size_t N>
-            struct array {
-                T data_[N];
-                constexpr T operator[](stdr::size_t idx) const noexcept { return data_[idx]; }
-                constexpr T& operator[](stdr::size_t idx) noexcept { return data_[idx]; }
-            };
-        }
-
-
         ////////////////////////////////////////////////////////////////////////////////////////
         // Some basic features for encoding/decoding IEEE-754 formats.
         ////////////////////////////////////////////////////////////////////////////////////////
         namespace detail {
-            template <class T>
-            static constexpr std::size_t physical_bits = sizeof(T) * 8;
-
             template <class T>
             struct value_bits {
                 static constexpr stdr::size_t value = stdr::numeric_limits<
@@ -1755,8 +1732,7 @@ namespace jkj {
               // remove this static sanity check in order to make Dragonbox work for Float.
               static_assert(detail::stdr::numeric_limits<Float>::is_iec559 &&
                                 detail::stdr::numeric_limits<Float>::radix == 2 &&
-                                (detail::physical_bits<Float> == 32 ||
-                                 detail::physical_bits<Float> == 64),
+                                (sizeof(Float) == 4 || sizeof(Float) == 8),
                             "jkj::dragonbox: Float may not be of IEEE-754 binary32/binary64");
 
                 using format = FloatFormat<Float>;
