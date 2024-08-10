@@ -1327,11 +1327,6 @@ namespace jkj {
             static constexpr int cache_bits = cache_holder<FloatFormat>::cache_bits;
             static constexpr int min_k = cache_holder<FloatFormat>::min_k;
             static constexpr int max_k = cache_holder<FloatFormat>::max_k;
-
-            template <class ShiftAmountType, class DecimalExponentType>
-            static constexpr cache_entry_type get_cache(DecimalExponentType k) noexcept {
-                return cache_holder<FloatFormat>::cache[k - min_k];
-            }
         };
 
         template <>
@@ -1366,19 +1361,20 @@ namespace jkj {
                 return res;
             }();
 
-            template <class ShiftAmountType, class DecimalExponentType>
-            static constexpr cache_entry_type get_cache(DecimalExponentType k) noexcept {
+            static constexpr cache_entry_type get_cache(int k) noexcept {
+                assert(k >= min_k && k <= max_k);
+
                 // Compute the base index.
                 // Supposed to compute (k - min_k) / compression_ratio.
                 static_assert(max_k - min_k <= 89 && compression_ratio == 13, "");
-                static_assert(max_k - min_k <= detail::stdr::numeric_limits<DecimalExponentType>::max(),
+                static_assert(max_k - min_k <= detail::stdr::numeric_limits<int>::max(),
                               "");
                 auto const cache_index =
-                    DecimalExponentType(detail::stdr::uint_fast16_t(DecimalExponentType(k - min_k) *
+                    int(detail::stdr::uint_fast16_t(int(k - min_k) *
                                                                     detail::stdr::int_fast16_t(79)) >>
                                         10);
-                auto const kb = DecimalExponentType(cache_index * compression_ratio + min_k);
-                auto const offset = DecimalExponentType(k - kb);
+                auto const kb = int(cache_index * compression_ratio + min_k);
+                auto const offset = int(k - kb);
 
                 // Get the base cache.
                 auto const base_cache = cache[cache_index];
@@ -1389,7 +1385,7 @@ namespace jkj {
                 else {
                     // Compute the required amount of bit-shift.
                     auto const alpha =
-                        ShiftAmountType(detail::log::floor_log2_pow10(k) -
+                        int(detail::log::floor_log2_pow10(k) -
                                         detail::log::floor_log2_pow10(kb) - offset);
                     assert(alpha > 0 && alpha < 64);
 
@@ -1401,7 +1397,7 @@ namespace jkj {
                             : detail::stdr::uint_fast32_t(pow5_table[offset]);
                     auto mul_result = detail::wuint::umul128(base_cache, pow5);
                     auto const recovered_cache =
-                        cache_entry_type((((mul_result.high() << ShiftAmountType(64 - alpha)) |
+                        cache_entry_type((((mul_result.high() << int(64 - alpha)) |
                                            (mul_result.low() >> alpha)) +
                                           1) &
                                          UINT64_C(0xffffffffffffffff));
@@ -1444,19 +1440,20 @@ namespace jkj {
                 return res;
             }();
 
-            template <class ShiftAmountType, class DecimalExponentType>
-            static constexpr cache_entry_type get_cache(DecimalExponentType k) noexcept {
+            static constexpr cache_entry_type get_cache(int k) noexcept {
+                assert(k >= min_k && k <= max_k);
+
                 // Compute the base index.
                 // Supposed to compute (k - min_k) / compression_ratio.
                 static_assert(max_k - min_k <= 619 && compression_ratio == 27, "");
-                static_assert(max_k - min_k <= detail::stdr::numeric_limits<DecimalExponentType>::max(),
+                static_assert(max_k - min_k <= detail::stdr::numeric_limits<int>::max(),
                               "");
                 auto const cache_index =
-                    DecimalExponentType(detail::stdr::uint_fast32_t(DecimalExponentType(k - min_k) *
+                    int(detail::stdr::uint_fast32_t(int(k - min_k) *
                                                                     detail::stdr::int_fast32_t(607)) >>
                                         14);
-                auto const kb = DecimalExponentType(cache_index * compression_ratio + min_k);
-                auto const offset = DecimalExponentType(k - kb);
+                auto const kb = int(cache_index * compression_ratio + min_k);
+                auto const offset = int(k - kb);
 
                 // Get the base cache.
                 auto const base_cache = cache[cache_index];
@@ -1467,7 +1464,7 @@ namespace jkj {
                 else {
                     // Compute the required amount of bit-shift.
                     auto const alpha =
-                        ShiftAmountType(detail::log::floor_log2_pow10(k) -
+                        int(detail::log::floor_log2_pow10(k) -
                                         detail::log::floor_log2_pow10(kb) - offset);
                     assert(alpha > 0 && alpha < 64);
 
@@ -1479,10 +1476,10 @@ namespace jkj {
                     recovered_cache += middle_low.high();
 
                     auto const high_to_middle = detail::stdr::uint_least64_t(
-                        (recovered_cache.high() << ShiftAmountType(64 - alpha)) &
+                        (recovered_cache.high() << (64 - alpha)) &
                         UINT64_C(0xffffffffffffffff));
                     auto const middle_to_low = detail::stdr::uint_least64_t(
-                        (recovered_cache.low() << ShiftAmountType(64 - alpha)) &
+                        (recovered_cache.low() << (64 - alpha)) &
                         UINT64_C(0xffffffffffffffff));
 
                     recovered_cache = {(recovered_cache.low() >> alpha) | high_to_middle,
@@ -1704,9 +1701,9 @@ namespace jkj {
                     template <class FloatFormat>
                     using cache_holder_type = cache_holder<FloatFormat>;
 
-                    template <class FloatFormat, class ShiftAmountType, class DecimalExponentType>
+                    template <class FloatFormat>
                     static constexpr typename cache_holder_type<FloatFormat>::cache_entry_type
-                    get_cache(DecimalExponentType k) noexcept {
+                    get_cache(int k) noexcept {
                         assert(k >= cache_holder_type<FloatFormat>::min_k &&
                                k <= cache_holder_type<FloatFormat>::max_k);
                         return cache_holder_type<FloatFormat>::cache[detail::stdr::size_t(
@@ -1719,13 +1716,10 @@ namespace jkj {
                     template <class FloatFormat>
                     using cache_holder_type = compressed_cache_holder<FloatFormat>;
 
-                    template <class FloatFormat, class ShiftAmountType, class DecimalExponentType>
+                    template <class FloatFormat>
                     static constexpr typename cache_holder<FloatFormat>::cache_entry_type
-                    get_cache(DecimalExponentType k) noexcept {
-                        assert(k >= cache_holder<FloatFormat>::min_k &&
-                               k <= cache_holder<FloatFormat>::max_k);
-
-                        return cache_holder_type<FloatFormat>::template get_cache<ShiftAmountType>(k);
+                    get_cache(int k) noexcept {
+                        return cache_holder_type<FloatFormat>::get_cache(k);
                     }
                 } compact = {};
             }
@@ -2336,7 +2330,7 @@ namespace jkj {
 
                             // Compute xi and zi.
                             auto const cache =
-                                CachePolicy::template get_cache<format, shift_amount_type>(
+                                CachePolicy::template get_cache<format>(
                                     decimal_exponent_type_(-minus_k));
 
                             auto xi =
@@ -2408,7 +2402,7 @@ namespace jkj {
                     auto const minus_k = decimal_exponent_type_(
                         log::floor_log10_pow2<decimal_exponent_type_>(binary_exponent) -
                         kappa);
-                    auto const cache = CachePolicy::template get_cache<format, shift_amount_type>(
+                    auto const cache = CachePolicy::template get_cache<format>(
                         decimal_exponent_type_(-minus_k));
                     auto const beta =
                         shift_amount_type(binary_exponent + log::floor_log2_pow10(
@@ -2577,7 +2571,7 @@ namespace jkj {
                     auto const minus_k = decimal_exponent_type_(
                         log::floor_log10_pow2<decimal_exponent_type_>(binary_exponent) -
                         kappa);
-                    auto const cache = CachePolicy::template get_cache<format, shift_amount_type>(
+                    auto const cache = CachePolicy::template get_cache<format>(
                         decimal_exponent_type_(-minus_k));
                     auto const beta =
                         shift_amount_type(binary_exponent + log::floor_log2_pow10(
@@ -2699,7 +2693,7 @@ namespace jkj {
                         log::floor_log10_pow2<decimal_exponent_type_>(
                             exponent_int(binary_exponent - (shorter_interval ? 1 : 0))) -
                         kappa);
-                    auto const cache = CachePolicy::template get_cache<format, shift_amount_type>(
+                    auto const cache = CachePolicy::template get_cache<format>(
                         decimal_exponent_type_(-minus_k));
                     auto const beta = shift_amount_type(
                         binary_exponent + log::floor_log2_pow10(decimal_exponent_type_(-minus_k)));
