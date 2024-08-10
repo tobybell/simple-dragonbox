@@ -54,7 +54,8 @@ bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to
                              std::size_t max_diff_for_multiplication) {
     using impl = jkj::dragonbox::detail::impl<Float>;
     using format = typename impl::format;
-    using cache_holder_type = jkj::dragonbox::compressed_cache_holder<format>;
+
+    static constexpr jkj::dragonbox::cache_holder<Float, false> full_cache;
 
     jkj::unsigned_rational<jkj::big_uint> unit;
     auto n_max = jkj::big_uint::power_of_2(format::significand_bits + 2);
@@ -62,7 +63,7 @@ bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to
          e <= format::max_exponent - format::significand_bits; ++e) {
         int const k = impl::kappa - jkj::dragonbox::detail::log::floor_log10_pow2(e);
 
-        auto const real_cache = jkj::dragonbox::policy::cache::full.get_cache<format>(k);
+        auto const real_cache = full_cache.get_cache(k);
 
         auto const recovered_cache = get_cache(k);
         if (!recovered_cache.success) {
@@ -103,7 +104,7 @@ bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to
                 // b * (recovered_cache) - 2^(Q-beta) * a < 2^(q-beta) / floor(nmax/b).
                 auto const left_hand_side =
                     unit.denominator * rc -
-                    jkj::big_uint::power_of_2(cache_holder_type::cache_bits - beta) * unit.numerator;
+                    jkj::big_uint::power_of_2(format::cache_bits - beta) * unit.numerator;
 
                 if (left_hand_side * (n_max / unit.denominator) >=
                     jkj::big_uint::power_of_2(impl::carrier_bits - beta)) {
@@ -134,15 +135,15 @@ int main() {
 
     std::cout << "[Verifying compressed cache for binary32...]\n";
     {
-        using cache_holder_type =
-            jkj::dragonbox::compressed_cache_holder<jkj::dragonbox::ieee754_binary32>;
+        using format = jkj::dragonbox::FloatFormat<float>;
+        static constexpr jkj::dragonbox::cache_holder<float, true> cache_;
 
         if (verify_compressed_cache<float>(
                 [](int k) {
-                    return recovered_cache_t<cache_holder_type::cache_entry_type>{
-                        cache_holder_type::get_cache(k), true};
+                    return recovered_cache_t<format::cache_entry>{
+                        cache_.get_cache(k), true};
                 },
-                [](cache_holder_type::cache_entry_type value) { return jkj::big_uint{value}; }, 7)) {
+                [](format::cache_entry value) { return jkj::big_uint{value}; }, 7)) {
             std::cout << "Verification succeeded. No error detected.\n\n";
         }
         else {
@@ -153,24 +154,24 @@ int main() {
 
     std::cout << "[Verifying compressed cache for binary64...]\n";
     {
-        using cache_holder_type =
-            jkj::dragonbox::compressed_cache_holder<jkj::dragonbox::ieee754_binary64>;
+        using cache_entry = typename jkj::dragonbox::FloatFormat<double>::cache_entry;
+        static constexpr jkj::dragonbox::cache_holder<double, true> cache_;
 
         if (verify_compressed_cache<double>(
                 [](int k) {
                     // Compute the base index.
-                    auto const cache_index = int(std::uint_least32_t(k - cache_holder_type::min_k) /
-                                                 cache_holder_type::compression_ratio);
+                    auto const cache_index = int(std::uint_least32_t(k - cache_.min_k) /
+                                                 cache_.compression_ratio);
                     auto const kb =
-                        cache_index * cache_holder_type::compression_ratio + cache_holder_type::min_k;
+                        cache_index * cache_.compression_ratio + cache_.min_k;
                     auto const offset = k - kb;
 
                     // Get the base cache.
-                    auto const base_cache = cache_holder_type::cache[cache_index];
+                    auto const base_cache = cache_.cache[cache_index];
 
                     if (offset != 0) {
                         // Obtain the corresponding power of 5.
-                        auto const pow5 = cache_holder_type::pow5_table[offset];
+                        auto const pow5 = cache_.pow5_table[offset];
 
                         // Compute the required amount of bit-shifts.
                         using jkj::dragonbox::detail::log::floor_log2_pow10;
@@ -197,19 +198,19 @@ int main() {
                         if (recovered_cache.low() == 0) {
                             std::cout
                                 << "Overflow detected - taking the ceil requires addition-with-carry";
-                            return recovered_cache_t<cache_holder_type::cache_entry_type>{
+                            return recovered_cache_t<cache_entry>{
                                 recovered_cache, false};
                         }
                         else {
-                            return recovered_cache_t<cache_holder_type::cache_entry_type>{
+                            return recovered_cache_t<cache_entry>{
                                 recovered_cache, true};
                         }
                     }
                     else {
-                        return recovered_cache_t<cache_holder_type::cache_entry_type>{base_cache, true};
+                        return recovered_cache_t<cache_entry>{base_cache, true};
                     }
                 },
-                [](cache_holder_type::cache_entry_type value) {
+                [](cache_entry value) {
                     return jkj::big_uint{value.low(), value.high()};
                 },
                 13)) {

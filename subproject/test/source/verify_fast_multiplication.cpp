@@ -22,15 +22,14 @@
 #include <iostream>
 
 template <class Float, class CachePolicy>
-static bool verify_fast_multiplication_xz(CachePolicy&& cache_policy) {
+static bool verify_fast_multiplication_xz(CachePolicy cache_policy) {
     using impl = jkj::dragonbox::detail::impl<Float>;
     using format = typename impl::format;
     using carrier_uint = typename impl::carrier_uint;
-    using cache_holder_type =
-        typename std::decay<CachePolicy>::type::template cache_holder_type<format>;
     using multiplication_traits = jkj::dragonbox::multiplication_traits<
-        Float, typename cache_holder_type::cache_entry_type, cache_holder_type::cache_bits>;
+        Float, typename format::cache_entry, format::cache_bits>;
 
+    static constexpr jkj::dragonbox::cache_holder<Float, CachePolicy::compact> cache_;
 
     constexpr auto four_fl = (carrier_uint(1) << (impl::significand_bits + 2)) - 1;
     constexpr auto two_fr = (carrier_uint(1) << (impl::significand_bits + 1)) + 1;
@@ -48,7 +47,7 @@ static bool verify_fast_multiplication_xz(CachePolicy&& cache_policy) {
         int const beta = e + floor_log2_pow10(k);
 
         // Load cache.
-        auto const cache = cache_policy.template get_cache<format>(k);
+        auto const cache = cache_.get_cache(k);
 
         // Compute the endpoints using the fast method.
         auto x_fast =
@@ -97,16 +96,16 @@ static bool verify_fast_multiplication_xz(CachePolicy&& cache_policy) {
 }
 
 template <class Float, class CachePolicy>
-static bool verify_fast_multiplication_yru(CachePolicy&& cache_policy) {
+static bool verify_fast_multiplication_yru(CachePolicy cache_policy) {
     using impl = jkj::dragonbox::detail::impl<Float>;
     using format = typename impl::format;
-    using cache_holder_type =
-        typename std::decay<CachePolicy>::type::template cache_holder_type<format>;
+
+    static constexpr jkj::dragonbox::cache_holder<Float, CachePolicy::compact> cache_;
 
     bool success = true;
 
     for (int k = impl::min_k; k <= impl::max_k; ++k) {
-        auto const cache = cache_policy.template get_cache<format>(k);
+        auto const cache = cache_.get_cache(k);
 
         // Since Q - p - beta - 2 >= q, it suffices to check that the lower half of the cache is not
         // 0.
@@ -122,7 +121,7 @@ static bool verify_fast_multiplication_yru(CachePolicy&& cache_policy) {
         // If the lower half is zero, we need to check if the cache is precise.
         if (lower_half == 0) {
             if (k < 0 ||
-                k > jkj::dragonbox::detail::log::floor_log5_pow2(cache_holder_type::cache_bits)) {
+                k > jkj::dragonbox::detail::log::floor_log5_pow2(format::cache_bits)) {
                 std::cout << "(k = " << k << ") computation might be incorrect\n";
                 success = false;
             }

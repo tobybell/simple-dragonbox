@@ -116,136 +116,60 @@ namespace jkj {
                     return (n >> r) | (n << ((bit_width - r) & (bit_width - 1)));
                 }
             }
-        }
 
-        // These classes expose encoding specs of IEEE-754-like floating-point formats.
-        // Currently available formats are IEEE-754 binary32 & IEEE-754 binary64.
+            ////////////////////////////////////////////////////////////////////////////////////////
+            // Utilities for fast/constexpr log computation.
+            ////////////////////////////////////////////////////////////////////////////////////////
 
-        template <class T>
-        struct FloatFormat;
+            namespace log {
+                static_assert((stdr::int_fast32_t(-1) >> 1) == stdr::int_fast32_t(-1) &&
+                                  (stdr::int_fast16_t(-1) >> 1) == stdr::int_fast16_t(-1),
+                              "jkj::dragonbox: right-shift for signed integers must be arithmetic");
 
-        template <>
-        struct FloatFormat<float> {
-            static constexpr int total_bits = 32;
-            static constexpr int significand_bits = 23;
-            static constexpr int exponent_bits = 8;
-            static constexpr int min_exponent = -126;
-            static constexpr int max_exponent = 127;
-            static constexpr int exponent_bias = -127;
-            static constexpr int decimal_significand_digits = 9;
-            static constexpr int decimal_exponent_digits = 2;
-            using carrier_uint = detail::stdr::uint_least32_t;
+                // For constexpr computation.
+                // Returns -1 when n = 0.
+                template <class UInt>
+                constexpr int floor_log2(UInt n) noexcept {
+                    int count = -1;
+                    while (n != 0) {
+                        ++count;
+                        n >>= 1;
+                    }
+                    return count;
+                }
 
-            static void remove_trailing_zeros(carrier_uint& significand, int& exponent) noexcept {
-                // See https://github.com/jk-jeon/rtz_benchmark.
-                // The idea of branchless search below is by reddit users r/pigeon768 and
-                // r/TheoreticalDumbass.
+                template <class Return = stdr::int_fast16_t, class Int>
+                constexpr Return floor_log10_pow2(Int e) noexcept {
+                    assert(-2620 <= e && e <= 2620);
+                    return static_cast<Return>((e * 315653) >> 20);
+                }
 
-                auto r = detail::bits::rotr<32>(
-                    carrier_uint(significand * UINT32_C(184254097)), 4);
-                auto b = r < UINT32_C(429497);
-                auto s = detail::stdr::size_t(b);
-                significand = b ? r : significand;
+                template <class Return = stdr::int_fast16_t, class Int>
+                constexpr Return floor_log2_pow10(Int e) noexcept {
+                    // Formula itself holds on [-4003,4003]; [-1233,1233] is to ensure no overflow.
+                    assert(-1233 <= e && e <= 1233);
+                    return static_cast<Return>((e * 1741647) >> 19);
+                }
 
-                r = detail::bits::rotr<32>(
-                    carrier_uint(significand * UINT32_C(42949673)), 2);
-                b = r < UINT32_C(42949673);
-                s = s * 2 + b;
-                significand = b ? r : significand;
+                template <class Return = stdr::int_fast16_t, class Int>
+                constexpr Return floor_log10_pow2_minus_log10_4_over_3(Int e) noexcept {
+                    assert(-2985 <= e && e <= 2936);
+                    return static_cast<Return>((e * 631305 - 261663) >> 21);
+                }
 
-                r = detail::bits::rotr<32>(
-                    carrier_uint(significand * UINT32_C(1288490189)), 1);
-                b = r < UINT32_C(429496730);
-                s = s * 2 + b;
-                significand = b ? r : significand;
+                template <class Return = stdr::int_fast32_t, class Int>
+                constexpr Return floor_log5_pow2(Int e) noexcept {
+                    assert(-1831 <= e && e <= 1831);
+                    return static_cast<Return>((e * 225799) >> 19);
+                }
 
-                exponent += s;
+                template <class Return = stdr::int_fast32_t, class Int>
+                constexpr Return floor_log5_pow2_minus_log5_3(Int e) noexcept {
+                    assert(-3543 <= e && e <= 2427);
+                    return static_cast<Return>((e * 451597 - 715764) >> 20);
+                }
             }
-        };
 
-        template <>
-        struct FloatFormat<double> {
-            static constexpr int total_bits = 64;
-            static constexpr int significand_bits = 52;
-            static constexpr int exponent_bits = 11;
-            static constexpr int min_exponent = -1022;
-            static constexpr int max_exponent = 1023;
-            static constexpr int exponent_bias = -1023;
-            static constexpr int decimal_significand_digits = 17;
-            static constexpr int decimal_exponent_digits = 3;
-            using carrier_uint = detail::stdr::uint_least64_t;
-
-            static void remove_trailing_zeros(carrier_uint& significand, int& exponent) noexcept {
-                // See https://github.com/jk-jeon/rtz_benchmark.
-                // The idea of branchless search below is by reddit users r/pigeon768 and
-                // r/TheoreticalDumbass.
-
-                auto r = detail::bits::rotr<64>(
-                    carrier_uint(significand * UINT64_C(28999941890838049)), 8);
-                auto b = r < UINT64_C(184467440738);
-                auto s = detail::stdr::size_t(b);
-                significand = b ? r : significand;
-
-                r = detail::bits::rotr<64>(
-                    carrier_uint(significand * UINT64_C(182622766329724561)), 4);
-                b = r < UINT64_C(1844674407370956);
-                s = s * 2 + b;
-                significand = b ? r : significand;
-
-                r = detail::bits::rotr<64>(
-                    carrier_uint(significand * UINT64_C(10330176681277348905)), 2);
-                b = r < UINT64_C(184467440737095517);
-                s = s * 2 + b;
-                significand = b ? r : significand;
-
-                r = detail::bits::rotr<64>(
-                    carrier_uint(significand * UINT64_C(14757395258967641293)), 1);
-                b = r < UINT64_C(1844674407370955162);
-                s = s * 2 + b;
-                significand = b ? r : significand;
-
-                exponent += s;
-            }
-        };
-
-        using ieee754_binary32 = FloatFormat<float>;
-        using ieee754_binary64 = FloatFormat<double>;
-
-        template <class Float>
-        struct float_bits {
-          using format = FloatFormat<Float>;
-          using carrier_uint = typename format::carrier_uint;
-
-          carrier_uint significand;
-          unsigned exponent;
-          bool sign;
-
-          constexpr explicit float_bits(Float x) {
-            carrier_uint bits;
-            static_assert(sizeof(x) == sizeof(bits));
-            memcpy(&bits, &x, sizeof(x));
-            significand = bits & ((carrier_uint(1) << format::significand_bits) - 1);
-            exponent = bits >> format::significand_bits & ((1u << format::exponent_bits) - 1);
-            sign = bits >> (format::significand_bits + format::exponent_bits);
-          }
-
-          constexpr bool is_finite() const noexcept {
-              return exponent != (1u << format::exponent_bits) - 1;
-          }
-
-          constexpr int binary_exponent() noexcept {
-            return exponent == 0 ? format::min_exponent
-                                 : exponent + format::exponent_bias;
-          }
-
-          constexpr carrier_uint binary_significand() noexcept {
-            return exponent == 0
-              ? significand
-              : significand | (carrier_uint(1) << format::significand_bits);
-          }
-        };
-
-        namespace detail {
             ////////////////////////////////////////////////////////////////////////////////////////
             // Utilities for wide unsigned integer arithmetic.
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -426,277 +350,244 @@ namespace jkj {
                     return (x * y) & UINT64_C(0xffffffffffffffff);
                 }
             }
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Some simple utilities for constexpr computation.
-            ////////////////////////////////////////////////////////////////////////////////////////
-
-            template <int k, class Int>
-            constexpr Int compute_power(Int a) noexcept {
-                static_assert(k >= 0);
-                int e = k;
-                Int p = 1;
-                while (e) {
-                  if (e % 2)
-                    p *= a;
-                  e /= 2;
-                  a *= a;
-                }
-                return p;
-            }
-
-            template <int a, class UInt>
-            constexpr int count_factors(UInt n) noexcept {
-                static_assert(a > 1);
-                int c = 0;
-                while (n % a == 0) {
-                    n /= a;
-                    ++c;
-                }
-                return c;
-            }
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Utilities for fast/constexpr log computation.
-            ////////////////////////////////////////////////////////////////////////////////////////
-
-            namespace log {
-                static_assert((stdr::int_fast32_t(-1) >> 1) == stdr::int_fast32_t(-1) &&
-                                  (stdr::int_fast16_t(-1) >> 1) == stdr::int_fast16_t(-1),
-                              "jkj::dragonbox: right-shift for signed integers must be arithmetic");
-
-                // For constexpr computation.
-                // Returns -1 when n = 0.
-                template <class UInt>
-                constexpr int floor_log2(UInt n) noexcept {
-                    int count = -1;
-                    while (n != 0) {
-                        ++count;
-                        n >>= 1;
-                    }
-                    return count;
-                }
-
-                template <class Return = stdr::int_fast16_t, class Int>
-                constexpr Return floor_log10_pow2(Int e) noexcept {
-                    assert(-2620 <= e && e <= 2620);
-                    return static_cast<Return>((e * 315653) >> 20);
-                }
-
-                template <class Return = stdr::int_fast16_t, class Int>
-                constexpr Return floor_log2_pow10(Int e) noexcept {
-                    // Formula itself holds on [-4003,4003]; [-1233,1233] is to ensure no overflow.
-                    assert(-1233 <= e && e <= 1233);
-                    return static_cast<Return>((e * 1741647) >> 19);
-                }
-
-                template <class Return = stdr::int_fast16_t, class Int>
-                constexpr Return floor_log10_pow2_minus_log10_4_over_3(Int e) noexcept {
-                    assert(-2985 <= e && e <= 2936);
-                    return static_cast<Return>((e * 631305 - 261663) >> 21);
-                }
-
-                template <class Return = stdr::int_fast32_t, class Int>
-                constexpr Return floor_log5_pow2(Int e) noexcept {
-                    assert(-1831 <= e && e <= 1831);
-                    return static_cast<Return>((e * 225799) >> 19);
-                }
-
-                template <class Return = stdr::int_fast32_t, class Int>
-                constexpr Return floor_log5_pow2_minus_log5_3(Int e) noexcept {
-                    assert(-3543 <= e && e <= 2427);
-                    return static_cast<Return>((e * 451597 - 715764) >> 20);
-                }
-            }
-
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Utilities for fast divisibility tests.
-            ////////////////////////////////////////////////////////////////////////////////////////
-
-            namespace div {
-                // Replace n by floor(n / 10^N).
-                // Returns true if and only if n is divisible by 10^N.
-                // Precondition: n <= 10^(N+1)
-                // !!It takes an in-out parameter!!
-                template <int N, class UInt>
-                struct divide_by_pow10_info;
-
-                template <class UInt>
-                struct divide_by_pow10_info<1, UInt> {
-                    static constexpr stdr::uint_fast32_t magic_number = 6554;
-                    static constexpr int shift_amount = 16;
-                };
-
-                template <>
-                struct divide_by_pow10_info<1, stdr::uint_least8_t> {
-                    static constexpr stdr::uint_fast16_t magic_number = 103;
-                    static constexpr int shift_amount = 10;
-                };
-
-                template <>
-                struct divide_by_pow10_info<1, stdr::uint_least16_t> {
-                    static constexpr stdr::uint_fast16_t magic_number = 103;
-                    static constexpr int shift_amount = 10;
-                };
-
-                template <class UInt>
-                struct divide_by_pow10_info<2, UInt> {
-                    static constexpr stdr::uint_fast32_t magic_number = 656;
-                    static constexpr int shift_amount = 16;
-                };
-
-                template <>
-                struct divide_by_pow10_info<2, stdr::uint_least16_t> {
-                    static constexpr stdr::uint_fast32_t magic_number = 41;
-                    static constexpr int shift_amount = 12;
-                };
-
-                template <int N, class UInt>
-                constexpr bool check_divisibility_and_divide_by_pow10(UInt& n) noexcept {
-                    // Make sure the computation for max_n does not overflow.
-                    static_assert(N + 1 <= log::floor_log10_pow2(int(value_bits<UInt>::value)), "");
-                    assert(n <= compute_power<N + 1>(UInt(10)));
-
-                    using info = divide_by_pow10_info<N, UInt>;
-                    using intermediate_type = decltype(info::magic_number);
-                    auto const prod = intermediate_type(n * info::magic_number);
-
-                    constexpr auto mask =
-                        intermediate_type((intermediate_type(1) << info::shift_amount) - 1);
-                    bool const result = ((prod & mask) < info::magic_number);
-
-                    n = UInt(prod >> info::shift_amount);
-                    return result;
-                }
-
-                // Compute floor(n / 10^N) for small n and N.
-                // Precondition: n <= 10^(N+1)
-                template <int N, class UInt>
-                constexpr UInt small_division_by_pow10(UInt n) noexcept {
-                    // Make sure the computation for max_n does not overflow.
-                    static_assert(N + 1 <= log::floor_log10_pow2(int(value_bits<UInt>::value)), "");
-                    assert(n <= compute_power<N + 1>(UInt(10)));
-
-                    return UInt((n * divide_by_pow10_info<N, UInt>::magic_number) >>
-                                divide_by_pow10_info<N, UInt>::shift_amount);
-                }
-
-                // Compute floor(n / 10^N) for small N.
-                // Precondition: n <= n_max
-                template <int N, class UInt, UInt n_max>
-                constexpr UInt divide_by_pow10(UInt n) noexcept {
-                    static_assert(N >= 0, "");
-
-                    // Specialize for 32-bit division by 10.
-                    // Without the bound on n_max (which compilers these days never leverage), the
-                    // minimum needed amount of shift is larger than 32. Hence, this may generate better
-                    // code for 32-bit or smaller architectures. Even for 64-bit architectures, it seems
-                    // compilers tend to generate mov + mul instead of a single imul for an unknown
-                    // reason if we just write n / 10.
-                    if constexpr (stdr::is_same<UInt, stdr::uint_least32_t>::value && N == 1 &&
-                                     n_max <= UINT32_C(1073741828)) {
-                        return UInt(wuint::umul64(n, UINT32_C(429496730)) >> 32);
-                    }
-                    // Specialize for 64-bit division by 10.
-                    // Without the bound on n_max (which compilers these days never leverage), the
-                    // minimum needed amount of shift is larger than 64.
-                    else if constexpr (stdr::is_same<UInt, stdr::uint_least64_t>::value && N == 1 &&
-                                          n_max <= UINT64_C(4611686018427387908)) {
-                        return UInt(wuint::umul128_upper64(n, UINT64_C(1844674407370955162)));
-                    }
-                    // Specialize for 32-bit division by 100.
-                    // It seems compilers tend to generate mov + mul instead of a single imul for an
-                    // unknown reason if we just write n / 100.
-                    else if constexpr (stdr::is_same<UInt, stdr::uint_least32_t>::value && N == 2) {
-                        return UInt(wuint::umul64(n, UINT32_C(1374389535)) >> 37);
-                    }
-                    // Specialize for 64-bit division by 1000.
-                    // Without the bound on n_max (which compilers these days never leverage), the
-                    // smallest magic number for this computation does not fit into 64-bits.
-                    else if constexpr (stdr::is_same<UInt, stdr::uint_least64_t>::value && N == 3 &&
-                                          n_max <= UINT64_C(15534100272597517998)) {
-                        return UInt(wuint::umul128_upper64(n, UINT64_C(4722366482869645214)) >> 8);
-                    }
-                    else {
-                        constexpr auto divisor = compute_power<N>(UInt(10));
-                        return n / divisor;
-                    }
-                }
-            }
         }
 
-        ////////////////////////////////////////////////////////////////////////////////////////
-        // Return types for the main interface function.
-        ////////////////////////////////////////////////////////////////////////////////////////
 
-        struct decimal_fp {
-            unsigned long long significand;
-            int exponent;
-            bool is_negative;
+        // These classes expose encoding specs of IEEE-754-like floating-point formats.
+        // Currently available formats are IEEE-754 binary32 & IEEE-754 binary64.
+
+        template <class T>
+        struct FloatFormat;
+
+        template <>
+        struct FloatFormat<float> {
+            using carrier_uint = detail::stdr::uint_least32_t;
+            using cache_entry = detail::stdr::uint_least64_t;
+            enum {
+              total_bits = 32,
+              significand_bits = 23,
+              exponent_bits = 8,
+              min_exponent = -126,
+              max_exponent = 127,
+              exponent_bias = -127,
+              decimal_significand_digits = 9,
+              decimal_exponent_digits = 2,
+              cache_bits = 64,
+              min_k = -31,
+              max_k = 46,
+            };
+
+            static void remove_trailing_zeros(carrier_uint& significand, int& exponent) noexcept {
+                // See https://github.com/jk-jeon/rtz_benchmark.
+                // The idea of branchless search below is by reddit users r/pigeon768 and
+                // r/TheoreticalDumbass.
+
+                auto r = detail::bits::rotr<32>(
+                    carrier_uint(significand * UINT32_C(184254097)), 4);
+                auto b = r < UINT32_C(429497);
+                auto s = detail::stdr::size_t(b);
+                significand = b ? r : significand;
+
+                r = detail::bits::rotr<32>(
+                    carrier_uint(significand * UINT32_C(42949673)), 2);
+                b = r < UINT32_C(42949673);
+                s = s * 2 + b;
+                significand = b ? r : significand;
+
+                r = detail::bits::rotr<32>(
+                    carrier_uint(significand * UINT32_C(1288490189)), 1);
+                b = r < UINT32_C(429496730);
+                s = s * 2 + b;
+                significand = b ? r : significand;
+
+                exponent += s;
+            }
         };
 
-        ////////////////////////////////////////////////////////////////////////////////////////
-        // Computed cache entries.
-        ////////////////////////////////////////////////////////////////////////////////////////
+        template <>
+        struct FloatFormat<double> {
+            using carrier_uint = detail::stdr::uint_least64_t;
+            using cache_entry = detail::wuint::uint128;
+            enum {
+              total_bits = 64,
+              significand_bits = 52,
+              exponent_bits = 11,
+              min_exponent = -1022,
+              max_exponent = 1023,
+              exponent_bias = -1023,
+              decimal_significand_digits = 17,
+              decimal_exponent_digits = 3,
+              cache_bits = 128,
+              min_k = -292,
+              max_k = 326,
+            };
 
-        template <class FloatFormat>
+            static void remove_trailing_zeros(carrier_uint& significand, int& exponent) noexcept {
+                // See https://github.com/jk-jeon/rtz_benchmark.
+                // The idea of branchless search below is by reddit users r/pigeon768 and
+                // r/TheoreticalDumbass.
+
+                auto r = detail::bits::rotr<64>(
+                    carrier_uint(significand * UINT64_C(28999941890838049)), 8);
+                auto b = r < UINT64_C(184467440738);
+                auto s = detail::stdr::size_t(b);
+                significand = b ? r : significand;
+
+                r = detail::bits::rotr<64>(
+                    carrier_uint(significand * UINT64_C(182622766329724561)), 4);
+                b = r < UINT64_C(1844674407370956);
+                s = s * 2 + b;
+                significand = b ? r : significand;
+
+                r = detail::bits::rotr<64>(
+                    carrier_uint(significand * UINT64_C(10330176681277348905)), 2);
+                b = r < UINT64_C(184467440737095517);
+                s = s * 2 + b;
+                significand = b ? r : significand;
+
+                r = detail::bits::rotr<64>(
+                    carrier_uint(significand * UINT64_C(14757395258967641293)), 1);
+                b = r < UINT64_C(1844674407370955162);
+                s = s * 2 + b;
+                significand = b ? r : significand;
+
+                exponent += s;
+            }
+        };
+
+        template <class Float, bool compact>
         struct cache_holder;
 
         template <>
-        struct cache_holder<ieee754_binary32> {
-            using cache_entry_type = detail::stdr::uint_least64_t;
-            static constexpr int cache_bits = 64;
-            static constexpr int min_k = -31;
-            static constexpr int max_k = 46;
-            static constexpr cache_entry_type cache[max_k - min_k + 1] {
-                UINT64_C(0x81ceb32c4b43fcf5), UINT64_C(0xa2425ff75e14fc32),
-                UINT64_C(0xcad2f7f5359a3b3f), UINT64_C(0xfd87b5f28300ca0e),
-                UINT64_C(0x9e74d1b791e07e49), UINT64_C(0xc612062576589ddb),
-                UINT64_C(0xf79687aed3eec552), UINT64_C(0x9abe14cd44753b53),
-                UINT64_C(0xc16d9a0095928a28), UINT64_C(0xf1c90080baf72cb2),
-                UINT64_C(0x971da05074da7bef), UINT64_C(0xbce5086492111aeb),
-                UINT64_C(0xec1e4a7db69561a6), UINT64_C(0x9392ee8e921d5d08),
-                UINT64_C(0xb877aa3236a4b44a), UINT64_C(0xe69594bec44de15c),
-                UINT64_C(0x901d7cf73ab0acda), UINT64_C(0xb424dc35095cd810),
-                UINT64_C(0xe12e13424bb40e14), UINT64_C(0x8cbccc096f5088cc),
-                UINT64_C(0xafebff0bcb24aaff), UINT64_C(0xdbe6fecebdedd5bf),
-                UINT64_C(0x89705f4136b4a598), UINT64_C(0xabcc77118461cefd),
-                UINT64_C(0xd6bf94d5e57a42bd), UINT64_C(0x8637bd05af6c69b6),
-                UINT64_C(0xa7c5ac471b478424), UINT64_C(0xd1b71758e219652c),
-                UINT64_C(0x83126e978d4fdf3c), UINT64_C(0xa3d70a3d70a3d70b),
-                UINT64_C(0xcccccccccccccccd), UINT64_C(0x8000000000000000),
-                UINT64_C(0xa000000000000000), UINT64_C(0xc800000000000000),
-                UINT64_C(0xfa00000000000000), UINT64_C(0x9c40000000000000),
-                UINT64_C(0xc350000000000000), UINT64_C(0xf424000000000000),
-                UINT64_C(0x9896800000000000), UINT64_C(0xbebc200000000000),
-                UINT64_C(0xee6b280000000000), UINT64_C(0x9502f90000000000),
-                UINT64_C(0xba43b74000000000), UINT64_C(0xe8d4a51000000000),
-                UINT64_C(0x9184e72a00000000), UINT64_C(0xb5e620f480000000),
-                UINT64_C(0xe35fa931a0000000), UINT64_C(0x8e1bc9bf04000000),
-                UINT64_C(0xb1a2bc2ec5000000), UINT64_C(0xde0b6b3a76400000),
-                UINT64_C(0x8ac7230489e80000), UINT64_C(0xad78ebc5ac620000),
-                UINT64_C(0xd8d726b7177a8000), UINT64_C(0x878678326eac9000),
-                UINT64_C(0xa968163f0a57b400), UINT64_C(0xd3c21bcecceda100),
-                UINT64_C(0x84595161401484a0), UINT64_C(0xa56fa5b99019a5c8),
-                UINT64_C(0xcecb8f27f4200f3a), UINT64_C(0x813f3978f8940985),
-                UINT64_C(0xa18f07d736b90be6), UINT64_C(0xc9f2c9cd04674edf),
-                UINT64_C(0xfc6f7c4045812297), UINT64_C(0x9dc5ada82b70b59e),
-                UINT64_C(0xc5371912364ce306), UINT64_C(0xf684df56c3e01bc7),
-                UINT64_C(0x9a130b963a6c115d), UINT64_C(0xc097ce7bc90715b4),
-                UINT64_C(0xf0bdc21abb48db21), UINT64_C(0x96769950b50d88f5),
-                UINT64_C(0xbc143fa4e250eb32), UINT64_C(0xeb194f8e1ae525fe),
-                UINT64_C(0x92efd1b8d0cf37bf), UINT64_C(0xb7abc627050305ae),
-                UINT64_C(0xe596b7b0c643c71a), UINT64_C(0x8f7e32ce7bea5c70),
-                UINT64_C(0xb35dbf821ae4f38c), UINT64_C(0xe0352f62a19e306f)};
+        struct cache_holder<float, false> {
+          using format = FloatFormat<float>;
+
+          static constexpr typename format::cache_entry cache[format::max_k - format::min_k + 1] {
+            UINT64_C(0x81ceb32c4b43fcf5), UINT64_C(0xa2425ff75e14fc32),
+            UINT64_C(0xcad2f7f5359a3b3f), UINT64_C(0xfd87b5f28300ca0e),
+            UINT64_C(0x9e74d1b791e07e49), UINT64_C(0xc612062576589ddb),
+            UINT64_C(0xf79687aed3eec552), UINT64_C(0x9abe14cd44753b53),
+            UINT64_C(0xc16d9a0095928a28), UINT64_C(0xf1c90080baf72cb2),
+            UINT64_C(0x971da05074da7bef), UINT64_C(0xbce5086492111aeb),
+            UINT64_C(0xec1e4a7db69561a6), UINT64_C(0x9392ee8e921d5d08),
+            UINT64_C(0xb877aa3236a4b44a), UINT64_C(0xe69594bec44de15c),
+            UINT64_C(0x901d7cf73ab0acda), UINT64_C(0xb424dc35095cd810),
+            UINT64_C(0xe12e13424bb40e14), UINT64_C(0x8cbccc096f5088cc),
+            UINT64_C(0xafebff0bcb24aaff), UINT64_C(0xdbe6fecebdedd5bf),
+            UINT64_C(0x89705f4136b4a598), UINT64_C(0xabcc77118461cefd),
+            UINT64_C(0xd6bf94d5e57a42bd), UINT64_C(0x8637bd05af6c69b6),
+            UINT64_C(0xa7c5ac471b478424), UINT64_C(0xd1b71758e219652c),
+            UINT64_C(0x83126e978d4fdf3c), UINT64_C(0xa3d70a3d70a3d70b),
+            UINT64_C(0xcccccccccccccccd), UINT64_C(0x8000000000000000),
+            UINT64_C(0xa000000000000000), UINT64_C(0xc800000000000000),
+            UINT64_C(0xfa00000000000000), UINT64_C(0x9c40000000000000),
+            UINT64_C(0xc350000000000000), UINT64_C(0xf424000000000000),
+            UINT64_C(0x9896800000000000), UINT64_C(0xbebc200000000000),
+            UINT64_C(0xee6b280000000000), UINT64_C(0x9502f90000000000),
+            UINT64_C(0xba43b74000000000), UINT64_C(0xe8d4a51000000000),
+            UINT64_C(0x9184e72a00000000), UINT64_C(0xb5e620f480000000),
+            UINT64_C(0xe35fa931a0000000), UINT64_C(0x8e1bc9bf04000000),
+            UINT64_C(0xb1a2bc2ec5000000), UINT64_C(0xde0b6b3a76400000),
+            UINT64_C(0x8ac7230489e80000), UINT64_C(0xad78ebc5ac620000),
+            UINT64_C(0xd8d726b7177a8000), UINT64_C(0x878678326eac9000),
+            UINT64_C(0xa968163f0a57b400), UINT64_C(0xd3c21bcecceda100),
+            UINT64_C(0x84595161401484a0), UINT64_C(0xa56fa5b99019a5c8),
+            UINT64_C(0xcecb8f27f4200f3a), UINT64_C(0x813f3978f8940985),
+            UINT64_C(0xa18f07d736b90be6), UINT64_C(0xc9f2c9cd04674edf),
+            UINT64_C(0xfc6f7c4045812297), UINT64_C(0x9dc5ada82b70b59e),
+            UINT64_C(0xc5371912364ce306), UINT64_C(0xf684df56c3e01bc7),
+            UINT64_C(0x9a130b963a6c115d), UINT64_C(0xc097ce7bc90715b4),
+            UINT64_C(0xf0bdc21abb48db21), UINT64_C(0x96769950b50d88f5),
+            UINT64_C(0xbc143fa4e250eb32), UINT64_C(0xeb194f8e1ae525fe),
+            UINT64_C(0x92efd1b8d0cf37bf), UINT64_C(0xb7abc627050305ae),
+            UINT64_C(0xe596b7b0c643c71a), UINT64_C(0x8f7e32ce7bea5c70),
+            UINT64_C(0xb35dbf821ae4f38c), UINT64_C(0xe0352f62a19e306f)};
+
+            constexpr typename format::cache_entry get_cache(int k) const noexcept {
+              assert(k >= format::min_k && k <= format::max_k);
+              return cache[k - format::min_k];
+            }
         };
 
         template <>
-        struct cache_holder<ieee754_binary64> {
-            using cache_entry_type = detail::wuint::uint128;
-            static constexpr int cache_bits = 128;
-            static constexpr int min_k = -292;
-            static constexpr int max_k = 326;
-            static constexpr cache_entry_type cache[max_k - min_k + 1] {
+        struct cache_holder<float, true> {
+            using format = FloatFormat<float>;
+            using cache_entry = typename format::cache_entry;
+            enum {
+              cache_bits = format::cache_bits,
+              min_k = format::min_k,
+              max_k = format::max_k,
+              compression_ratio = 13,
+              compressed_table_size = (max_k - min_k + compression_ratio) / compression_ratio,
+              pow5_table_size = (compression_ratio + 1) / 2,
+            };
+
+            cache_entry cache[compressed_table_size] {};
+            detail::stdr::uint_least16_t pow5_table[pow5_table_size] {};
+
+            constexpr cache_holder() {
+              for (detail::stdr::size_t i = 0; i < compressed_table_size; ++i) {
+                  cache[i] = cache_holder<float, false>::cache[i * compression_ratio];
+              }
+              detail::stdr::uint_least16_t p = 1;
+              for (detail::stdr::size_t i = 0; i < pow5_table_size; ++i) {
+                  pow5_table[i] = p;
+                  p *= 5;
+              }
+            }
+
+            constexpr cache_entry get_cache(int k) const noexcept {
+              assert(k >= min_k && k <= max_k);
+
+              // Compute the base index.
+              // Supposed to compute (k - min_k) / compression_ratio.
+              static_assert(max_k - min_k <= 89 && compression_ratio == 13, "");
+              static_assert(max_k - min_k <= detail::stdr::numeric_limits<int>::max(),
+                            "");
+              auto const cache_index =
+                  int(detail::stdr::uint_fast16_t(int(k - min_k) *
+                                                                  detail::stdr::int_fast16_t(79)) >>
+                                      10);
+              auto const kb = int(cache_index * compression_ratio + min_k);
+              auto const offset = int(k - kb);
+
+              // Get the base cache.
+              auto const base_cache = cache[cache_index];
+
+              if (offset == 0) {
+                  return base_cache;
+              }
+              else {
+                  // Compute the required amount of bit-shift.
+                  auto const alpha =
+                      int(detail::log::floor_log2_pow10(k) -
+                                      detail::log::floor_log2_pow10(kb) - offset);
+                  assert(alpha > 0 && alpha < 64);
+
+                  // Try to recover the real cache.
+                  auto const pow5 =
+                      offset >= 7
+                          ? detail::stdr::uint_fast32_t(detail::stdr::uint_fast32_t(pow5_table[6]) *
+                                                        pow5_table[offset - 6])
+                          : detail::stdr::uint_fast32_t(pow5_table[offset]);
+                  auto mul_result = detail::wuint::umul128(base_cache, pow5);
+                  auto const recovered_cache =
+                      cache_entry((((mul_result.high() << int(64 - alpha)) |
+                                         (mul_result.low() >> alpha)) +
+                                        1) &
+                                       UINT64_C(0xffffffffffffffff));
+                  assert(recovered_cache != 0);
+
+                  return recovered_cache;
+              }
+            }
+        };
+
+        template <>
+        struct cache_holder<double, false> {
+            using format = FloatFormat<double>;
+
+            static constexpr typename format::cache_entry cache[format::max_k - format::min_k + 1] {
                 {UINT64_C(0xff77b1fcbebcdc4f), UINT64_C(0x25e8e89c13bb0f7b)},
                 {UINT64_C(0x9faacf3df73609b1), UINT64_C(0x77b191618c54e9ad)},
                 {UINT64_C(0xc795830d75038c1d), UINT64_C(0xd59df5b9ef6a2418)},
@@ -1316,129 +1207,41 @@ namespace jkj {
                 {UINT64_C(0x9e19db92b4e31ba9), UINT64_C(0x6c07a2c26a8346d2)},
                 {UINT64_C(0xc5a05277621be293), UINT64_C(0xc7098b7305241886)},
                 {UINT64_C(0xf70867153aa2db38), UINT64_C(0xb8cbee4fc66d1ea8)}};
-        };
 
-        // Compressed cache.
-        template <class FloatFormat>
-        struct compressed_cache_holder {
-            using cache_entry_type = typename cache_holder<FloatFormat>::cache_entry_type;
-            static constexpr int cache_bits = cache_holder<FloatFormat>::cache_bits;
-            static constexpr int min_k = cache_holder<FloatFormat>::min_k;
-            static constexpr int max_k = cache_holder<FloatFormat>::max_k;
-        };
-
-        template <>
-        struct compressed_cache_holder<ieee754_binary32> {
-            using cache_entry_type = cache_holder<ieee754_binary32>::cache_entry_type;
-            static constexpr int cache_bits = cache_holder<ieee754_binary32>::cache_bits;
-            static constexpr int min_k = cache_holder<ieee754_binary32>::min_k;
-            static constexpr int max_k = cache_holder<ieee754_binary32>::max_k;
-            static constexpr int compression_ratio = 13;
-            static constexpr detail::stdr::size_t compressed_table_size =
-                detail::stdr::size_t((max_k - min_k + compression_ratio) / compression_ratio);
-            static constexpr detail::stdr::size_t pow5_table_size =
-                detail::stdr::size_t((compression_ratio + 1) / 2);
-
-            using cache_holder_t = detail::array<cache_entry_type, compressed_table_size>;
-            using pow5_holder_t = detail::array<detail::stdr::uint_least16_t, pow5_table_size>;
-
-            static constexpr cache_holder_t cache = [] {
-                cache_holder_t res{};
-                for (detail::stdr::size_t i = 0; i < compressed_table_size; ++i) {
-                    res[i] = cache_holder<ieee754_binary32>::cache[i * compression_ratio];
-                }
-                return res;
-            }();
-            static constexpr pow5_holder_t pow5_table = [] {
-                pow5_holder_t res{};
-                detail::stdr::uint_least16_t p = 1;
-                for (detail::stdr::size_t i = 0; i < pow5_table_size; ++i) {
-                    res[i] = p;
-                    p *= 5;
-                }
-                return res;
-            }();
-
-            static constexpr cache_entry_type get_cache(int k) noexcept {
-                assert(k >= min_k && k <= max_k);
-
-                // Compute the base index.
-                // Supposed to compute (k - min_k) / compression_ratio.
-                static_assert(max_k - min_k <= 89 && compression_ratio == 13, "");
-                static_assert(max_k - min_k <= detail::stdr::numeric_limits<int>::max(),
-                              "");
-                auto const cache_index =
-                    int(detail::stdr::uint_fast16_t(int(k - min_k) *
-                                                                    detail::stdr::int_fast16_t(79)) >>
-                                        10);
-                auto const kb = int(cache_index * compression_ratio + min_k);
-                auto const offset = int(k - kb);
-
-                // Get the base cache.
-                auto const base_cache = cache[cache_index];
-
-                if (offset == 0) {
-                    return base_cache;
-                }
-                else {
-                    // Compute the required amount of bit-shift.
-                    auto const alpha =
-                        int(detail::log::floor_log2_pow10(k) -
-                                        detail::log::floor_log2_pow10(kb) - offset);
-                    assert(alpha > 0 && alpha < 64);
-
-                    // Try to recover the real cache.
-                    auto const pow5 =
-                        offset >= 7
-                            ? detail::stdr::uint_fast32_t(detail::stdr::uint_fast32_t(pow5_table[6]) *
-                                                          pow5_table[offset - 6])
-                            : detail::stdr::uint_fast32_t(pow5_table[offset]);
-                    auto mul_result = detail::wuint::umul128(base_cache, pow5);
-                    auto const recovered_cache =
-                        cache_entry_type((((mul_result.high() << int(64 - alpha)) |
-                                           (mul_result.low() >> alpha)) +
-                                          1) &
-                                         UINT64_C(0xffffffffffffffff));
-                    assert(recovered_cache != 0);
-
-                    return recovered_cache;
-                }
+            constexpr typename format::cache_entry get_cache(int k) const noexcept {
+                assert(k >= format::min_k && k <= format::max_k);
+                return cache[k - format::min_k];
             }
         };
 
         template <>
-        struct compressed_cache_holder<ieee754_binary64> {
-            using cache_entry_type = cache_holder<ieee754_binary64>::cache_entry_type;
-            static constexpr int cache_bits = cache_holder<ieee754_binary64>::cache_bits;
-            static constexpr int min_k = cache_holder<ieee754_binary64>::min_k;
-            static constexpr int max_k = cache_holder<ieee754_binary64>::max_k;
-            static constexpr int compression_ratio = 27;
-            static constexpr detail::stdr::size_t compressed_table_size =
-                detail::stdr::size_t((max_k - min_k + compression_ratio) / compression_ratio);
-            static constexpr detail::stdr::size_t pow5_table_size =
-                detail::stdr::size_t(compression_ratio);
+        struct cache_holder<double, true> {
+            using format = FloatFormat<double>;
+            using cache_entry = typename format::cache_entry;
+            enum {
+              cache_bits = format::cache_bits,
+              min_k = format::min_k,
+              max_k = format::max_k,
+              compression_ratio = 27,
+              compressed_table_size = (max_k - min_k + compression_ratio) / compression_ratio,
+              pow5_table_size = compression_ratio,
+            };
 
-            using cache_holder_t = detail::array<cache_entry_type, compressed_table_size>;
-            using pow5_holder_t = detail::array<detail::stdr::uint_least64_t, pow5_table_size>;
+            cache_entry cache[compressed_table_size] {};
+            detail::stdr::uint_least64_t pow5_table[pow5_table_size] {};
 
-            static constexpr cache_holder_t cache = [] {
-                cache_holder_t res{};
+            constexpr cache_holder() {
                 for (detail::stdr::size_t i = 0; i < compressed_table_size; ++i) {
-                    res[i] = cache_holder<ieee754_binary64>::cache[i * compression_ratio];
+                    cache[i] = cache_holder<double, false>::cache[i * compression_ratio];
                 }
-                return res;
-            }();
-            static constexpr pow5_holder_t pow5_table = [] {
-                pow5_holder_t res{};
                 detail::stdr::uint_least64_t p = 1;
                 for (detail::stdr::size_t i = 0; i < pow5_table_size; ++i) {
-                    res[i] = p;
+                    pow5_table[i] = p;
                     p *= 5;
                 }
-                return res;
-            }();
+            }
 
-            static constexpr cache_entry_type get_cache(int k) noexcept {
+            constexpr cache_entry get_cache(int k) const noexcept {
                 assert(k >= min_k && k <= max_k);
 
                 // Compute the base index.
@@ -1491,6 +1294,205 @@ namespace jkj {
                 }
             }
         };
+
+        using ieee754_binary32 = FloatFormat<float>;
+        using ieee754_binary64 = FloatFormat<double>;
+
+        template <class Float>
+        struct float_bits {
+          using format = FloatFormat<Float>;
+          using carrier_uint = typename format::carrier_uint;
+
+          carrier_uint significand;
+          unsigned exponent;
+          bool sign;
+
+          constexpr explicit float_bits(Float x) {
+            carrier_uint bits;
+            static_assert(sizeof(x) == sizeof(bits));
+            memcpy(&bits, &x, sizeof(x));
+            significand = bits & ((carrier_uint(1) << format::significand_bits) - 1);
+            exponent = bits >> format::significand_bits & ((1u << format::exponent_bits) - 1);
+            sign = bits >> (format::significand_bits + format::exponent_bits);
+          }
+
+          constexpr bool is_finite() const noexcept {
+              return exponent != (1u << format::exponent_bits) - 1;
+          }
+
+          constexpr int binary_exponent() noexcept {
+            return exponent == 0 ? format::min_exponent
+                                 : exponent + format::exponent_bias;
+          }
+
+          constexpr carrier_uint binary_significand() noexcept {
+            return exponent == 0
+              ? significand
+              : significand | (carrier_uint(1) << format::significand_bits);
+          }
+        };
+
+        namespace detail {
+            ////////////////////////////////////////////////////////////////////////////////////////
+            // Some simple utilities for constexpr computation.
+            ////////////////////////////////////////////////////////////////////////////////////////
+
+            template <int k, class Int>
+            constexpr Int compute_power(Int a) noexcept {
+                static_assert(k >= 0);
+                int e = k;
+                Int p = 1;
+                while (e) {
+                  if (e % 2)
+                    p *= a;
+                  e /= 2;
+                  a *= a;
+                }
+                return p;
+            }
+
+            template <int a, class UInt>
+            constexpr int count_factors(UInt n) noexcept {
+                static_assert(a > 1);
+                int c = 0;
+                while (n % a == 0) {
+                    n /= a;
+                    ++c;
+                }
+                return c;
+            }
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            // Utilities for fast divisibility tests.
+            ////////////////////////////////////////////////////////////////////////////////////////
+
+            namespace div {
+                // Replace n by floor(n / 10^N).
+                // Returns true if and only if n is divisible by 10^N.
+                // Precondition: n <= 10^(N+1)
+                // !!It takes an in-out parameter!!
+                template <int N, class UInt>
+                struct divide_by_pow10_info;
+
+                template <class UInt>
+                struct divide_by_pow10_info<1, UInt> {
+                    static constexpr stdr::uint_fast32_t magic_number = 6554;
+                    static constexpr int shift_amount = 16;
+                };
+
+                template <>
+                struct divide_by_pow10_info<1, stdr::uint_least8_t> {
+                    static constexpr stdr::uint_fast16_t magic_number = 103;
+                    static constexpr int shift_amount = 10;
+                };
+
+                template <>
+                struct divide_by_pow10_info<1, stdr::uint_least16_t> {
+                    static constexpr stdr::uint_fast16_t magic_number = 103;
+                    static constexpr int shift_amount = 10;
+                };
+
+                template <class UInt>
+                struct divide_by_pow10_info<2, UInt> {
+                    static constexpr stdr::uint_fast32_t magic_number = 656;
+                    static constexpr int shift_amount = 16;
+                };
+
+                template <>
+                struct divide_by_pow10_info<2, stdr::uint_least16_t> {
+                    static constexpr stdr::uint_fast32_t magic_number = 41;
+                    static constexpr int shift_amount = 12;
+                };
+
+                template <int N, class UInt>
+                constexpr bool check_divisibility_and_divide_by_pow10(UInt& n) noexcept {
+                    // Make sure the computation for max_n does not overflow.
+                    static_assert(N + 1 <= log::floor_log10_pow2(int(value_bits<UInt>::value)), "");
+                    assert(n <= compute_power<N + 1>(UInt(10)));
+
+                    using info = divide_by_pow10_info<N, UInt>;
+                    using intermediate_type = decltype(info::magic_number);
+                    auto const prod = intermediate_type(n * info::magic_number);
+
+                    constexpr auto mask =
+                        intermediate_type((intermediate_type(1) << info::shift_amount) - 1);
+                    bool const result = ((prod & mask) < info::magic_number);
+
+                    n = UInt(prod >> info::shift_amount);
+                    return result;
+                }
+
+                // Compute floor(n / 10^N) for small n and N.
+                // Precondition: n <= 10^(N+1)
+                template <int N, class UInt>
+                constexpr UInt small_division_by_pow10(UInt n) noexcept {
+                    // Make sure the computation for max_n does not overflow.
+                    static_assert(N + 1 <= log::floor_log10_pow2(int(value_bits<UInt>::value)), "");
+                    assert(n <= compute_power<N + 1>(UInt(10)));
+
+                    return UInt((n * divide_by_pow10_info<N, UInt>::magic_number) >>
+                                divide_by_pow10_info<N, UInt>::shift_amount);
+                }
+
+                // Compute floor(n / 10^N) for small N.
+                // Precondition: n <= n_max
+                template <int N, class UInt, UInt n_max>
+                constexpr UInt divide_by_pow10(UInt n) noexcept {
+                    static_assert(N >= 0, "");
+
+                    // Specialize for 32-bit division by 10.
+                    // Without the bound on n_max (which compilers these days never leverage), the
+                    // minimum needed amount of shift is larger than 32. Hence, this may generate better
+                    // code for 32-bit or smaller architectures. Even for 64-bit architectures, it seems
+                    // compilers tend to generate mov + mul instead of a single imul for an unknown
+                    // reason if we just write n / 10.
+                    if constexpr (stdr::is_same<UInt, stdr::uint_least32_t>::value && N == 1 &&
+                                     n_max <= UINT32_C(1073741828)) {
+                        return UInt(wuint::umul64(n, UINT32_C(429496730)) >> 32);
+                    }
+                    // Specialize for 64-bit division by 10.
+                    // Without the bound on n_max (which compilers these days never leverage), the
+                    // minimum needed amount of shift is larger than 64.
+                    else if constexpr (stdr::is_same<UInt, stdr::uint_least64_t>::value && N == 1 &&
+                                          n_max <= UINT64_C(4611686018427387908)) {
+                        return UInt(wuint::umul128_upper64(n, UINT64_C(1844674407370955162)));
+                    }
+                    // Specialize for 32-bit division by 100.
+                    // It seems compilers tend to generate mov + mul instead of a single imul for an
+                    // unknown reason if we just write n / 100.
+                    else if constexpr (stdr::is_same<UInt, stdr::uint_least32_t>::value && N == 2) {
+                        return UInt(wuint::umul64(n, UINT32_C(1374389535)) >> 37);
+                    }
+                    // Specialize for 64-bit division by 1000.
+                    // Without the bound on n_max (which compilers these days never leverage), the
+                    // smallest magic number for this computation does not fit into 64-bits.
+                    else if constexpr (stdr::is_same<UInt, stdr::uint_least64_t>::value && N == 3 &&
+                                          n_max <= UINT64_C(15534100272597517998)) {
+                        return UInt(wuint::umul128_upper64(n, UINT64_C(4722366482869645214)) >> 8);
+                    }
+                    else {
+                        constexpr auto divisor = compute_power<N>(UInt(10));
+                        return n / divisor;
+                    }
+                }
+            }
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////
+        // Return types for the main interface function.
+        ////////////////////////////////////////////////////////////////////////////////////////
+
+        struct decimal_fp {
+            unsigned long long significand;
+            int exponent;
+            bool is_negative;
+        };
+
+        ////////////////////////////////////////////////////////////////////////////////////////
+        // Computed cache entries.
+        ////////////////////////////////////////////////////////////////////////////////////////
+
+
 
         ////////////////////////////////////////////////////////////////////////////////////////
         // Forward declarations of user-specializable templates used in the main algorithm.
@@ -1696,29 +1698,12 @@ namespace jkj {
             namespace cache {
                 inline constexpr struct full_t {
                     using cache_policy = full_t;
-                    template <class FloatFormat>
-                    using cache_holder_type = cache_holder<FloatFormat>;
-
-                    template <class FloatFormat>
-                    static constexpr typename cache_holder_type<FloatFormat>::cache_entry_type
-                    get_cache(int k) noexcept {
-                        assert(k >= cache_holder_type<FloatFormat>::min_k &&
-                               k <= cache_holder_type<FloatFormat>::max_k);
-                        return cache_holder_type<FloatFormat>::cache[
-                            k - cache_holder_type<FloatFormat>::min_k];
-                    }
+                    static constexpr bool compact = false;
                 } full = {};
 
                 inline constexpr struct compact_t {
                     using cache_policy = compact_t;
-                    template <class FloatFormat>
-                    using cache_holder_type = compressed_cache_holder<FloatFormat>;
-
-                    template <class FloatFormat>
-                    static constexpr typename cache_holder<FloatFormat>::cache_entry_type
-                    get_cache(int k) noexcept {
-                        return cache_holder_type<FloatFormat>::get_cache(k);
-                    }
+                    static constexpr bool compact = true;
                 } compact = {};
             }
 
@@ -2263,14 +2248,14 @@ namespace jkj {
                   }
                 }
 
-                using cache_holder_type = typename CachePolicy::template cache_holder_type<format>;
-                static_assert(
-                    min_k >= cache_holder_type::min_k && max_k <= cache_holder_type::max_k, "");
+                using cache_holder_type = cache_holder<Float, CachePolicy::compact>;
+                static_assert(min_k >= format::min_k && max_k <= format::max_k, "");
+                static constexpr cache_holder_type cache_;
 
                 using multiplication_traits_ =
                     multiplication_traits<Float,
-                                          typename cache_holder_type::cache_entry_type,
-                                          cache_holder_type::cache_bits>;
+                                          typename format::cache_entry,
+                                          format::cache_bits>;
 
                 //// The main algorithm assumes the input is a normal/subnormal finite number.
 
@@ -2327,9 +2312,7 @@ namespace jkj {
                                 log::floor_log2_pow10(decimal_exponent_type_(-minus_k)));
 
                             // Compute xi and zi.
-                            auto const cache =
-                                CachePolicy::template get_cache<format>(
-                                    decimal_exponent_type_(-minus_k));
+                            auto const cache = cache_.get_cache(-minus_k);
 
                             auto xi =
                                 multiplication_traits_::compute_left_endpoint_for_shorter_interval_case(
@@ -2400,8 +2383,7 @@ namespace jkj {
                     auto const minus_k = decimal_exponent_type_(
                         log::floor_log10_pow2<decimal_exponent_type_>(binary_exponent) -
                         kappa);
-                    auto const cache = CachePolicy::template get_cache<format>(
-                        decimal_exponent_type_(-minus_k));
+                    auto const cache = cache_.get_cache(-minus_k);
                     auto const beta =
                         shift_amount_type(binary_exponent + log::floor_log2_pow10(
                                                                 decimal_exponent_type_(-minus_k)));
@@ -2569,8 +2551,7 @@ namespace jkj {
                     auto const minus_k = decimal_exponent_type_(
                         log::floor_log10_pow2<decimal_exponent_type_>(binary_exponent) -
                         kappa);
-                    auto const cache = CachePolicy::template get_cache<format>(
-                        decimal_exponent_type_(-minus_k));
+                    auto const cache = cache_.get_cache(-minus_k);
                     auto const beta =
                         shift_amount_type(binary_exponent + log::floor_log2_pow10(
                                                                 decimal_exponent_type_(-minus_k)));
@@ -2636,7 +2617,7 @@ namespace jkj {
                             // an integer.
                             if constexpr (
                                 stdr::is_same<cache_holder_type,
-                                              compressed_cache_holder<ieee754_binary32>>::value) {
+                                              cache_holder<float, true>>::value) {
                                 if (two_fc == 33554430 && binary_exponent == -10) {
                                     break;
                                 }
@@ -2691,8 +2672,7 @@ namespace jkj {
                         log::floor_log10_pow2<decimal_exponent_type_>(
                             exponent_int(binary_exponent - (shorter_interval ? 1 : 0))) -
                         kappa);
-                    auto const cache = CachePolicy::template get_cache<format>(
-                        decimal_exponent_type_(-minus_k));
+                    auto const cache = cache_.get_cache(-minus_k);
                     auto const beta = shift_amount_type(
                         binary_exponent + log::floor_log2_pow10(decimal_exponent_type_(-minus_k)));
 
