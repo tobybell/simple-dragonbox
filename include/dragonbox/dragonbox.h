@@ -1562,6 +1562,14 @@ namespace jkj {
           AwayFromZero,
         };
 
+        enum binary_to_decimal_round_mode {
+          bd_do_not_care,
+          bd_to_even,
+          bd_to_odd,
+          bd_away_from_zero,
+          bd_toward_zero,
+        };
+
         struct interval {
           bool include_left_endpoint;
           bool include_right_endpoint;
@@ -1649,60 +1657,31 @@ namespace jkj {
             }
 
             namespace binary_to_decimal_rounding {
-                // (Always assumes nearest rounding modes, as there can be no tie for other rounding
-                // modes.)
-                enum class tag_t { do_not_care, to_even, to_odd, away_from_zero, toward_zero };
-
                 // The parameter significand corresponds to 10\tilde{s}+t in the paper.
 
                 inline constexpr struct do_not_care_t {
                     using binary_to_decimal_rounding_policy = do_not_care_t;
-                    static constexpr auto tag = tag_t::do_not_care;
-
-                    template <class CarrierUInt>
-                    static constexpr bool prefer_round_down(CarrierUInt) noexcept {
-                        return false;
-                    }
+                    static constexpr auto round_mode = bd_do_not_care;
                 } do_not_care = {};
 
                 inline constexpr struct to_even_t {
                     using binary_to_decimal_rounding_policy = to_even_t;
-                    static constexpr auto tag = tag_t::to_even;
-
-                    template <class CarrierUInt>
-                    static constexpr bool prefer_round_down(CarrierUInt significand) noexcept {
-                        return significand % 2 != 0;
-                    }
-                } to_even = {};
+                    static constexpr auto round_mode = bd_to_even;
+                } to_even;
 
                 inline constexpr struct to_odd_t {
                     using binary_to_decimal_rounding_policy = to_odd_t;
-                    static constexpr auto tag = tag_t::to_odd;
-
-                    template <class CarrierUInt>
-                    static constexpr bool prefer_round_down(CarrierUInt significand) noexcept {
-                        return significand % 2 == 0;
-                    }
+                    static constexpr auto round_mode = bd_to_odd;
                 } to_odd = {};
 
                 inline constexpr struct away_from_zero_t {
                     using binary_to_decimal_rounding_policy = away_from_zero_t;
-                    static constexpr auto tag = tag_t::away_from_zero;
-
-                    template <class CarrierUInt>
-                    static constexpr bool prefer_round_down(CarrierUInt) noexcept {
-                        return false;
-                    }
+                    static constexpr auto round_mode = bd_away_from_zero;
                 } away_from_zero = {};
 
                 inline constexpr struct toward_zero_t {
                     using binary_to_decimal_rounding_policy = toward_zero_t;
-                    static constexpr auto tag = tag_t::toward_zero;
-
-                    template <class CarrierUInt>
-                    static constexpr bool prefer_round_down(CarrierUInt) noexcept {
-                        return true;
-                    }
+                    static constexpr auto round_mode = bd_toward_zero;
                 } toward_zero = {};
             }
 
@@ -2048,8 +2027,7 @@ namespace jkj {
                 using Impl = impl<Float>;
                 using format = FloatFormat<Float>;
                 using PolicyHolder = detail::to_decimal_policy_holder<Policies...>;
-                using BinaryToDecimalRoundingPolicy =
-                    typename PolicyHolder::binary_to_decimal_rounding_policy;
+                static constexpr auto binary_to_decimal_round_mode = PolicyHolder::binary_to_decimal_rounding_policy::round_mode;
                 using CachePolicy = typename PolicyHolder::cache_policy;
 
                 using carrier_uint = typename format::carrier_uint;
@@ -2076,6 +2054,16 @@ namespace jkj {
                   case_shorter_interval_left_endpoint_lower_threshold = Impl::case_shorter_interval_left_endpoint_lower_threshold,
                   case_shorter_interval_left_endpoint_upper_threshold = Impl::case_shorter_interval_left_endpoint_upper_threshold,
                 };
+
+                static bool prefer_round_down(carrier_uint decimal_significand) noexcept {
+                  switch (binary_to_decimal_round_mode) {
+                    case bd_do_not_care: return false;
+                    case bd_to_even: return decimal_significand % 2 != 0;
+                    case bd_to_odd: return decimal_significand % 2 == 0;
+                    case bd_away_from_zero: return false;
+                    case bd_toward_zero: return true;
+                  }
+                }
 
                 decimal_fp run() {
                   return run(PolicyHolder::decimal_to_binary_rounding_policy::round_mode);
@@ -2266,7 +2254,7 @@ namespace jkj {
                                     cache, beta);
 
                             // When tie occurs, choose one of them according to the rule.
-                            if (BinaryToDecimalRoundingPolicy::prefer_round_down(decimal_significand) &&
+                            if (prefer_round_down(decimal_significand) &&
                                 binary_exponent >= shorter_interval_tie_lower_threshold &&
                                 binary_exponent <= shorter_interval_tie_upper_threshold) {
                                 --decimal_significand;
@@ -2336,9 +2324,7 @@ namespace jkj {
                             // Exclude the right endpoint if necessary.
                             if ((r | remainder_type_(!z_result.is_integer) |
                                  remainder_type_(normal_interval.include_right_endpoint)) == 0) {
-                                if constexpr (
-                                    BinaryToDecimalRoundingPolicy::tag ==
-                                    policy::binary_to_decimal_rounding::tag_t::do_not_care) {
+                                if constexpr (binary_to_decimal_round_mode == bd_do_not_care) {
                                     decimal_significand *= 10;
                                     --decimal_significand;
                                     return no_trailing_zeros(decimal_significand, minus_k + kappa);
@@ -2375,8 +2361,7 @@ namespace jkj {
 
                     decimal_significand *= 10;
 
-                    if constexpr (BinaryToDecimalRoundingPolicy::tag ==
-                                     policy::binary_to_decimal_rounding::tag_t::do_not_care) {
+                    if constexpr (binary_to_decimal_round_mode == bd_do_not_care) {
                         // Normally, we want to compute
                         // significand += r / small_divisor
                         // and return, but we need to take care of the case that the resulting
@@ -2426,9 +2411,7 @@ namespace jkj {
                                 // If z^(f) >= epsilon^(f), we might have a tie
                                 // when z^(f) == epsilon^(f), or equivalently, when y is an integer.
                                 // For tie-to-up case, we can just choose the upper one.
-                                if (BinaryToDecimalRoundingPolicy::prefer_round_down(
-                                        decimal_significand) &
-                                    y_result.is_integer) {
+                                if (prefer_round_down(decimal_significand) & y_result.is_integer) {
                                     --decimal_significand;
                                 }
                             }
