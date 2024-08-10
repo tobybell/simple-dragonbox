@@ -26,8 +26,7 @@ static bool verify_fast_multiplication_xz(CachePolicy cache_policy) {
     using impl = jkj::dragonbox::detail::impl<Float>;
     using format = typename impl::format;
     using carrier_uint = typename impl::carrier_uint;
-    using multiplication_traits = jkj::dragonbox::multiplication_traits<
-        Float, typename format::cache_entry, format::cache_bits>;
+    using multiplication_traits = jkj::dragonbox::multiplication_traits<Float>;
 
     static constexpr jkj::dragonbox::cache_holder<Float, CachePolicy::compact> cache_;
 

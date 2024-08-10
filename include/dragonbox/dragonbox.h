@@ -1501,18 +1501,18 @@ namespace jkj {
         // Users can specialize this traits class to make Dragonbox work with their own formats.
         // However, this requires detailed knowledge on how the algorithm works, so it is recommended to
         // read through the paper.
-        template <class FormatTraits, class CacheEntryType, detail::stdr::size_t cache_bits_>
+        template <class Float>
         struct multiplication_traits;
 
         // A collection of some common definitions to reduce boilerplate.
-        template <class Float, class CacheEntryType, detail::stdr::size_t cache_bits_>
+        template <class Float>
         struct multiplication_traits_base {
             using format = FloatFormat<Float>;
+            using carrier_uint = typename format::carrier_uint;
+            using cache_entry = typename format::cache_entry;
             static constexpr int significand_bits = format::significand_bits;
             static constexpr int total_bits = format::total_bits;
-            using carrier_uint = typename format::carrier_uint;
-            using cache_entry_type = CacheEntryType;
-            static constexpr int cache_bits = int(cache_bits_);
+            static constexpr int cache_bits = format::cache_bits;
 
             struct compute_mul_result {
                 carrier_uint integer_part;
@@ -1714,21 +1714,21 @@ namespace jkj {
         ////////////////////////////////////////////////////////////////////////////////////////
 
         template <>
-        struct multiplication_traits<float, detail::stdr::uint_least64_t, 64>
-            : public multiplication_traits_base<float, detail::stdr::uint_least64_t, 64> {
+        struct multiplication_traits<float>
+            : public multiplication_traits_base<float> {
             static constexpr compute_mul_result
-            compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept {
+            compute_mul(carrier_uint u, cache_entry const& cache) noexcept {
                 auto const r = detail::wuint::umul96_upper64(u, cache);
                 return {carrier_uint(r >> 32), carrier_uint(r) == 0};
             }
 
-            static constexpr detail::stdr::uint_least64_t compute_delta(cache_entry_type const& cache,
+            static constexpr detail::stdr::uint_least64_t compute_delta(cache_entry const& cache,
                                                                         int beta) noexcept {
                 return detail::stdr::uint_least64_t(cache >> (cache_bits - 1 - beta));
             }
 
             static constexpr compute_mul_parity_result compute_mul_parity(
-                carrier_uint two_f, cache_entry_type const& cache, int beta) noexcept {
+                carrier_uint two_f, cache_entry const& cache, int beta) noexcept {
                 assert(beta >= 1);
                 assert(beta <= 32);
 
@@ -1738,41 +1738,41 @@ namespace jkj {
             }
 
             static constexpr carrier_uint
-            compute_left_endpoint_for_shorter_interval_case(cache_entry_type const& cache,
+            compute_left_endpoint_for_shorter_interval_case(cache_entry const& cache,
                                                             int beta) noexcept {
                 return carrier_uint((cache - (cache >> (significand_bits + 2))) >>
                                     (cache_bits - significand_bits - 1 - beta));
             }
 
             static constexpr carrier_uint
-            compute_right_endpoint_for_shorter_interval_case(cache_entry_type const& cache, int beta) noexcept {
+            compute_right_endpoint_for_shorter_interval_case(cache_entry const& cache, int beta) noexcept {
                 return carrier_uint((cache + (cache >> (significand_bits + 1))) >> 
                   (cache_bits - significand_bits - 1 - beta));
             }
 
             static constexpr carrier_uint
-            compute_round_up_for_shorter_interval_case(cache_entry_type const& cache, int beta) noexcept {
+            compute_round_up_for_shorter_interval_case(cache_entry const& cache, int beta) noexcept {
                 return (carrier_uint(cache >> (cache_bits - significand_bits - 2 - beta)) + 1) / 2;
             }
         };
 
         template <>
-        struct multiplication_traits<double, detail::wuint::uint128, 128>
-            : public multiplication_traits_base<double, detail::wuint::uint128, 128> {
+        struct multiplication_traits<double>
+            : public multiplication_traits_base<double> {
             static constexpr compute_mul_result
-            compute_mul(carrier_uint u, cache_entry_type const& cache) noexcept {
+            compute_mul(carrier_uint u, cache_entry const& cache) noexcept {
                 auto const r = detail::wuint::umul192_upper128(u, cache);
                 return {r.high(), r.low() == 0};
             }
 
-            static constexpr detail::stdr::uint_least64_t compute_delta(cache_entry_type const& cache,
+            static constexpr detail::stdr::uint_least64_t compute_delta(cache_entry const& cache,
                                                                         int beta) noexcept {
                 return detail::stdr::uint_least64_t(cache.high() >>
                                                     (total_bits - 1 - beta));
             }
 
             static constexpr compute_mul_parity_result compute_mul_parity(
-                carrier_uint two_f, cache_entry_type const& cache, int beta) noexcept {
+                carrier_uint two_f, cache_entry const& cache, int beta) noexcept {
                 assert(beta >= 1);
                 assert(beta < 64);
 
@@ -1783,21 +1783,21 @@ namespace jkj {
             }
 
             static constexpr carrier_uint
-            compute_left_endpoint_for_shorter_interval_case(cache_entry_type const& cache,
+            compute_left_endpoint_for_shorter_interval_case(cache_entry const& cache,
                                                             int beta) noexcept {
                 return (cache.high() - (cache.high() >> (significand_bits + 2))) >>
                        (total_bits - significand_bits - 1 - beta);
             }
 
             static constexpr carrier_uint
-            compute_right_endpoint_for_shorter_interval_case(cache_entry_type const& cache,
+            compute_right_endpoint_for_shorter_interval_case(cache_entry const& cache,
                                                              int beta) noexcept {
                 return (cache.high() + (cache.high() >> (significand_bits + 1))) >>
                        (total_bits - significand_bits - 1 - beta);
             }
 
             static constexpr carrier_uint
-            compute_round_up_for_shorter_interval_case(cache_entry_type const& cache,
+            compute_round_up_for_shorter_interval_case(cache_entry const& cache,
                                                        int beta) noexcept {
                 return ((cache.high() >> (total_bits - significand_bits - 2 - beta)) + 1) / 2;
             }
@@ -2252,10 +2252,7 @@ namespace jkj {
                 static_assert(min_k >= format::min_k && max_k <= format::max_k, "");
                 static constexpr cache_holder_type cache_;
 
-                using multiplication_traits_ =
-                    multiplication_traits<Float,
-                                          typename format::cache_entry,
-                                          format::cache_bits>;
+                using multiplication_traits_ = multiplication_traits<Float>;
 
                 //// The main algorithm assumes the input is a normal/subnormal finite number.
 
