@@ -1706,7 +1706,6 @@ namespace jkj {
                 using format = FloatFormat<Float>;
 
                 using carrier_uint = typename format::carrier_uint;
-                using remainder_type_ = carrier_uint;
 
                 static constexpr auto binary_round_policy_ = get_policy<binary_round_policy, Policies...>::value;
                 static constexpr auto decimal_round_policy_ = get_policy<decimal_round_policy, Policies...>::value;
@@ -1948,8 +1947,8 @@ namespace jkj {
                     // Step 2: Try larger divisor; remove trailing zeros if necessary.
                     //////////////////////////////////////////////////////////////////////
 
-                    constexpr auto big_divisor = compute_power<kappa + 1>(remainder_type_(10));
-                    constexpr auto small_divisor = compute_power<kappa>(remainder_type_(10));
+                    constexpr auto big_divisor = compute_power<kappa + 1>(carrier_uint(10));
+                    constexpr auto small_divisor = compute_power<kappa>(carrier_uint(10));
 
                     // Using an upper bound on zi, we might be able to optimize the division
                     // better than the compiler; we are computing zi / big_divisor here.
@@ -1957,13 +1956,13 @@ namespace jkj {
                         kappa + 1, carrier_uint,
                         carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
                         z_result.integer_part);
-                    auto r = remainder_type_(z_result.integer_part - big_divisor * decimal_significand);
+                    auto r = carrier_uint(z_result.integer_part - big_divisor * decimal_significand);
 
                     do {
                         if (r < deltai) {
                             // Exclude the right endpoint if necessary.
-                            if ((r | remainder_type_(!z_result.is_integer) |
-                                 remainder_type_(normal_interval.include_right_endpoint)) == 0) {
+                            if ((r | carrier_uint(!z_result.is_integer) |
+                                 carrier_uint(normal_interval.include_right_endpoint)) == 0) {
                                 if constexpr (decimal_round_policy_ == decimal_do_not_care) {
                                     decimal_significand *= 10;
                                     --decimal_significand;
@@ -2025,7 +2024,7 @@ namespace jkj {
                     else {
                         // delta is equal to 10^(kappa + elog10(2) - floor(elog10(2))), so dist cannot
                         // be larger than r.
-                        auto dist = remainder_type_(r - (deltai / 2) + (small_divisor / 2));
+                        auto dist = carrier_uint(r - (deltai / 2) + (small_divisor / 2));
                         bool const approx_y_parity = ((dist ^ (small_divisor / 2)) & 1) != 0;
 
                         // Is dist divisible by 10^kappa?
@@ -2111,7 +2110,7 @@ namespace jkj {
                     // Step 2: Try larger divisor; remove trailing zeros if necessary.
                     //////////////////////////////////////////////////////////////////////
 
-                    constexpr auto big_divisor = compute_power<kappa + 1>(remainder_type_(10));
+                    constexpr auto big_divisor = compute_power<kappa + 1>(carrier_uint(10));
 
                     // Using an upper bound on xi, we might be able to optimize the division
                     // better than the compiler; we are computing xi / big_divisor here.
@@ -2119,11 +2118,11 @@ namespace jkj {
                         kappa + 1, carrier_uint,
                         carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
                         x_result.integer_part);
-                    auto r = remainder_type_(x_result.integer_part - big_divisor * decimal_significand);
+                    auto r = carrier_uint(x_result.integer_part - big_divisor * decimal_significand);
 
                     if (r != 0) {
                         ++decimal_significand;
-                        r = remainder_type_(big_divisor - r);
+                        r = carrier_uint(big_divisor - r);
                     }
 
                     do {
@@ -2210,7 +2209,7 @@ namespace jkj {
                     // Step 2: Try larger divisor; remove trailing zeros if necessary.
                     //////////////////////////////////////////////////////////////////////
 
-                    constexpr auto big_divisor = compute_power<kappa + 1>(remainder_type_(10));
+                    constexpr auto big_divisor = compute_power<kappa + 1>(carrier_uint(10));
 
                     // Using an upper bound on zi, we might be able to optimize the division better
                     // than the compiler; we are computing zi / big_divisor here.
@@ -2218,7 +2217,7 @@ namespace jkj {
                         kappa + 1, carrier_uint,
                         carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
                         zi);
-                    auto const r = remainder_type_(zi - big_divisor * decimal_significand);
+                    auto const r = carrier_uint(zi - big_divisor * decimal_significand);
 
                     do {
                         if (r > deltai) {
