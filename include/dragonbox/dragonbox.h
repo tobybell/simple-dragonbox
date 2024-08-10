@@ -1745,47 +1745,37 @@ namespace jkj {
                 return {carrier_uint(r >> 32), carrier_uint(r) == 0};
             }
 
-            template <class ShiftAmountType>
             static constexpr detail::stdr::uint_least64_t compute_delta(cache_entry_type const& cache,
-                                                                        ShiftAmountType beta) noexcept {
-                return detail::stdr::uint_least64_t(cache >> ShiftAmountType(cache_bits - 1 - beta));
+                                                                        int beta) noexcept {
+                return detail::stdr::uint_least64_t(cache >> (cache_bits - 1 - beta));
             }
 
-            template <class ShiftAmountType>
             static constexpr compute_mul_parity_result compute_mul_parity(
-                carrier_uint two_f, cache_entry_type const& cache, ShiftAmountType beta) noexcept {
+                carrier_uint two_f, cache_entry_type const& cache, int beta) noexcept {
                 assert(beta >= 1);
                 assert(beta <= 32);
 
                 auto const r = detail::wuint::umul96_lower64(two_f, cache);
-                return {((r >> ShiftAmountType(64 - beta)) & 1) != 0,
-                        (UINT32_C(0xffffffff) & (r >> ShiftAmountType(32 - beta))) == 0};
+                return {((r >> (64 - beta)) & 1) != 0,
+                        (UINT32_C(0xffffffff) & (r >> (32 - beta))) == 0};
             }
 
-            template <class ShiftAmountType>
             static constexpr carrier_uint
             compute_left_endpoint_for_shorter_interval_case(cache_entry_type const& cache,
-                                                            ShiftAmountType beta) noexcept {
+                                                            int beta) noexcept {
                 return carrier_uint((cache - (cache >> (significand_bits + 2))) >>
-                                    ShiftAmountType(cache_bits - significand_bits - 1 - beta));
+                                    (cache_bits - significand_bits - 1 - beta));
             }
 
-            template <class ShiftAmountType>
             static constexpr carrier_uint
-            compute_right_endpoint_for_shorter_interval_case(cache_entry_type const& cache,
-                                                             ShiftAmountType beta) noexcept {
-                return carrier_uint((cache + (cache >> (significand_bits + 1))) >>
-                                    ShiftAmountType(cache_bits - significand_bits - 1 - beta));
+            compute_right_endpoint_for_shorter_interval_case(cache_entry_type const& cache, int beta) noexcept {
+                return carrier_uint((cache + (cache >> (significand_bits + 1))) >> 
+                  (cache_bits - significand_bits - 1 - beta));
             }
 
-            template <class ShiftAmountType>
             static constexpr carrier_uint
-            compute_round_up_for_shorter_interval_case(cache_entry_type const& cache,
-                                                       ShiftAmountType beta) noexcept {
-                return (carrier_uint(cache >>
-                                     ShiftAmountType(cache_bits - significand_bits - 2 - beta)) +
-                        1) /
-                       2;
+            compute_round_up_for_shorter_interval_case(cache_entry_type const& cache, int beta) noexcept {
+                return (carrier_uint(cache >> (cache_bits - significand_bits - 2 - beta)) + 1) / 2;
             }
         };
 
@@ -1798,48 +1788,41 @@ namespace jkj {
                 return {r.high(), r.low() == 0};
             }
 
-            template <class ShiftAmountType>
             static constexpr detail::stdr::uint_least64_t compute_delta(cache_entry_type const& cache,
-                                                                        ShiftAmountType beta) noexcept {
+                                                                        int beta) noexcept {
                 return detail::stdr::uint_least64_t(cache.high() >>
-                                                    ShiftAmountType(total_bits - 1 - beta));
+                                                    (total_bits - 1 - beta));
             }
 
-            template <class ShiftAmountType>
             static constexpr compute_mul_parity_result compute_mul_parity(
-                carrier_uint two_f, cache_entry_type const& cache, ShiftAmountType beta) noexcept {
+                carrier_uint two_f, cache_entry_type const& cache, int beta) noexcept {
                 assert(beta >= 1);
                 assert(beta < 64);
 
                 auto const r = detail::wuint::umul192_lower128(two_f, cache);
-                return {((r.high() >> ShiftAmountType(64 - beta)) & 1) != 0,
+                return {((r.high() >> (64 - beta)) & 1) != 0,
                         (((r.high() << beta) & UINT64_C(0xffffffffffffffff)) |
-                         (r.low() >> ShiftAmountType(64 - beta))) == 0};
+                         (r.low() >> (64 - beta))) == 0};
             }
 
-            template <class ShiftAmountType>
             static constexpr carrier_uint
             compute_left_endpoint_for_shorter_interval_case(cache_entry_type const& cache,
-                                                            ShiftAmountType beta) noexcept {
+                                                            int beta) noexcept {
                 return (cache.high() - (cache.high() >> (significand_bits + 2))) >>
-                       ShiftAmountType(total_bits - significand_bits - 1 - beta);
+                       (total_bits - significand_bits - 1 - beta);
             }
 
-            template <class ShiftAmountType>
             static constexpr carrier_uint
             compute_right_endpoint_for_shorter_interval_case(cache_entry_type const& cache,
-                                                             ShiftAmountType beta) noexcept {
+                                                             int beta) noexcept {
                 return (cache.high() + (cache.high() >> (significand_bits + 1))) >>
-                       ShiftAmountType(total_bits - significand_bits - 1 - beta);
+                       (total_bits - significand_bits - 1 - beta);
             }
 
-            template <class ShiftAmountType>
             static constexpr carrier_uint
             compute_round_up_for_shorter_interval_case(cache_entry_type const& cache,
-                                                       ShiftAmountType beta) noexcept {
-                return ((cache.high() >> ShiftAmountType(total_bits - significand_bits - 2 - beta)) +
-                        1) /
-                       2;
+                                                       int beta) noexcept {
+                return ((cache.high() >> (total_bits - significand_bits - 2 - beta)) + 1) / 2;
             }
         };
 
