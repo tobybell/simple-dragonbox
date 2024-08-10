@@ -26,7 +26,6 @@ static bool verify_fast_multiplication_xz(CachePolicy cache_policy) {
     using impl = jkj::dragonbox::detail::impl<Float>;
     using format = typename impl::format;
     using carrier_uint = typename impl::carrier_uint;
-    using multiplication_traits = jkj::dragonbox::multiplication_traits<Float>;
 
     static constexpr jkj::dragonbox::cache_holder<Float, CachePolicy::compact> cache_;
 
@@ -49,10 +48,8 @@ static bool verify_fast_multiplication_xz(CachePolicy cache_policy) {
         auto const cache = cache_.get_cache(k);
 
         // Compute the endpoints using the fast method.
-        auto x_fast =
-            multiplication_traits::compute_left_endpoint_for_shorter_interval_case(cache, beta);
-        auto z_fast =
-            multiplication_traits::compute_right_endpoint_for_shorter_interval_case(cache, beta);
+        auto x_fast = format::compute_left_endpoint_for_shorter_interval_case(cache, beta);
+        auto z_fast = format::compute_right_endpoint_for_shorter_interval_case(cache, beta);
 
         // Precisely compute the endpoints.
         jkj::unsigned_rational<jkj::big_uint> precise_multiplier{1, 1};
