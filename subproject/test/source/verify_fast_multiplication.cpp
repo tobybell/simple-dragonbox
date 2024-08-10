@@ -106,7 +106,7 @@ static bool verify_fast_multiplication_yru() {
         // Since Q - p - beta - 2 >= q, it suffices to check that the lower half of the cache is not
         // 0.
         auto const lower_half = [cache] {
-            if constexpr (std::is_same_v<typename impl::format, jkj::dragonbox::ieee754_binary32>) {
+            if constexpr (std::is_same_v<Float, float>) {
                 return std::uint32_t(cache);
             }
             else {

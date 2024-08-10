@@ -1343,9 +1343,6 @@ namespace jkj {
             }
         };
 
-        using ieee754_binary32 = FloatFormat<float>;
-        using ieee754_binary64 = FloatFormat<double>;
-
         template <class Float>
         struct float_bits {
           using format = FloatFormat<Float>;
@@ -1568,46 +1565,13 @@ namespace jkj {
           decimal_to_odd,
           decimal_away_from_zero,
           decimal_toward_zero,
-          decimal_do_not_care,
+          decimal_dont_care,
         };
 
         enum cache_policy {
           cache_full,
           cache_compact,
         };
-
-        template <class T, T x>
-        struct policy_ {};
-
-        namespace policy {
-          namespace decimal_to_binary_rounding {
-            static constexpr policy_<binary_round_policy, binary_nearest_to_even> nearest_to_even;
-            static constexpr policy_<binary_round_policy, binary_nearest_to_odd> nearest_to_odd;
-            static constexpr policy_<binary_round_policy, binary_nearest_toward_plus_infinity> nearest_toward_plus_infinity;
-            static constexpr policy_<binary_round_policy, binary_nearest_toward_minus_infinity> nearest_toward_minus_infinity;
-            static constexpr policy_<binary_round_policy, binary_nearest_toward_zero> nearest_toward_zero;
-            static constexpr policy_<binary_round_policy, binary_nearest_away_from_zero> nearest_away_from_zero;
-            static constexpr policy_<binary_round_policy, binary_nearest_to_even_static_boundary> nearest_to_even_static_boundary;
-            static constexpr policy_<binary_round_policy, binary_nearest_to_odd_static_boundary> nearest_to_odd_static_boundary;
-            static constexpr policy_<binary_round_policy, binary_nearest_toward_plus_infinity_static_boundary> nearest_toward_plus_infinity_static_boundary;
-            static constexpr policy_<binary_round_policy, binary_nearest_toward_minus_infinity_static_boundary> nearest_toward_minus_infinity_static_boundary;
-            static constexpr policy_<binary_round_policy, binary_toward_plus_infinity> toward_plus_infinity;
-            static constexpr policy_<binary_round_policy, binary_toward_minus_infinity> toward_minus_infinity;
-            static constexpr policy_<binary_round_policy, binary_toward_zero> toward_zero;
-            static constexpr policy_<binary_round_policy, binary_away_from_zero> away_from_zero;
-          }
-          namespace binary_to_decimal_rounding {
-            static constexpr policy_<decimal_round_policy, decimal_to_even> to_even;
-            static constexpr policy_<decimal_round_policy, decimal_to_odd> to_odd;
-            static constexpr policy_<decimal_round_policy, decimal_away_from_zero> away_from_zero;
-            static constexpr policy_<decimal_round_policy, decimal_toward_zero> toward_zero;
-            static constexpr policy_<decimal_round_policy, decimal_do_not_care> do_not_care;
-          }
-          namespace cache {
-            static constexpr policy_<cache_policy, cache_full> full;
-            static constexpr policy_<cache_policy, cache_compact> compact;
-          }
-        }
 
         namespace detail {
 
@@ -1684,36 +1648,11 @@ namespace jkj {
                     -log::floor_log5_pow2(significand_bits + 2) - 2 - significand_bits;
             };
 
-            template <class T, class... Policies>
-            struct get_policy;
-
-            template <class T>
-            struct get_policy<T> {
-              static constexpr T value {};
-            };
-
-            template <class T, T x, class... Rest>
-            struct get_policy<T, policy_<T, x>, Rest...> {
-              static constexpr T value = x;
-            };
-
-            template <class T, class First, class... Rest>
-            struct get_policy<T, First, Rest...>: get_policy<T, Rest...> {};
-
-            template <class Float, class... Policies>
-            struct to_decimal_dispatch {
+            template <class Float, binary_round_policy BinaryRoundPolicy, decimal_round_policy DecimalRoundPolicy, cache_policy CachePolicy>
+            struct to_decimal_impl {
                 using Impl = impl<Float>;
                 using format = FloatFormat<Float>;
-
                 using carrier_uint = typename format::carrier_uint;
-
-                static constexpr auto binary_round_policy_ = get_policy<binary_round_policy, Policies...>::value;
-                static constexpr auto decimal_round_policy_ = get_policy<decimal_round_policy, Policies...>::value;
-                static constexpr auto cache_policy_ = get_policy<cache_policy, Policies...>::value;
-
-                bool negative;
-                int exponent_bits;
-                carrier_uint significand;
                 
                 enum {
                   min_k = Impl::min_k,
@@ -1728,9 +1667,13 @@ namespace jkj {
                   case_shorter_interval_left_endpoint_upper_threshold = Impl::case_shorter_interval_left_endpoint_upper_threshold,
                 };
 
+                carrier_uint significand;
+                int exponent_bits;
+                bool negative;
+
                 static bool prefer_round_down(carrier_uint decimal_significand) noexcept {
-                  switch (decimal_round_policy_) {
-                    case decimal_do_not_care: return false;
+                  switch (DecimalRoundPolicy) {
+                    case decimal_dont_care: return false;
                     case decimal_to_even: return decimal_significand % 2 != 0;
                     case decimal_to_odd: return decimal_significand % 2 == 0;
                     case decimal_away_from_zero: return false;
@@ -1781,9 +1724,9 @@ namespace jkj {
                     return nearest({false, false}, {false, false});
                 }
 
-                decimal_fp run() {
+                decimal_fp to_decimal() {
                   bool even = significand % 2 == 0;
-                  switch (binary_round_policy_) {
+                  switch (BinaryRoundPolicy) {
                     case binary_nearest_to_even: return nearest_to_even();
                     case binary_nearest_to_odd: return nearest_to_odd();
                     case binary_nearest_toward_plus_infinity: return nearest_toward_plus_infinity();
@@ -1802,7 +1745,7 @@ namespace jkj {
                 }
 
                 static_assert(min_k >= format::min_k && max_k <= format::max_k, "");
-                static constexpr cache_holder<Float, cache_policy_> cache_;
+                static constexpr cache_holder<Float, CachePolicy> cache_;
 
                 //// The main algorithm assumes the input is a normal/subnormal finite number.
 
@@ -1843,8 +1786,8 @@ namespace jkj {
                         // 10^-308. This is indeed of the shortest length, and it is the unique
                         // one closest to the true value among valid representations of the same
                         // length.
-                        static_assert(stdr::is_same<format, ieee754_binary32>::value ||
-                                          stdr::is_same<format, ieee754_binary64>::value,
+                        static_assert(stdr::is_same<Float, float>::value ||
+                                      stdr::is_same<Float, double>::value,
                                       "");
 
                         // Shorter interval case.
@@ -1963,7 +1906,7 @@ namespace jkj {
                             // Exclude the right endpoint if necessary.
                             if ((r | carrier_uint(!z_result.is_integer) |
                                  carrier_uint(normal_interval.include_right_endpoint)) == 0) {
-                                if constexpr (decimal_round_policy_ == decimal_do_not_care) {
+                                if constexpr (DecimalRoundPolicy == decimal_dont_care) {
                                     decimal_significand *= 10;
                                     --decimal_significand;
                                     return no_trailing_zeros(decimal_significand, minus_k + kappa);
@@ -2000,7 +1943,7 @@ namespace jkj {
 
                     decimal_significand *= 10;
 
-                    if constexpr (decimal_round_policy_ == decimal_do_not_care) {
+                    if constexpr (DecimalRoundPolicy == decimal_dont_care) {
                         // Normally, we want to compute
                         // significand += r / small_divisor
                         // and return, but we need to take care of the case that the resulting
@@ -2096,7 +2039,7 @@ namespace jkj {
                     // and 29711844 * 2^-81
                     // = 1.2288530660000000001731007559513386695471126586198806762695... * 10^-17
                     // for binary32.
-                    if constexpr (stdr::is_same<format, ieee754_binary32>::value) {
+                    if constexpr (stdr::is_same<Float, float>::value) {
                         if (binary_exponent <= -80) {
                             x_result.is_integer = false;
                         }
@@ -2142,7 +2085,7 @@ namespace jkj {
                             // case, the recovered cache is two large to make compute_mul_parity
                             // mistakenly conclude that z is not an integer, but actually z = 16384 is
                             // an integer.
-                            if constexpr (Impl::carrier_bits == 32 && cache_policy_ == cache_compact) {
+                            if constexpr (Impl::carrier_bits == 32 && CachePolicy == cache_compact) {
                                 if (two_fc == 33554430 && binary_exponent == -10) {
                                     break;
                                 }
@@ -2264,9 +2207,60 @@ namespace jkj {
         // The interface function.
         ////////////////////////////////////////////////////////////////////////////////////////
 
+        template <class T, T x>
+        struct policy_ {};
+
+        namespace policy {
+          namespace decimal_to_binary_rounding {
+            static constexpr policy_<binary_round_policy, binary_nearest_to_even> nearest_to_even;
+            static constexpr policy_<binary_round_policy, binary_nearest_to_odd> nearest_to_odd;
+            static constexpr policy_<binary_round_policy, binary_nearest_toward_plus_infinity> nearest_toward_plus_infinity;
+            static constexpr policy_<binary_round_policy, binary_nearest_toward_minus_infinity> nearest_toward_minus_infinity;
+            static constexpr policy_<binary_round_policy, binary_nearest_toward_zero> nearest_toward_zero;
+            static constexpr policy_<binary_round_policy, binary_nearest_away_from_zero> nearest_away_from_zero;
+            static constexpr policy_<binary_round_policy, binary_nearest_to_even_static_boundary> nearest_to_even_static_boundary;
+            static constexpr policy_<binary_round_policy, binary_nearest_to_odd_static_boundary> nearest_to_odd_static_boundary;
+            static constexpr policy_<binary_round_policy, binary_nearest_toward_plus_infinity_static_boundary> nearest_toward_plus_infinity_static_boundary;
+            static constexpr policy_<binary_round_policy, binary_nearest_toward_minus_infinity_static_boundary> nearest_toward_minus_infinity_static_boundary;
+            static constexpr policy_<binary_round_policy, binary_toward_plus_infinity> toward_plus_infinity;
+            static constexpr policy_<binary_round_policy, binary_toward_minus_infinity> toward_minus_infinity;
+            static constexpr policy_<binary_round_policy, binary_toward_zero> toward_zero;
+            static constexpr policy_<binary_round_policy, binary_away_from_zero> away_from_zero;
+          }
+          namespace binary_to_decimal_rounding {
+            static constexpr policy_<decimal_round_policy, decimal_to_even> to_even;
+            static constexpr policy_<decimal_round_policy, decimal_to_odd> to_odd;
+            static constexpr policy_<decimal_round_policy, decimal_away_from_zero> away_from_zero;
+            static constexpr policy_<decimal_round_policy, decimal_toward_zero> toward_zero;
+            static constexpr policy_<decimal_round_policy, decimal_dont_care> do_not_care;
+          }
+          namespace cache {
+            static constexpr policy_<cache_policy, cache_full> full;
+            static constexpr policy_<cache_policy, cache_compact> compact;
+          }
+        }
+
+        template <class T, class... Policies>
+        struct get_policy;
+
+        template <class T>
+        struct get_policy<T> {
+          static constexpr T value {};
+        };
+
+        template <class T, T x, class... Rest>
+        struct get_policy<T, policy_<T, x>, Rest...> {
+          static constexpr T value = x;
+        };
+
+        template <class T, class First, class... Rest>
+        struct get_policy<T, First, Rest...>: get_policy<T, Rest...> {};
+
         template <class Float, class... Policies>
         constexpr decimal_fp to_decimal_ex(bool sign, int exponent, typename FloatFormat<Float>::carrier_uint significand) noexcept {
-            return detail::to_decimal_dispatch<Float, Policies...>{sign, exponent, significand}.run();
+            return detail::to_decimal_impl<Float, get_policy<binary_round_policy, Policies...>::value,
+                                                  get_policy<decimal_round_policy, Policies...>::value,
+                                                  get_policy<cache_policy, Policies...>::value>{significand, exponent, sign}.to_decimal();
         }
 
         template <class Float, class... Policies>

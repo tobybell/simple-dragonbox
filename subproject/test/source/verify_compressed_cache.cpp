@@ -111,7 +111,7 @@ bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to
                     std::cout << "Integer check is no longer valid. (e = " << e << ")\n";
 
                     // This exceptional case is carefully examined, so okay.
-                    if (std::is_same<format, jkj::dragonbox::ieee754_binary32>::value && e == -10) {
+                    if (std::is_same<Float, float>::value && e == -10) {
                         // The exceptional case only occurs when n is exactly n_max.
                         if (left_hand_side * ((n_max - 1) / unit.denominator) >=
                             jkj::big_uint::power_of_2(impl::carrier_bits - beta)) {
