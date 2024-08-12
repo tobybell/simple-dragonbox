@@ -69,8 +69,8 @@ template <class Float>
 static bool analyze(std::ostream& out, std::size_t cache_bits) {
     out << "e,bits_for_multiplication,bits_for_integer_check\n";
 
-    using impl = jkj::dragonbox::detail::impl<Float>;
-    using namespace jkj::dragonbox::detail::log;
+    using impl = jkj::dragonbox::impl<Float>;
+    using namespace jkj::dragonbox::log;
 
     auto n_max = jkj::big_uint::power_of_2(impl::significand_bits + 2);
 

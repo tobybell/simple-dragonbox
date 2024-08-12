@@ -25,7 +25,7 @@
 
 template <class Float>
 auto generate_cache(std::size_t cache_bits) {
-    using impl = jkj::dragonbox::detail::impl<Float>;
+    using impl = jkj::dragonbox::impl<Float>;
 
     std::vector<jkj::big_uint> results;
     jkj::unsigned_rational<jkj::big_uint> target_number;
@@ -33,7 +33,7 @@ auto generate_cache(std::size_t cache_bits) {
         // (2f_c +- 1) * 2^beta * (2^(k - e_k - Q) * 5^k)
         // e_k = floor(k log2(10)) - Q + 1, so
         // k - e_k - Q = k - floor(k log2(10)) - 1.
-        int exp_2 = k - jkj::dragonbox::detail::log::floor_log2_pow10(k) - 1;
+        int exp_2 = k - jkj::dragonbox::log::floor_log2_pow10(k) - 1;
 
         target_number.numerator = 1;
         target_number.denominator = 1;
@@ -78,12 +78,12 @@ int main() {
 
     auto write_file = [](std::ofstream& out, std::size_t cache_bits, auto type_tag,
                          auto&& ieee_754_type_name_string, auto&& element_printer) {
-        using impl_type = jkj::dragonbox::detail::impl<decltype(type_tag)>;
+        using impl_type = jkj::dragonbox::impl<decltype(type_tag)>;
         auto const cache_array = generate_cache<decltype(type_tag)>(cache_bits);
 
         out << "static constexpr int min_k = " << std::dec << impl_type::min_k << ";\n";
         out << "static constexpr int max_k = " << std::dec << impl_type::max_k << ";\n";
-        out << "static constexpr detail::array<cache_entry_type, detail::stdr::size_t(max_k - min_k + "
+        out << "static constexpr array<cache_entry_type, size_t(max_k - min_k + "
                "1)> cache JKJ_STATIC_DATA_SECTION = { {";
         for (int k = impl_type::min_k; k < impl_type::max_k; ++k) {
             auto idx = std::size_t(k - impl_type::min_k);

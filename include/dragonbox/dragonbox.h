@@ -14,71 +14,51 @@
 
 namespace jkj {
     namespace dragonbox {
-        ////////////////////////////////////////////////////////////////////////////////////////
-        // The Compatibility layer for toolchains without standard C++ headers.
-        ////////////////////////////////////////////////////////////////////////////////////////
-        namespace detail {
-            namespace stdr {
-                // <cassert>
-                // We need assert() macro, but it is not namespaced anyway, so nothing to do here.
+            // <cassert>
+            // We need assert() macro, but it is not namespaced anyway, so nothing to do here.
 
-                // <cstdint>
-                using std::int_least8_t;
-                using std::int_least16_t;
-                using std::int_least32_t;
-                using std::int_fast8_t;
-                using std::int_fast16_t;
-                using std::int_fast32_t;
-                using std::uint_least8_t;
-                using std::uint_least16_t;
-                using std::uint_least32_t;
-                using std::uint_least64_t;
-                using std::uint_fast8_t;
-                using std::uint_fast16_t;
-                using std::uint_fast32_t;
-                // We need INT32_C, UINT32_C and UINT64_C macros too, but again there is nothing to do
-                // here.
+            // <cstdint>
+            using std::int_least8_t;
+            using std::int_least16_t;
+            using std::int_least32_t;
+            using std::int_fast8_t;
+            using std::int_fast16_t;
+            using std::int_fast32_t;
+            using std::uint_least8_t;
+            using std::uint_least16_t;
+            using std::uint_least32_t;
+            using std::uint_least64_t;
+            using std::uint_fast8_t;
+            using std::uint_fast16_t;
+            using std::uint_fast32_t;
+            // We need INT32_C, UINT32_C and UINT64_C macros too, but again there is nothing to do
+            // here.
 
-                // <cstring>
-                using std::size_t;
-                using std::memcpy;
+            // <cstring>
+            using std::size_t;
+            using std::memcpy;
 
-                // <limits>
-                template <class T>
-                using numeric_limits = std::numeric_limits<T>;
-
-                // <type_traits>
-                template <bool cond, class T = void>
-                using enable_if = std::enable_if<cond, T>;
-                template <class T>
-                using add_rvalue_reference = std::add_rvalue_reference<T>;
-                template <bool cond, class T_true, class T_false>
-                using conditional = std::conditional<cond, T_true, T_false>;
-                template <class T1, class T2>
-                using is_same = std::is_same<T1, T2>;
-                template <class T>
-                using is_integral = std::is_integral<T>;
-                template <class T>
-                using is_unsigned = std::is_unsigned<T>;
-            }
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////////////
-        // Some basic features for encoding/decoding IEEE-754 formats.
-        ////////////////////////////////////////////////////////////////////////////////////////
-        namespace detail {
+            // <limits>
             template <class T>
-            struct value_bits {
-                static constexpr stdr::size_t value = stdr::numeric_limits<
-                    typename stdr::enable_if<stdr::is_integral<T>::value, T>::type>::digits;
-            };
+            using numeric_limits = std::numeric_limits<T>;
 
-            constexpr stdr::uint_least32_t rotr32(stdr::uint_least32_t n, unsigned r) noexcept {
+            // <type_traits>
+            template <class T1, class T2>
+            using is_same = std::is_same<T1, T2>;
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            // Some basic features for encoding/decoding IEEE-754 formats.
+            ////////////////////////////////////////////////////////////////////////////////////////
+
+            template <class T>
+            static constexpr unsigned value_bits = 8 * sizeof(T);
+
+            constexpr uint_least32_t rotr32(uint_least32_t n, unsigned r) noexcept {
                 r &= 31;
                 return (n >> r) | (n << ((32 - r) & 31));
             }
 
-            constexpr stdr::uint_least64_t rotr64(stdr::uint_least64_t n, unsigned r) noexcept {
+            constexpr uint_least64_t rotr64(uint_least64_t n, unsigned r) noexcept {
                 r &= 63;
                 return (n >> r) | (n << ((64 - r) & 63));
             }
@@ -88,8 +68,8 @@ namespace jkj {
             ////////////////////////////////////////////////////////////////////////////////////////
 
             namespace log {
-                static_assert((stdr::int_fast32_t(-1) >> 1) == stdr::int_fast32_t(-1) &&
-                                  (stdr::int_fast16_t(-1) >> 1) == stdr::int_fast16_t(-1),
+                static_assert((int_fast32_t(-1) >> 1) == int_fast32_t(-1) &&
+                              (int_fast16_t(-1) >> 1) == int_fast16_t(-1),
                               "jkj::dragonbox: right-shift for signed integers must be arithmetic");
 
                 // For constexpr computation.
@@ -104,32 +84,32 @@ namespace jkj {
                     return count;
                 }
 
-                template <class Return = stdr::int_fast16_t>
+                template <class Return = int_fast16_t>
                 constexpr Return floor_log10_pow2(int e) noexcept {
                     assert(-2620 <= e && e <= 2620);
                     return static_cast<Return>((e * 315653) >> 20);
                 }
 
-                template <class Return = stdr::int_fast16_t>
+                template <class Return = int_fast16_t>
                 constexpr Return floor_log2_pow10(int e) noexcept {
                     // Formula itself holds on [-4003,4003]; [-1233,1233] is to ensure no overflow.
                     assert(-1233 <= e && e <= 1233);
                     return static_cast<Return>((e * 1741647) >> 19);
                 }
 
-                template <class Return = stdr::int_fast16_t>
+                template <class Return = int_fast16_t>
                 constexpr Return floor_log10_pow2_minus_log10_4_over_3(int e) noexcept {
                     assert(-2985 <= e && e <= 2936);
                     return static_cast<Return>((e * 631305 - 261663) >> 21);
                 }
 
-                template <class Return = stdr::int_fast32_t>
+                template <class Return = int_fast32_t>
                 constexpr Return floor_log5_pow2(int e) noexcept {
                     assert(-1831 <= e && e <= 1831);
                     return static_cast<Return>((e * 225799) >> 19);
                 }
 
-                template <class Return = stdr::int_fast32_t>
+                template <class Return = int_fast32_t>
                 constexpr Return floor_log5_pow2_minus_log5_3(int e) noexcept {
                     assert(-3543 <= e && e <= 2427);
                     return static_cast<Return>((e * 451597 - 715764) >> 20);
@@ -140,13 +120,12 @@ namespace jkj {
             // Utilities for wide unsigned integer arithmetic.
             ////////////////////////////////////////////////////////////////////////////////////////
 
-            namespace wuint {
-                // Compilers might support built-in 128-bit integer types. However, it seems that
-                // emulating them with a pair of 64-bit integers actually produces a better code,
-                // so we avoid using those built-ins. That said, they are still useful for
-                // implementing 64-bit x 64-bit -> 128-bit multiplication.
+            // Compilers might support built-in 128-bit integer types. However, it seems that
+            // emulating them with a pair of 64-bit integers actually produces a better code,
+            // so we avoid using those built-ins. That said, they are still useful for
+            // implementing 64-bit x 64-bit -> 128-bit multiplication.
 
-                // clang-format off
+            // clang-format off
 #if defined(__SIZEOF_INT128__)
 		// To silence "error: ISO C++ does not support '__int128' for 'type name'
 		// [-Wpedantic]"
@@ -155,168 +134,166 @@ namespace jkj {
 #endif
 			using builtin_uint128_t = unsigned __int128;
 #endif
-                // clang-format on
+            // clang-format on
 
-                struct uint128 {
-                    uint128() = default;
+            struct uint128 {
+                uint128() = default;
 
-                    stdr::uint_least64_t high_;
-                    stdr::uint_least64_t low_;
+                uint_least64_t high_;
+                uint_least64_t low_;
 
-                    constexpr uint128(stdr::uint_least64_t high, stdr::uint_least64_t low) noexcept
-                        : high_{high}, low_{low} {}
+                constexpr uint128(uint_least64_t high, uint_least64_t low) noexcept
+                    : high_{high}, low_{low} {}
 
-                    constexpr stdr::uint_least64_t high() const noexcept { return high_; }
-                    constexpr stdr::uint_least64_t low() const noexcept { return low_; }
+                constexpr uint_least64_t high() const noexcept { return high_; }
+                constexpr uint_least64_t low() const noexcept { return low_; }
 
-                    void operator+=(stdr::uint_least64_t n) noexcept {
-                        auto const sum = (low_ + n) & UINT64_C(0xffffffffffffffff);
-                        high_ += (sum < low_ ? 1 : 0);
-                        low_ = sum;
-                    }
-                };
+                void operator+=(uint_least64_t n) noexcept {
+                    auto const sum = (low_ + n) & UINT64_C(0xffffffffffffffff);
+                    high_ += (sum < low_ ? 1 : 0);
+                    low_ = sum;
+                }
+            };
 
-                constexpr stdr::uint_least64_t umul64(stdr::uint_least32_t x,
-                                                                   stdr::uint_least32_t y) noexcept {
+            constexpr uint_least64_t umul64(uint_least32_t x,
+                                                               uint_least32_t y) noexcept {
 #if defined(_MSC_VER) && defined(_M_IX86)
-                    JKJ_IF_NOT_CONSTEVAL { return __emulu(x, y); }
+                JKJ_IF_NOT_CONSTEVAL { return __emulu(x, y); }
 #endif
-                    return x * stdr::uint_least64_t(y);
-                }
-
-                // Get 128-bit result of multiplication of two 64-bit unsigned integers.
-                constexpr uint128
-                umul128(stdr::uint_least64_t x, stdr::uint_least64_t y) noexcept {
-                    auto const generic_impl = [=]() -> uint128 {
-                        auto const a = stdr::uint_least32_t(x >> 32);
-                        auto const b = stdr::uint_least32_t(x);
-                        auto const c = stdr::uint_least32_t(y >> 32);
-                        auto const d = stdr::uint_least32_t(y);
-
-                        auto const ac = umul64(a, c);
-                        auto const bc = umul64(b, c);
-                        auto const ad = umul64(a, d);
-                        auto const bd = umul64(b, d);
-
-                        auto const intermediate =
-                            (bd >> 32) + stdr::uint_least32_t(ad) + stdr::uint_least32_t(bc);
-
-                        return {ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32),
-                                (intermediate << 32) + stdr::uint_least32_t(bd)};
-                    };
-                    // To silence warning.
-                    static_cast<void>(generic_impl);
-
-#if defined(__SIZEOF_INT128__)
-                    auto const result = builtin_uint128_t(x) * builtin_uint128_t(y);
-                    return {stdr::uint_least64_t(result >> 64), stdr::uint_least64_t(result)};
-#elif defined(_MSC_VER) && defined(_M_X64)
-                    JKJ_IF_CONSTEVAL {
-                        // This redundant variable is to workaround MSVC's codegen bug caused by the
-                        // interaction of NRVO and intrinsics.
-                        auto const result = generic_impl();
-                        return result;
-                    }
-                    uint128 result;
-    #if defined(__AVX2__)
-                    result.low_ = _mulx_u64(x, y, &result.high_);
-    #else
-                    result.low_ = _umul128(x, y, &result.high_);
-    #endif
-                    return result;
-#else
-                    return generic_impl();
-#endif
-                }
-
-                // Get high half of the 128-bit result of multiplication of two 64-bit unsigned
-                // integers.
-                constexpr stdr::uint_least64_t
-                umul128_upper64(stdr::uint_least64_t x, stdr::uint_least64_t y) noexcept {
-                    auto const generic_impl = [=]() -> stdr::uint_least64_t {
-                        auto const a = stdr::uint_least32_t(x >> 32);
-                        auto const b = stdr::uint_least32_t(x);
-                        auto const c = stdr::uint_least32_t(y >> 32);
-                        auto const d = stdr::uint_least32_t(y);
-
-                        auto const ac = umul64(a, c);
-                        auto const bc = umul64(b, c);
-                        auto const ad = umul64(a, d);
-                        auto const bd = umul64(b, d);
-
-                        auto const intermediate =
-                            (bd >> 32) + stdr::uint_least32_t(ad) + stdr::uint_least32_t(bc);
-
-                        return ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32);
-                    };
-                    // To silence warning.
-                    static_cast<void>(generic_impl);
-
-#if defined(__SIZEOF_INT128__)
-                    auto const result = builtin_uint128_t(x) * builtin_uint128_t(y);
-                    return stdr::uint_least64_t(result >> 64);
-#elif defined(_MSC_VER) && defined(_M_X64)
-                    JKJ_IF_CONSTEVAL {
-                        // This redundant variable is to workaround MSVC's codegen bug caused by the
-                        // interaction of NRVO and intrinsics.
-                        auto const result = generic_impl();
-                        return result;
-                    }
-                    stdr::uint_least64_t result;
-    #if defined(__AVX2__)
-                    _mulx_u64(x, y, &result);
-    #else
-                    result = __umulh(x, y);
-    #endif
-                    return result;
-#else
-                    return generic_impl();
-#endif
-                }
-
-                // Get upper 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
-                // unsigned integer.
-                constexpr uint128 umul192_upper128(stdr::uint_least64_t x,
-                                                                                uint128 y) noexcept {
-                    auto r = umul128(x, y.high());
-                    r += umul128_upper64(x, y.low());
-                    return r;
-                }
-
-                // Get upper 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit
-                // unsigned integer.
-                constexpr stdr::uint_least64_t
-                umul96_upper64(stdr::uint_least32_t x, stdr::uint_least64_t y) noexcept {
-#if defined(__SIZEOF_INT128__) || (defined(_MSC_VER) && defined(_M_X64))
-                    return umul128_upper64(stdr::uint_least64_t(x) << 32, y);
-#else
-                    auto const yh = stdr::uint_least32_t(y >> 32);
-                    auto const yl = stdr::uint_least32_t(y);
-
-                    auto const xyh = umul64(x, yh);
-                    auto const xyl = umul64(x, yl);
-
-                    return xyh + (xyl >> 32);
-#endif
-                }
-
-                // Get lower 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
-                // unsigned integer.
-                constexpr uint128 umul192_lower128(stdr::uint_least64_t x,
-                                                                                uint128 y) noexcept {
-                    auto const high = x * y.high();
-                    auto const high_low = umul128(x, y.low());
-                    return {(high + high_low.high()) & UINT64_C(0xffffffffffffffff), high_low.low()};
-                }
-
-                // Get lower 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit
-                // unsigned integer.
-                constexpr stdr::uint_least64_t umul96_lower64(stdr::uint_least32_t x,
-                                                              stdr::uint_least64_t y) noexcept {
-                    return (x * y) & UINT64_C(0xffffffffffffffff);
-                }
+                return x * uint_least64_t(y);
             }
-        }
+
+            // Get 128-bit result of multiplication of two 64-bit unsigned integers.
+            constexpr uint128
+            umul128(uint_least64_t x, uint_least64_t y) noexcept {
+                auto const generic_impl = [=]() -> uint128 {
+                    auto const a = uint_least32_t(x >> 32);
+                    auto const b = uint_least32_t(x);
+                    auto const c = uint_least32_t(y >> 32);
+                    auto const d = uint_least32_t(y);
+
+                    auto const ac = umul64(a, c);
+                    auto const bc = umul64(b, c);
+                    auto const ad = umul64(a, d);
+                    auto const bd = umul64(b, d);
+
+                    auto const intermediate =
+                        (bd >> 32) + uint_least32_t(ad) + uint_least32_t(bc);
+
+                    return {ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32),
+                            (intermediate << 32) + uint_least32_t(bd)};
+                };
+                // To silence warning.
+                static_cast<void>(generic_impl);
+
+#if defined(__SIZEOF_INT128__)
+                auto const result = builtin_uint128_t(x) * builtin_uint128_t(y);
+                return {uint_least64_t(result >> 64), uint_least64_t(result)};
+#elif defined(_MSC_VER) && defined(_M_X64)
+                JKJ_IF_CONSTEVAL {
+                    // This redundant variable is to workaround MSVC's codegen bug caused by the
+                    // interaction of NRVO and intrinsics.
+                    auto const result = generic_impl();
+                    return result;
+                }
+                uint128 result;
+#if defined(__AVX2__)
+                result.low_ = _mulx_u64(x, y, &result.high_);
+#else
+                result.low_ = _umul128(x, y, &result.high_);
+#endif
+                return result;
+#else
+                return generic_impl();
+#endif
+            }
+
+            // Get high half of the 128-bit result of multiplication of two 64-bit unsigned
+            // integers.
+            constexpr uint_least64_t
+            umul128_upper64(uint_least64_t x, uint_least64_t y) noexcept {
+                auto const generic_impl = [=]() -> uint_least64_t {
+                    auto const a = uint_least32_t(x >> 32);
+                    auto const b = uint_least32_t(x);
+                    auto const c = uint_least32_t(y >> 32);
+                    auto const d = uint_least32_t(y);
+
+                    auto const ac = umul64(a, c);
+                    auto const bc = umul64(b, c);
+                    auto const ad = umul64(a, d);
+                    auto const bd = umul64(b, d);
+
+                    auto const intermediate =
+                        (bd >> 32) + uint_least32_t(ad) + uint_least32_t(bc);
+
+                    return ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32);
+                };
+                // To silence warning.
+                static_cast<void>(generic_impl);
+
+#if defined(__SIZEOF_INT128__)
+                auto const result = builtin_uint128_t(x) * builtin_uint128_t(y);
+                return uint_least64_t(result >> 64);
+#elif defined(_MSC_VER) && defined(_M_X64)
+                JKJ_IF_CONSTEVAL {
+                    // This redundant variable is to workaround MSVC's codegen bug caused by the
+                    // interaction of NRVO and intrinsics.
+                    auto const result = generic_impl();
+                    return result;
+                }
+                uint_least64_t result;
+#if defined(__AVX2__)
+                _mulx_u64(x, y, &result);
+#else
+                result = __umulh(x, y);
+#endif
+                return result;
+#else
+                return generic_impl();
+#endif
+            }
+
+            // Get upper 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
+            // unsigned integer.
+            constexpr uint128 umul192_upper128(uint_least64_t x,
+                                                                            uint128 y) noexcept {
+                auto r = umul128(x, y.high());
+                r += umul128_upper64(x, y.low());
+                return r;
+            }
+
+            // Get upper 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit
+            // unsigned integer.
+            constexpr uint_least64_t
+            umul96_upper64(uint_least32_t x, uint_least64_t y) noexcept {
+#if defined(__SIZEOF_INT128__) || (defined(_MSC_VER) && defined(_M_X64))
+                return umul128_upper64(uint_least64_t(x) << 32, y);
+#else
+                auto const yh = uint_least32_t(y >> 32);
+                auto const yl = uint_least32_t(y);
+
+                auto const xyh = umul64(x, yh);
+                auto const xyl = umul64(x, yl);
+
+                return xyh + (xyl >> 32);
+#endif
+            }
+
+            // Get lower 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
+            // unsigned integer.
+            constexpr uint128 umul192_lower128(uint_least64_t x,
+                                                                            uint128 y) noexcept {
+                auto const high = x * y.high();
+                auto const high_low = umul128(x, y.low());
+                return {(high + high_low.high()) & UINT64_C(0xffffffffffffffff), high_low.low()};
+            }
+
+            // Get lower 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit
+            // unsigned integer.
+            constexpr uint_least64_t umul96_lower64(uint_least32_t x,
+                                                          uint_least64_t y) noexcept {
+                return (x * y) & UINT64_C(0xffffffffffffffff);
+            }
 
         template <class Integer>
         struct compute_mul_result {
@@ -333,12 +310,12 @@ namespace jkj {
         // Currently available formats are IEEE-754 binary32 & IEEE-754 binary64.
 
         template <class T>
-        struct FloatFormat;
+        struct float_format;
 
         template <>
-        struct FloatFormat<float> {
-            using carrier_uint = detail::stdr::uint_least32_t;
-            using cache_entry = detail::stdr::uint_least64_t;
+        struct float_format<float> {
+            using carrier_uint = uint_least32_t;
+            using cache_entry = uint_least64_t;
             enum {
               total_bits = 32,
               significand_bits = 23,
@@ -358,19 +335,19 @@ namespace jkj {
                 // The idea of branchless search below is by reddit users r/pigeon768 and
                 // r/TheoreticalDumbass.
 
-                auto r = detail::rotr32(
+                auto r = rotr32(
                     carrier_uint(significand * UINT32_C(184254097)), 4);
                 auto b = r < UINT32_C(429497);
-                auto s = detail::stdr::size_t(b);
+                auto s = size_t(b);
                 significand = b ? r : significand;
 
-                r = detail::rotr32(
+                r = rotr32(
                     carrier_uint(significand * UINT32_C(42949673)), 2);
                 b = r < UINT32_C(42949673);
                 s = s * 2 + b;
                 significand = b ? r : significand;
 
-                r = detail::rotr32(
+                r = rotr32(
                     carrier_uint(significand * UINT32_C(1288490189)), 1);
                 b = r < UINT32_C(429496730);
                 s = s * 2 + b;
@@ -380,7 +357,7 @@ namespace jkj {
             }
 
             static compute_mul_result<carrier_uint> compute_mul(carrier_uint u, cache_entry cache) noexcept {
-                auto const r = detail::wuint::umul96_upper64(u, cache);
+                auto const r = umul96_upper64(u, cache);
                 return {carrier_uint(r >> 32), carrier_uint(r) == 0};
             }
 
@@ -391,7 +368,7 @@ namespace jkj {
             static compute_mul_parity_result compute_mul_parity(carrier_uint two_f, cache_entry cache, int beta) noexcept {
                 assert(beta >= 1);
                 assert(beta <= 32);
-                auto const r = detail::wuint::umul96_lower64(two_f, cache);
+                auto const r = umul96_lower64(two_f, cache);
                 return {((r >> (64 - beta)) & 1) != 0,
                         (UINT32_C(0xffffffff) & (r >> (32 - beta))) == 0};
             }
@@ -410,9 +387,9 @@ namespace jkj {
         };
 
         template <>
-        struct FloatFormat<double> {
-            using carrier_uint = detail::stdr::uint_least64_t;
-            using cache_entry = detail::wuint::uint128;
+        struct float_format<double> {
+            using carrier_uint = uint_least64_t;
+            using cache_entry = uint128;
             enum {
               total_bits = 64,
               significand_bits = 52,
@@ -432,25 +409,25 @@ namespace jkj {
                 // The idea of branchless search below is by reddit users r/pigeon768 and
                 // r/TheoreticalDumbass.
 
-                auto r = detail::rotr64(
+                auto r = rotr64(
                     carrier_uint(significand * UINT64_C(28999941890838049)), 8);
                 auto b = r < UINT64_C(184467440738);
-                auto s = detail::stdr::size_t(b);
+                auto s = size_t(b);
                 significand = b ? r : significand;
 
-                r = detail::rotr64(
+                r = rotr64(
                     carrier_uint(significand * UINT64_C(182622766329724561)), 4);
                 b = r < UINT64_C(1844674407370956);
                 s = s * 2 + b;
                 significand = b ? r : significand;
 
-                r = detail::rotr64(
+                r = rotr64(
                     carrier_uint(significand * UINT64_C(10330176681277348905)), 2);
                 b = r < UINT64_C(184467440737095517);
                 s = s * 2 + b;
                 significand = b ? r : significand;
 
-                r = detail::rotr64(
+                r = rotr64(
                     carrier_uint(significand * UINT64_C(14757395258967641293)), 1);
                 b = r < UINT64_C(1844674407370955162);
                 s = s * 2 + b;
@@ -460,7 +437,7 @@ namespace jkj {
             }
 
             static compute_mul_result<carrier_uint> compute_mul(carrier_uint u, cache_entry cache) noexcept {
-                auto const r = detail::wuint::umul192_upper128(u, cache);
+                auto const r = umul192_upper128(u, cache);
                 return {r.high(), r.low() == 0};
             }
 
@@ -471,7 +448,7 @@ namespace jkj {
             static compute_mul_parity_result compute_mul_parity(carrier_uint two_f, cache_entry cache, int beta) noexcept {
                 assert(beta >= 1);
                 assert(beta < 64);
-                auto const r = detail::wuint::umul192_lower128(two_f, cache);
+                auto const r = umul192_lower128(two_f, cache);
                 return {((r.high() >> (64 - beta)) & 1) != 0,
                         (((r.high() << beta) & UINT64_C(0xffffffffffffffff)) |
                          (r.low() >> (64 - beta))) == 0};
@@ -497,7 +474,7 @@ namespace jkj {
 
         template <>
         struct cache_holder<float, false> {
-          using format = FloatFormat<float>;
+          using format = float_format<float>;
 
           static constexpr typename format::cache_entry cache[format::max_k - format::min_k + 1] {
             UINT64_C(0x81ceb32c4b43fcf5), UINT64_C(0xa2425ff75e14fc32),
@@ -548,7 +525,7 @@ namespace jkj {
 
         template <>
         struct cache_holder<float, true> {
-            using format = FloatFormat<float>;
+            using format = float_format<float>;
             using cache_entry = typename format::cache_entry;
             enum {
               cache_bits = format::cache_bits,
@@ -560,14 +537,14 @@ namespace jkj {
             };
 
             cache_entry cache[compressed_table_size] {};
-            detail::stdr::uint_least16_t pow5_table[pow5_table_size] {};
+            uint_least16_t pow5_table[pow5_table_size] {};
 
             constexpr cache_holder() {
-              for (detail::stdr::size_t i = 0; i < compressed_table_size; ++i) {
+              for (size_t i = 0; i < compressed_table_size; ++i) {
                   cache[i] = cache_holder<float, false>::cache[i * compression_ratio];
               }
-              detail::stdr::uint_least16_t p = 1;
-              for (detail::stdr::size_t i = 0; i < pow5_table_size; ++i) {
+              uint_least16_t p = 1;
+              for (size_t i = 0; i < pow5_table_size; ++i) {
                   pow5_table[i] = p;
                   p *= 5;
               }
@@ -579,11 +556,11 @@ namespace jkj {
               // Compute the base index.
               // Supposed to compute (k - min_k) / compression_ratio.
               static_assert(max_k - min_k <= 89 && compression_ratio == 13, "");
-              static_assert(max_k - min_k <= detail::stdr::numeric_limits<int>::max(),
+              static_assert(max_k - min_k <= numeric_limits<int>::max(),
                             "");
               auto const cache_index =
-                  int(detail::stdr::uint_fast16_t(int(k - min_k) *
-                                                                  detail::stdr::int_fast16_t(79)) >>
+                  int(uint_fast16_t(int(k - min_k) *
+                                                                  int_fast16_t(79)) >>
                                       10);
               auto const kb = int(cache_index * compression_ratio + min_k);
               auto const offset = int(k - kb);
@@ -593,21 +570,20 @@ namespace jkj {
 
               if (offset == 0) {
                   return base_cache;
-              }
-              else {
+              } else {
                   // Compute the required amount of bit-shift.
                   auto const alpha =
-                      int(detail::log::floor_log2_pow10(k) -
-                                      detail::log::floor_log2_pow10(kb) - offset);
+                      int(log::floor_log2_pow10(k) -
+                                      log::floor_log2_pow10(kb) - offset);
                   assert(alpha > 0 && alpha < 64);
 
                   // Try to recover the real cache.
                   auto const pow5 =
                       offset >= 7
-                          ? detail::stdr::uint_fast32_t(detail::stdr::uint_fast32_t(pow5_table[6]) *
+                          ? uint_fast32_t(uint_fast32_t(pow5_table[6]) *
                                                         pow5_table[offset - 6])
-                          : detail::stdr::uint_fast32_t(pow5_table[offset]);
-                  auto mul_result = detail::wuint::umul128(base_cache, pow5);
+                          : uint_fast32_t(pow5_table[offset]);
+                  auto mul_result = umul128(base_cache, pow5);
                   auto const recovered_cache =
                       cache_entry((((mul_result.high() << int(64 - alpha)) |
                                          (mul_result.low() >> alpha)) +
@@ -622,7 +598,7 @@ namespace jkj {
 
         template <>
         struct cache_holder<double, false> {
-            using format = FloatFormat<double>;
+            using format = float_format<double>;
 
             static constexpr typename format::cache_entry cache[format::max_k - format::min_k + 1] {
                 {UINT64_C(0xff77b1fcbebcdc4f), UINT64_C(0x25e8e89c13bb0f7b)},
@@ -1253,7 +1229,7 @@ namespace jkj {
 
         template <>
         struct cache_holder<double, true> {
-            using format = FloatFormat<double>;
+            using format = float_format<double>;
             using cache_entry = typename format::cache_entry;
             enum {
               cache_bits = format::cache_bits,
@@ -1265,14 +1241,14 @@ namespace jkj {
             };
 
             cache_entry cache[compressed_table_size] {};
-            detail::stdr::uint_least64_t pow5_table[pow5_table_size] {};
+            uint_least64_t pow5_table[pow5_table_size] {};
 
             constexpr cache_holder() {
-                for (detail::stdr::size_t i = 0; i < compressed_table_size; ++i) {
+                for (size_t i = 0; i < compressed_table_size; ++i) {
                     cache[i] = cache_holder<double, false>::cache[i * compression_ratio];
                 }
-                detail::stdr::uint_least64_t p = 1;
-                for (detail::stdr::size_t i = 0; i < pow5_table_size; ++i) {
+                uint_least64_t p = 1;
+                for (size_t i = 0; i < pow5_table_size; ++i) {
                     pow5_table[i] = p;
                     p *= 5;
                 }
@@ -1284,11 +1260,11 @@ namespace jkj {
                 // Compute the base index.
                 // Supposed to compute (k - min_k) / compression_ratio.
                 static_assert(max_k - min_k <= 619 && compression_ratio == 27, "");
-                static_assert(max_k - min_k <= detail::stdr::numeric_limits<int>::max(),
+                static_assert(max_k - min_k <= numeric_limits<int>::max(),
                               "");
                 auto const cache_index =
-                    int(detail::stdr::uint_fast32_t(int(k - min_k) *
-                                                                    detail::stdr::int_fast32_t(607)) >>
+                    int(uint_fast32_t(int(k - min_k) *
+                                                                    int_fast32_t(607)) >>
                                         14);
                 auto const kb = int(cache_index * compression_ratio + min_k);
                 auto const offset = int(k - kb);
@@ -1298,25 +1274,24 @@ namespace jkj {
 
                 if (offset == 0) {
                     return base_cache;
-                }
-                else {
+                } else {
                     // Compute the required amount of bit-shift.
                     auto const alpha =
-                        int(detail::log::floor_log2_pow10(k) -
-                                        detail::log::floor_log2_pow10(kb) - offset);
+                        int(log::floor_log2_pow10(k) -
+                                        log::floor_log2_pow10(kb) - offset);
                     assert(alpha > 0 && alpha < 64);
 
                     // Try to recover the real cache.
                     auto const pow5 = pow5_table[offset];
-                    auto recovered_cache = detail::wuint::umul128(base_cache.high(), pow5);
-                    auto const middle_low = detail::wuint::umul128(base_cache.low(), pow5);
+                    auto recovered_cache = umul128(base_cache.high(), pow5);
+                    auto const middle_low = umul128(base_cache.low(), pow5);
 
                     recovered_cache += middle_low.high();
 
-                    auto const high_to_middle = detail::stdr::uint_least64_t(
+                    auto const high_to_middle = uint_least64_t(
                         (recovered_cache.high() << (64 - alpha)) &
                         UINT64_C(0xffffffffffffffff));
-                    auto const middle_to_low = detail::stdr::uint_least64_t(
+                    auto const middle_to_low = uint_least64_t(
                         (recovered_cache.low() << (64 - alpha)) &
                         UINT64_C(0xffffffffffffffff));
 
@@ -1325,7 +1300,7 @@ namespace jkj {
 
                     assert(recovered_cache.low() != UINT64_C(0xffffffffffffffff));
                     recovered_cache = {recovered_cache.high(),
-                                       detail::stdr::uint_least64_t(recovered_cache.low() + 1)};
+                                       uint_least64_t(recovered_cache.low() + 1)};
 
                     return recovered_cache;
                 }
@@ -1334,7 +1309,7 @@ namespace jkj {
 
         template <class Float>
         struct float_bits {
-          using format = FloatFormat<Float>;
+          using format = float_format<Float>;
           using carrier_uint = typename format::carrier_uint;
 
           carrier_uint significand;
@@ -1366,7 +1341,6 @@ namespace jkj {
           }
         };
 
-        namespace detail {
             ////////////////////////////////////////////////////////////////////////////////////////
             // Some simple utilities for constexpr computation.
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -1400,7 +1374,6 @@ namespace jkj {
             // Utilities for fast divisibility tests.
             ////////////////////////////////////////////////////////////////////////////////////////
 
-            namespace div {
                 // Replace n by floor(n / 10^N).
                 // Returns true if and only if n is divisible by 10^N.
                 // Precondition: n <= 10^(N+1)
@@ -1410,38 +1383,38 @@ namespace jkj {
 
                 template <class UInt>
                 struct divide_by_pow10_info<1, UInt> {
-                    static constexpr stdr::uint_fast32_t magic_number = 6554;
+                    static constexpr uint_fast32_t magic_number = 6554;
                     static constexpr int shift_amount = 16;
                 };
 
                 template <>
-                struct divide_by_pow10_info<1, stdr::uint_least8_t> {
-                    static constexpr stdr::uint_fast16_t magic_number = 103;
+                struct divide_by_pow10_info<1, uint_least8_t> {
+                    static constexpr uint_fast16_t magic_number = 103;
                     static constexpr int shift_amount = 10;
                 };
 
                 template <>
-                struct divide_by_pow10_info<1, stdr::uint_least16_t> {
-                    static constexpr stdr::uint_fast16_t magic_number = 103;
+                struct divide_by_pow10_info<1, uint_least16_t> {
+                    static constexpr uint_fast16_t magic_number = 103;
                     static constexpr int shift_amount = 10;
                 };
 
                 template <class UInt>
                 struct divide_by_pow10_info<2, UInt> {
-                    static constexpr stdr::uint_fast32_t magic_number = 656;
+                    static constexpr uint_fast32_t magic_number = 656;
                     static constexpr int shift_amount = 16;
                 };
 
                 template <>
-                struct divide_by_pow10_info<2, stdr::uint_least16_t> {
-                    static constexpr stdr::uint_fast32_t magic_number = 41;
+                struct divide_by_pow10_info<2, uint_least16_t> {
+                    static constexpr uint_fast32_t magic_number = 41;
                     static constexpr int shift_amount = 12;
                 };
 
                 template <int N, class UInt>
                 constexpr bool check_divisibility_and_divide_by_pow10(UInt& n) noexcept {
                     // Make sure the computation for max_n does not overflow.
-                    static_assert(N + 1 <= log::floor_log10_pow2(value_bits<UInt>::value), "");
+                    static_assert(N + 1 <= log::floor_log10_pow2(value_bits<UInt>), "");
                     assert(n <= compute_power<N + 1>(UInt(10)));
 
                     using info = divide_by_pow10_info<N, UInt>;
@@ -1461,7 +1434,7 @@ namespace jkj {
                 template <int N, class UInt>
                 constexpr UInt small_division_by_pow10(UInt n) noexcept {
                     // Make sure the computation for max_n does not overflow.
-                    static_assert(N + 1 <= log::floor_log10_pow2(value_bits<UInt>::value), "");
+                    static_assert(N + 1 <= log::floor_log10_pow2(value_bits<UInt>), "");
                     assert(n <= compute_power<N + 1>(UInt(10)));
 
                     return UInt((n * divide_by_pow10_info<N, UInt>::magic_number) >>
@@ -1480,37 +1453,34 @@ namespace jkj {
                     // code for 32-bit or smaller architectures. Even for 64-bit architectures, it seems
                     // compilers tend to generate mov + mul instead of a single imul for an unknown
                     // reason if we just write n / 10.
-                    if constexpr (stdr::is_same<UInt, stdr::uint_least32_t>::value && N == 1 &&
+                    if constexpr (is_same<UInt, uint_least32_t>::value && N == 1 &&
                                      n_max <= UINT32_C(1073741828)) {
-                        return UInt(wuint::umul64(n, UINT32_C(429496730)) >> 32);
+                        return UInt(umul64(n, UINT32_C(429496730)) >> 32);
                     }
                     // Specialize for 64-bit division by 10.
                     // Without the bound on n_max (which compilers these days never leverage), the
                     // minimum needed amount of shift is larger than 64.
-                    else if constexpr (stdr::is_same<UInt, stdr::uint_least64_t>::value && N == 1 &&
+                    else if constexpr (is_same<UInt, uint_least64_t>::value && N == 1 &&
                                           n_max <= UINT64_C(4611686018427387908)) {
-                        return UInt(wuint::umul128_upper64(n, UINT64_C(1844674407370955162)));
+                        return UInt(umul128_upper64(n, UINT64_C(1844674407370955162)));
                     }
                     // Specialize for 32-bit division by 100.
                     // It seems compilers tend to generate mov + mul instead of a single imul for an
                     // unknown reason if we just write n / 100.
-                    else if constexpr (stdr::is_same<UInt, stdr::uint_least32_t>::value && N == 2) {
-                        return UInt(wuint::umul64(n, UINT32_C(1374389535)) >> 37);
+                    else if constexpr (is_same<UInt, uint_least32_t>::value && N == 2) {
+                        return UInt(umul64(n, UINT32_C(1374389535)) >> 37);
                     }
                     // Specialize for 64-bit division by 1000.
                     // Without the bound on n_max (which compilers these days never leverage), the
                     // smallest magic number for this computation does not fit into 64-bits.
-                    else if constexpr (stdr::is_same<UInt, stdr::uint_least64_t>::value && N == 3 &&
+                    else if constexpr (is_same<UInt, uint_least64_t>::value && N == 3 &&
                                           n_max <= UINT64_C(15534100272597517998)) {
-                        return UInt(wuint::umul128_upper64(n, UINT64_C(4722366482869645214)) >> 8);
-                    }
-                    else {
+                        return UInt(umul128_upper64(n, UINT64_C(4722366482869645214)) >> 8);
+                    } else {
                         constexpr auto divisor = compute_power<N>(UInt(10));
                         return n / divisor;
                     }
                 }
-            }
-        }
 
         ////////////////////////////////////////////////////////////////////////////////////////
         // Return types for the main interface function.
@@ -1519,13 +1489,8 @@ namespace jkj {
         struct decimal_fp {
             unsigned long long significand;
             int exponent;
-            bool is_negative;
+            bool sign;
         };
-
-        namespace detail {
-            template <class T>
-            struct dummy {};
-        }
 
         struct interval {
           bool include_left_endpoint;
@@ -1562,633 +1527,619 @@ namespace jkj {
           cache_compact,
         };
 
-        namespace detail {
+        template <class Float>
+        struct impl {
+            // Guards against types that have different internal representations than IEEE-754
+            // binary32/64. I don't know if there is a truly reliable way of detecting IEEE-754 binary
+            // formats. I just did my best here. Note that in some cases
+            // numeric_limits<Float>::is_iec559 may report false even if the internal representation is
+            // IEEE-754 compatible. In such a case, the user can specialize this traits template and
+            // remove this static sanity check in order to make Dragonbox work for Float.
+            static_assert(numeric_limits<Float>::is_iec559 &&
+                          numeric_limits<Float>::radix == 2 &&
+                          (sizeof(Float) == 4 || sizeof(Float) == 8),
+                          "jkj::dragonbox: Float may not be of IEEE-754 binary32/binary64");
 
-            template <class Float>
-            struct impl {
-              // Guards against types that have different internal representations than IEEE-754
-              // binary32/64. I don't know if there is a truly reliable way of detecting IEEE-754 binary
-              // formats. I just did my best here. Note that in some cases
-              // numeric_limits<Float>::is_iec559 may report false even if the internal representation is
-              // IEEE-754 compatible. In such a case, the user can specialize this traits template and
-              // remove this static sanity check in order to make Dragonbox work for Float.
-              static_assert(detail::stdr::numeric_limits<Float>::is_iec559 &&
-                                detail::stdr::numeric_limits<Float>::radix == 2 &&
-                                (sizeof(Float) == 4 || sizeof(Float) == 8),
-                            "jkj::dragonbox: Float may not be of IEEE-754 binary32/binary64");
+            using format = float_format<Float>;
+            using carrier_uint = typename format::carrier_uint;
+            static_assert(sizeof(carrier_uint) == sizeof(Float));
 
-                using format = FloatFormat<Float>;
-                using carrier_uint = typename format::carrier_uint;
+            static constexpr int min(int x, int y) noexcept { return x < y ? x : y; }
+            static constexpr int max(int x, int y) noexcept { return x > y ? x : y; }
 
-              constexpr static Float carrier_to_float(carrier_uint u) noexcept {
-                Float x;
-                static_assert(sizeof(u) == sizeof(x));
-                std::memcpy(&x, &u, sizeof(u));
-                return x;
+            enum {
+              min_exponent = format::min_exponent,
+              max_exponent = format::max_exponent,
+              significand_bits = format::significand_bits,
+              carrier_bits = value_bits<carrier_uint>,
+
+              kappa = log::floor_log10_pow2(carrier_bits - significand_bits - 2) - 1,
+
+              min_k = min(-log::floor_log10_pow2_minus_log10_4_over_3(max_exponent - significand_bits),
+                          -log::floor_log10_pow2(max_exponent - significand_bits) + kappa),
+
+              // We do invoke shorter_interval_case for exponent == min_exponent case,
+              // so we should not add 1 here.
+              max_k = max(-log::floor_log10_pow2_minus_log10_4_over_3(min_exponent - significand_bits /*+ 1*/),
+                          -log::floor_log10_pow2(min_exponent - significand_bits) + kappa),
+
+              case_shorter_interval_left_endpoint_lower_threshold = 2,
+
+              case_shorter_interval_left_endpoint_upper_threshold =
+                  2 + log::floor_log2(compute_power<count_factors<5>(
+                      (carrier_uint(1) << (significand_bits + 2)) - 1) + 1>(10) / 3),
+
+              case_shorter_interval_right_endpoint_lower_threshold = 0,
+
+              case_shorter_interval_right_endpoint_upper_threshold =
+                  2 + log::floor_log2(compute_power<count_factors<5>(
+                      (carrier_uint(1) << (significand_bits + 1)) + 1) + 1>(10) / 3),
+
+              shorter_interval_tie_lower_threshold =
+                  -log::floor_log5_pow2_minus_log5_3(significand_bits + 4) - 2 - significand_bits,
+
+              shorter_interval_tie_upper_threshold =
+                  -log::floor_log5_pow2(significand_bits + 2) - 2 - significand_bits,
+            };
+
+            static_assert(kappa >= 1);
+            static_assert(carrier_bits >= significand_bits + 2 + log::floor_log2_pow10(kappa + 1));
+            static_assert(min_k >= format::min_k && max_k <= format::max_k);
+
+            static constexpr Float carrier_to_float(carrier_uint u) noexcept {
+              Float x;
+              std::memcpy(&x, &u, sizeof(u));
+              return x;
+            }
+        };
+
+        template <class Float,
+                  binary_round_policy BinaryRoundPolicy,
+                  decimal_round_policy DecimalRoundPolicy,
+                  cache_policy CachePolicy>
+        struct to_decimal_impl {
+            using impl = dragonbox::impl<Float>;
+            using format = float_format<Float>;
+            using carrier_uint = typename format::carrier_uint;
+            
+            enum {
+              min_exponent = format::min_exponent,
+              max_exponent = format::max_exponent,
+              significand_bits = format::significand_bits,
+              carrier_bits = impl::carrier_bits,
+              kappa = impl::kappa,
+              shorter_interval_tie_lower_threshold = impl::shorter_interval_tie_lower_threshold,
+              shorter_interval_tie_upper_threshold = impl::shorter_interval_tie_upper_threshold,
+              case_shorter_interval_left_endpoint_lower_threshold = impl::case_shorter_interval_left_endpoint_lower_threshold,
+              case_shorter_interval_left_endpoint_upper_threshold = impl::case_shorter_interval_left_endpoint_upper_threshold,
+              case_shorter_interval_right_endpoint_lower_threshold = impl::case_shorter_interval_right_endpoint_lower_threshold,
+              case_shorter_interval_right_endpoint_upper_threshold = impl::case_shorter_interval_right_endpoint_upper_threshold,
+            };
+
+            carrier_uint significand;
+            int exponent_bits;
+            bool sign;
+
+            static bool prefer_round_down(carrier_uint decimal_significand) noexcept {
+              switch (DecimalRoundPolicy) {
+                case decimal_dont_care: return false;
+                case decimal_to_even: return decimal_significand % 2 != 0;
+                case decimal_to_odd: return decimal_significand % 2 == 0;
+                case decimal_away_from_zero: return false;
+                case decimal_toward_zero: return true;
               }
+            }
 
-                enum {
-                  significand_bits = format::significand_bits,
-                  min_exponent = format::min_exponent,
-                  max_exponent = format::max_exponent,
-                  exponent_bias = format::exponent_bias,
-                  carrier_bits = detail::value_bits<carrier_uint>::value,
-                };
-
-                static constexpr int kappa =
-                    log::floor_log10_pow2(carrier_bits - significand_bits - 2) - 1;
-                static_assert(kappa >= 1, "");
-                static_assert(carrier_bits >= significand_bits + 2 + log::floor_log2_pow10(kappa + 1),
-                              "");
-
-                static constexpr int min(int x, int y) noexcept { return x < y ? x : y; }
-                static constexpr int max(int x, int y) noexcept { return x > y ? x : y; }
-
-                static constexpr int min_k =
-                    min(-log::floor_log10_pow2_minus_log10_4_over_3(max_exponent - significand_bits),
-                        -log::floor_log10_pow2(max_exponent - significand_bits) + kappa);
-
-                // We do invoke shorter_interval_case for exponent == min_exponent case,
-                // so we should not add 1 here.
-                static constexpr int max_k =
-                    max(-log::floor_log10_pow2_minus_log10_4_over_3(min_exponent -
-                                                                    significand_bits /*+ 1*/),
-                        -log::floor_log10_pow2(min_exponent - significand_bits) + kappa);
-
-                static constexpr int case_shorter_interval_left_endpoint_lower_threshold = 2;
-                static constexpr int case_shorter_interval_left_endpoint_upper_threshold =
-                    2 +
-                    log::floor_log2(
-                        compute_power<
-                            count_factors<5>((carrier_uint(1) << (significand_bits + 2)) - 1) + 1>(10) /
-                        3);
-
-                static constexpr int case_shorter_interval_right_endpoint_lower_threshold = 0;
-                static constexpr int case_shorter_interval_right_endpoint_upper_threshold =
-                    2 +
-                    log::floor_log2(
-                        compute_power<
-                            count_factors<5>((carrier_uint(1) << (significand_bits + 1)) + 1) + 1>(10) /
-                        3);
-
-                static constexpr int shorter_interval_tie_lower_threshold =
-                    -log::floor_log5_pow2_minus_log5_3(significand_bits + 4) - 2 - significand_bits;
-                static constexpr int shorter_interval_tie_upper_threshold =
-                    -log::floor_log5_pow2(significand_bits + 2) - 2 - significand_bits;
+            struct decimal_fp {
+              carrier_uint significand;
+              int exponent;
+              bool sign;
             };
 
-            template <class Float, binary_round_policy BinaryRoundPolicy, decimal_round_policy DecimalRoundPolicy, cache_policy CachePolicy>
-            struct to_decimal_impl {
-                using Impl = impl<Float>;
-                using format = FloatFormat<Float>;
-                using carrier_uint = typename format::carrier_uint;
-                
-                enum {
-                  min_k = Impl::min_k,
-                  max_k = Impl::max_k,
-                  significand_bits = format::significand_bits,
-                  shorter_interval_tie_lower_threshold = Impl::shorter_interval_tie_lower_threshold,
-                  shorter_interval_tie_upper_threshold = Impl::shorter_interval_tie_upper_threshold,
-                  kappa = Impl::kappa,
-                  case_shorter_interval_right_endpoint_lower_threshold = Impl::case_shorter_interval_right_endpoint_lower_threshold,
-                  case_shorter_interval_right_endpoint_upper_threshold = Impl::case_shorter_interval_right_endpoint_upper_threshold,
-                  case_shorter_interval_left_endpoint_lower_threshold = Impl::case_shorter_interval_left_endpoint_lower_threshold,
-                  case_shorter_interval_left_endpoint_upper_threshold = Impl::case_shorter_interval_left_endpoint_upper_threshold,
-                };
+            decimal_fp no_trailing_zeros(carrier_uint significand, int exponent) {
+              return {significand, exponent, sign};
+            }
 
-                carrier_uint significand;
-                int exponent_bits;
-                bool negative;
+            decimal_fp may_have_trailing_zeros(carrier_uint significand, int exponent) {
+              format::remove_trailing_zeros(significand, exponent);
+              return {significand, exponent, sign};
+            }
 
-                static bool prefer_round_down(carrier_uint decimal_significand) noexcept {
-                  switch (DecimalRoundPolicy) {
-                    case decimal_dont_care: return false;
-                    case decimal_to_even: return decimal_significand % 2 != 0;
-                    case decimal_to_odd: return decimal_significand % 2 == 0;
-                    case decimal_away_from_zero: return false;
-                    case decimal_toward_zero: return true;
-                  }
+            decimal_fp nearest_to_even() {
+                bool even = significand % 2 == 0;
+                return nearest({even, even}, {true, true});
+            }
+
+            decimal_fp nearest_to_odd() {
+                bool even = significand % 2 == 0;
+                return nearest({!even, even}, {false, false});
+            }
+
+            decimal_fp nearest_toward_plus_infinity() {
+                return nearest({!sign, sign}, {!sign, sign});
+            }
+
+            decimal_fp nearest_toward_minus_infinity() {
+                return nearest({sign, !sign}, {sign, !sign});
+            }
+
+            decimal_fp nearest_toward_zero() {
+                return nearest({false, true}, {false, true});
+            }
+
+            decimal_fp nearest_away_from_zero() {
+                return nearest({true, false}, {true, false});
+            }
+
+            decimal_fp nearest_always_closed() {
+                return nearest({true, true}, {true, true});
+            }
+
+            decimal_fp nearest_always_open() {
+                return nearest({false, false}, {false, false});
+            }
+
+            decimal_fp to_decimal() {
+              bool even = significand % 2 == 0;
+              switch (BinaryRoundPolicy) {
+                case binary_nearest_to_even: return nearest_to_even();
+                case binary_nearest_to_odd: return nearest_to_odd();
+                case binary_nearest_toward_plus_infinity: return nearest_toward_plus_infinity();
+                case binary_nearest_toward_minus_infinity: return nearest_toward_minus_infinity();
+                case binary_nearest_toward_zero: return nearest_toward_zero();
+                case binary_nearest_away_from_zero: return nearest_away_from_zero();
+                case binary_nearest_to_even_static_boundary: return even ? nearest_always_closed() : nearest_always_open();
+                case binary_nearest_to_odd_static_boundary: return even ? nearest_always_open() : nearest_always_closed();
+                case binary_nearest_toward_plus_infinity_static_boundary: return sign ? nearest_toward_zero() : nearest_away_from_zero();
+                case binary_nearest_toward_minus_infinity_static_boundary: return sign ? nearest_away_from_zero() : nearest_toward_zero();
+                case binary_toward_plus_infinity: return sign ? left_closed_directed() : right_closed_directed();
+                case binary_toward_minus_infinity: return sign ? right_closed_directed() : left_closed_directed();
+                case binary_toward_zero: return left_closed_directed();
+                case binary_away_from_zero: return right_closed_directed();
+              }
+            }
+
+            static constexpr cache_holder<Float, CachePolicy> cache_;
+
+            //// The main algorithm assumes the input is a normal/subnormal finite number.
+
+            constexpr decimal_fp nearest(interval normal_interval, interval shorter_interval) noexcept {
+
+                carrier_uint two_fc = significand * 2;
+                auto binary_exponent = exponent_bits;
+
+                // Is the input a normal number?
+                if (binary_exponent != 0) {
+                    binary_exponent += format::exponent_bias - format::significand_bits;
+
+                    // Shorter interval case; proceed like Schubfach.
+                    // One might think this condition is wrong, since when exponent_bits ==
+                    // 1 and two_fc == 0, the interval is actually regular. However, it
+                    // turns out that this seemingly wrong condition is actually fine,
+                    // because the end result is anyway the same.
+                    //
+                    // [binary32]
+                    // (fc-1/2) * 2^e = 1.175'494'28... * 10^-38
+                    // (fc-1/4) * 2^e = 1.175'494'31... * 10^-38
+                    //    fc    * 2^e = 1.175'494'35... * 10^-38
+                    // (fc+1/2) * 2^e = 1.175'494'42... * 10^-38
+                    //
+                    // Hence, shorter_interval_case will return 1.175'494'4 * 10^-38.
+                    // 1.175'494'3 * 10^-38 is also a correct shortest representation that
+                    // will be rejected if we assume shorter interval, but 1.175'494'4 *
+                    // 10^-38 is closer to the true value so it doesn't matter.
+                    //
+                    // [binary64]
+                    // (fc-1/2) * 2^e = 2.225'073'858'507'201'13... * 10^-308
+                    // (fc-1/4) * 2^e = 2.225'073'858'507'201'25... * 10^-308
+                    //    fc    * 2^e = 2.225'073'858'507'201'38... * 10^-308
+                    // (fc+1/2) * 2^e = 2.225'073'858'507'201'63... * 10^-308
+                    //
+                    // Hence, shorter_interval_case will return 2.225'073'858'507'201'4 *
+                    // 10^-308. This is indeed of the shortest length, and it is the unique
+                    // one closest to the true value among valid representations of the same
+                    // length.
+
+                    // Shorter interval case.
+                    if (two_fc == 0) {
+
+                        // Compute k and beta.
+                        int const minus_k = log::floor_log10_pow2_minus_log10_4_over_3(binary_exponent);
+                        int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
+
+                        // Compute xi and zi.
+                        auto const cache = cache_.get_cache(-minus_k);
+
+                        auto xi =
+                            format::compute_left_endpoint_for_shorter_interval_case(cache, beta);
+                        auto zi = format::
+                            compute_right_endpoint_for_shorter_interval_case(cache, beta);
+
+                        // If we don't accept the right endpoint and
+                        // if the right endpoint is an integer, decrease it.
+                        if (!shorter_interval.include_right_endpoint &&
+                            is_right_endpoint_integer_shorter_interval(binary_exponent)) {
+                            --zi;
+                        }
+                        // If we don't accept the left endpoint or
+                        // if the left endpoint is not an integer, increase it.
+                        if (!shorter_interval.include_left_endpoint ||
+                            !is_left_endpoint_integer_shorter_interval(binary_exponent)) {
+                            ++xi;
+                        }
+
+                        // Try bigger divisor.
+                        // zi is at most floor((f_c + 1/2) * 2^e * 10^k0).
+                        // Substituting f_c = 2^p and k0 = -floor(log10(3 * 2^(e-2))), we get
+                        // zi <= floor((2^(p+1) + 1) * 20/3) <= ceil((2^(p+1) + 1)/3) * 20.
+                        // This computation does not overflow for any of the formats I care about.
+                        carrier_uint decimal_significand = divide_by_pow10<
+                            1, carrier_uint,
+                            carrier_uint(
+                                ((((carrier_uint(1) << (significand_bits + 1)) + 1) / 3) + 1) *
+                                20)>(zi);
+
+                        // If succeed, remove trailing zeros if necessary and return.
+                        if (decimal_significand * 10 >= xi) {
+                            return may_have_trailing_zeros(decimal_significand, minus_k + 1);
+                        }
+
+                        // Otherwise, compute the round-up of y.
+                        decimal_significand =
+                            format::compute_round_up_for_shorter_interval_case(
+                                cache, beta);
+
+                        // When tie occurs, choose one of them according to the rule.
+                        if (prefer_round_down(decimal_significand) &&
+                            binary_exponent >= shorter_interval_tie_lower_threshold &&
+                            binary_exponent <= shorter_interval_tie_upper_threshold) {
+                            --decimal_significand;
+                        }
+                        else if (decimal_significand < xi) {
+                            ++decimal_significand;
+                        }
+                        return no_trailing_zeros(decimal_significand, minus_k);
+                    }
+
+                    // Normal interval case.
+                    two_fc |= (carrier_uint(1) << (format::significand_bits + 1));
+                } else {
+                    // Is the input a subnormal number?
+                    // Normal interval case.
+                    binary_exponent = format::min_exponent - format::significand_bits;
                 }
 
-                decimal_fp no_trailing_zeros(carrier_uint significand, int exponent) {
-                  return {significand, exponent, negative};
-                }
+                //////////////////////////////////////////////////////////////////////
+                // Step 1: Schubfach multiplier calculation.
+                //////////////////////////////////////////////////////////////////////
 
-                decimal_fp may_have_trailing_zeros(carrier_uint significand, int exponent) {
-                  format::remove_trailing_zeros(significand, exponent);
-                  return {significand, exponent, negative};
-                }
+                // Compute k and beta.
+                int const minus_k = log::floor_log10_pow2(binary_exponent) - kappa;
+                auto const cache = cache_.get_cache(-minus_k);
+                int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
 
-                decimal_fp nearest_to_even() {
-                    bool even = significand % 2 == 0;
-                    return nearest({even, even}, {true, true});
-                }
+                // Compute zi and deltai.
+                // 10^kappa <= deltai < 10^(kappa + 1)
+                auto const deltai = format::compute_delta(cache, beta);
+                // For the case of binary32, the result of integer check is not correct for
+                // 29711844 * 2^-82
+                // = 6.1442653300000000008655037797566933477355632930994033813476... * 10^-18
+                // and 29711844 * 2^-81
+                // = 1.2288530660000000001731007559513386695471126586198806762695... * 10^-17,
+                // and they are the unique counterexamples. However, since 29711844 is even,
+                // this does not cause any problem for the endpoints calculations; it can only
+                // cause a problem when we need to perform integer check for the center.
+                // Fortunately, with these inputs, that branch is never executed, so we are
+                // fine.
+                auto const z_result =
+                    format::compute_mul(carrier_uint((two_fc | 1) << beta), cache);
 
-                decimal_fp nearest_to_odd() {
-                    bool even = significand % 2 == 0;
-                    return nearest({!even, even}, {false, false});
-                }
 
-                decimal_fp nearest_toward_plus_infinity() {
-                    return nearest({!negative, negative}, {!negative, negative});
-                }
+                //////////////////////////////////////////////////////////////////////
+                // Step 2: Try larger divisor; remove trailing zeros if necessary.
+                //////////////////////////////////////////////////////////////////////
 
-                decimal_fp nearest_toward_minus_infinity() {
-                    return nearest({negative, !negative}, {negative, !negative});
-                }
+                constexpr auto big_divisor = compute_power<kappa + 1>(carrier_uint(10));
+                constexpr auto small_divisor = compute_power<kappa>(carrier_uint(10));
 
-                decimal_fp nearest_toward_zero() {
-                    return nearest({false, true}, {false, true});
-                }
+                // Using an upper bound on zi, we might be able to optimize the division
+                // better than the compiler; we are computing zi / big_divisor here.
+                carrier_uint decimal_significand = divide_by_pow10<
+                    kappa + 1, carrier_uint,
+                    carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
+                    z_result.integer_part);
+                auto r = carrier_uint(z_result.integer_part - big_divisor * decimal_significand);
 
-                decimal_fp nearest_away_from_zero() {
-                    return nearest({true, false}, {true, false});
-                }
-
-                decimal_fp nearest_always_closed() {
-                    return nearest({true, true}, {true, true});
-                }
-
-                decimal_fp nearest_always_open() {
-                    return nearest({false, false}, {false, false});
-                }
-
-                decimal_fp to_decimal() {
-                  bool even = significand % 2 == 0;
-                  switch (BinaryRoundPolicy) {
-                    case binary_nearest_to_even: return nearest_to_even();
-                    case binary_nearest_to_odd: return nearest_to_odd();
-                    case binary_nearest_toward_plus_infinity: return nearest_toward_plus_infinity();
-                    case binary_nearest_toward_minus_infinity: return nearest_toward_minus_infinity();
-                    case binary_nearest_toward_zero: return nearest_toward_zero();
-                    case binary_nearest_away_from_zero: return nearest_away_from_zero();
-                    case binary_nearest_to_even_static_boundary: return even ? nearest_always_closed() : nearest_always_open();
-                    case binary_nearest_to_odd_static_boundary: return even ? nearest_always_open() : nearest_always_closed();
-                    case binary_nearest_toward_plus_infinity_static_boundary: return negative ? nearest_toward_zero() : nearest_away_from_zero();
-                    case binary_nearest_toward_minus_infinity_static_boundary: return negative ? nearest_away_from_zero() : nearest_toward_zero();
-                    case binary_toward_plus_infinity: return negative ? left_closed_directed() : right_closed_directed();
-                    case binary_toward_minus_infinity: return negative ? right_closed_directed() : left_closed_directed();
-                    case binary_toward_zero: return left_closed_directed();
-                    case binary_away_from_zero: return right_closed_directed();
-                  }
-                }
-
-                static_assert(min_k >= format::min_k && max_k <= format::max_k, "");
-                static constexpr cache_holder<Float, CachePolicy> cache_;
-
-                //// The main algorithm assumes the input is a normal/subnormal finite number.
-
-                constexpr
-                decimal_fp nearest(interval normal_interval, interval shorter_interval) noexcept {
-
-                    carrier_uint two_fc = significand * 2;
-                    auto binary_exponent = exponent_bits;
-
-                    // Is the input a normal number?
-                    if (binary_exponent != 0) {
-                        binary_exponent += format::exponent_bias - format::significand_bits;
-
-                        // Shorter interval case; proceed like Schubfach.
-                        // One might think this condition is wrong, since when exponent_bits ==
-                        // 1 and two_fc == 0, the interval is actually regular. However, it
-                        // turns out that this seemingly wrong condition is actually fine,
-                        // because the end result is anyway the same.
-                        //
-                        // [binary32]
-                        // (fc-1/2) * 2^e = 1.175'494'28... * 10^-38
-                        // (fc-1/4) * 2^e = 1.175'494'31... * 10^-38
-                        //    fc    * 2^e = 1.175'494'35... * 10^-38
-                        // (fc+1/2) * 2^e = 1.175'494'42... * 10^-38
-                        //
-                        // Hence, shorter_interval_case will return 1.175'494'4 * 10^-38.
-                        // 1.175'494'3 * 10^-38 is also a correct shortest representation that
-                        // will be rejected if we assume shorter interval, but 1.175'494'4 *
-                        // 10^-38 is closer to the true value so it doesn't matter.
-                        //
-                        // [binary64]
-                        // (fc-1/2) * 2^e = 2.225'073'858'507'201'13... * 10^-308
-                        // (fc-1/4) * 2^e = 2.225'073'858'507'201'25... * 10^-308
-                        //    fc    * 2^e = 2.225'073'858'507'201'38... * 10^-308
-                        // (fc+1/2) * 2^e = 2.225'073'858'507'201'63... * 10^-308
-                        //
-                        // Hence, shorter_interval_case will return 2.225'073'858'507'201'4 *
-                        // 10^-308. This is indeed of the shortest length, and it is the unique
-                        // one closest to the true value among valid representations of the same
-                        // length.
-                        static_assert(stdr::is_same<Float, float>::value ||
-                                      stdr::is_same<Float, double>::value,
-                                      "");
-
-                        // Shorter interval case.
-                        if (two_fc == 0) {
-
-                            // Compute k and beta.
-                            int const minus_k = log::floor_log10_pow2_minus_log10_4_over_3(binary_exponent);
-                            int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
-
-                            // Compute xi and zi.
-                            auto const cache = cache_.get_cache(-minus_k);
-
-                            auto xi =
-                                format::compute_left_endpoint_for_shorter_interval_case(cache, beta);
-                            auto zi = format::
-                                compute_right_endpoint_for_shorter_interval_case(cache, beta);
-
-                            // If we don't accept the right endpoint and
-                            // if the right endpoint is an integer, decrease it.
-                            if (!shorter_interval.include_right_endpoint &&
-                                is_right_endpoint_integer_shorter_interval(binary_exponent)) {
-                                --zi;
+                do {
+                    if (r < deltai) {
+                        // Exclude the right endpoint if necessary.
+                        if ((r | carrier_uint(!z_result.is_integer) |
+                             carrier_uint(normal_interval.include_right_endpoint)) == 0) {
+                            if (DecimalRoundPolicy == decimal_dont_care) {
+                                decimal_significand *= 10;
+                                --decimal_significand;
+                                return no_trailing_zeros(decimal_significand, minus_k + kappa);
+                            } else {
+                                --decimal_significand;
+                                r = big_divisor;
+                                break;
                             }
-                            // If we don't accept the left endpoint or
-                            // if the left endpoint is not an integer, increase it.
-                            if (!shorter_interval.include_left_endpoint ||
-                                !is_left_endpoint_integer_shorter_interval(binary_exponent)) {
-                                ++xi;
-                            }
+                        }
+                    } else if (r > deltai) {
+                        break;
+                    } else {
+                        // r == deltai; compare fractional parts.
+                        auto const x_result = format::compute_mul_parity(
+                            carrier_uint(two_fc - 1), cache, beta);
 
-                            // Try bigger divisor.
-                            // zi is at most floor((f_c + 1/2) * 2^e * 10^k0).
-                            // Substituting f_c = 2^p and k0 = -floor(log10(3 * 2^(e-2))), we get
-                            // zi <= floor((2^(p+1) + 1) * 20/3) <= ceil((2^(p+1) + 1)/3) * 20.
-                            // This computation does not overflow for any of the formats I care about.
-                            carrier_uint decimal_significand = div::divide_by_pow10<
-                                1, carrier_uint,
-                                carrier_uint(
-                                    ((((carrier_uint(1) << (significand_bits + 1)) + 1) / 3) + 1) *
-                                    20)>(zi);
+                        if (!(x_result.parity |
+                              (x_result.is_integer & normal_interval.include_left_endpoint))) {
+                            break;
+                        }
+                    }
 
-                            // If succeed, remove trailing zeros if necessary and return.
-                            if (decimal_significand * 10 >= xi) {
-                                return may_have_trailing_zeros(decimal_significand, minus_k + 1);
-                            }
+                    return may_have_trailing_zeros(decimal_significand, minus_k + kappa + 1);
+                } while (false);
 
-                            // Otherwise, compute the round-up of y.
-                            decimal_significand =
-                                format::compute_round_up_for_shorter_interval_case(
-                                    cache, beta);
 
-                            // When tie occurs, choose one of them according to the rule.
-                            if (prefer_round_down(decimal_significand) &&
-                                binary_exponent >= shorter_interval_tie_lower_threshold &&
-                                binary_exponent <= shorter_interval_tie_upper_threshold) {
+                //////////////////////////////////////////////////////////////////////
+                // Step 3: Find the significand with the smaller divisor.
+                //////////////////////////////////////////////////////////////////////
+
+                decimal_significand *= 10;
+
+                if (DecimalRoundPolicy == decimal_dont_care) {
+                    // Normally, we want to compute
+                    // significand += r / small_divisor
+                    // and return, but we need to take care of the case that the resulting
+                    // value is exactly the right endpoint, while that is not included in the
+                    // interval.
+                    if (!normal_interval.include_right_endpoint) {
+                        // Is r divisible by 10^kappa?
+                        if (check_divisibility_and_divide_by_pow10<kappa>(r) &&
+                            z_result.is_integer) {
+                            // This should be in the interval.
+                            decimal_significand += r - 1;
+                        } else {
+                            decimal_significand += r;
+                        }
+                    } else {
+                        decimal_significand += small_division_by_pow10<kappa>(r);
+                    }
+                } else {
+                    // delta is equal to 10^(kappa + elog10(2) - floor(elog10(2))), so dist cannot
+                    // be larger than r.
+                    auto dist = carrier_uint(r - (deltai / 2) + (small_divisor / 2));
+                    bool const approx_y_parity = ((dist ^ (small_divisor / 2)) & 1) != 0;
+
+                    // Is dist divisible by 10^kappa?
+                    bool const divisible_by_small_divisor =
+                        check_divisibility_and_divide_by_pow10<kappa>(dist);
+
+                    // Add dist / 10^kappa to the significand.
+                    decimal_significand += dist;
+
+                    if (divisible_by_small_divisor) {
+                        // Check z^(f) >= epsilon^(f).
+                        // We have either yi == zi - epsiloni or yi == (zi - epsiloni) - 1,
+                        // where yi == zi - epsiloni if and only if z^(f) >= epsilon^(f).
+                        // Since there are only 2 possibilities, we only need to care about the
+                        // parity. Also, zi and r should have the same parity since the divisor
+                        // is an even number.
+                        auto const y_result =
+                            format::compute_mul_parity(two_fc, cache, beta);
+                        if (y_result.parity != approx_y_parity) {
+                            --decimal_significand;
+                        } else {
+                            // If z^(f) >= epsilon^(f), we might have a tie
+                            // when z^(f) == epsilon^(f), or equivalently, when y is an integer.
+                            // For tie-to-up case, we can just choose the upper one.
+                            if (prefer_round_down(decimal_significand) & y_result.is_integer) {
                                 --decimal_significand;
                             }
-                            else if (decimal_significand < xi) {
-                                ++decimal_significand;
-                            }
-                            return no_trailing_zeros(decimal_significand, minus_k);
                         }
-
-                        // Normal interval case.
-                        two_fc |= (carrier_uint(1) << (format::significand_bits + 1));
                     }
-                    // Is the input a subnormal number?
-                    else {
-                        // Normal interval case.
-                        binary_exponent = format::min_exponent - format::significand_bits;
+                }
+                return no_trailing_zeros(decimal_significand, minus_k + kappa);
+            }
+
+            constexpr decimal_fp left_closed_directed() noexcept {
+
+                carrier_uint two_fc = significand * 2;
+                auto binary_exponent = exponent_bits;
+
+                // Is the input a normal number?
+                if (binary_exponent != 0) {
+                    binary_exponent += format::exponent_bias - format::significand_bits;
+                    two_fc |= (carrier_uint(1) << (format::significand_bits + 1));
+                }
+                // Is the input a subnormal number?
+                else {
+                    binary_exponent = format::min_exponent - format::significand_bits;
+                }
+
+                //////////////////////////////////////////////////////////////////////
+                // Step 1: Schubfach multiplier calculation.
+                //////////////////////////////////////////////////////////////////////
+
+                // Compute k and beta.
+                int const minus_k = log::floor_log10_pow2(binary_exponent) - kappa;
+                auto const cache = cache_.get_cache(-minus_k);
+                int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
+
+                // Compute xi and deltai.
+                // 10^kappa <= deltai < 10^(kappa + 1)
+                auto const deltai = format::compute_delta(cache, beta);
+                auto x_result =
+                    format::compute_mul(carrier_uint(two_fc << beta), cache);
+
+                // Deal with the unique exceptional cases
+                // 29711844 * 2^-82
+                // = 6.1442653300000000008655037797566933477355632930994033813476... * 10^-18
+                // and 29711844 * 2^-81
+                // = 1.2288530660000000001731007559513386695471126586198806762695... * 10^-17
+                // for binary32.
+                if constexpr (is_same<Float, float>::value) {
+                    if (binary_exponent <= -80) {
+                        x_result.is_integer = false;
                     }
+                }
 
-                    //////////////////////////////////////////////////////////////////////
-                    // Step 1: Schubfach multiplier calculation.
-                    //////////////////////////////////////////////////////////////////////
+                if (!x_result.is_integer) {
+                    ++x_result.integer_part;
+                }
 
-                    // Compute k and beta.
-                    int const minus_k = log::floor_log10_pow2(binary_exponent) - kappa;
-                    auto const cache = cache_.get_cache(-minus_k);
-                    int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
+                //////////////////////////////////////////////////////////////////////
+                // Step 2: Try larger divisor; remove trailing zeros if necessary.
+                //////////////////////////////////////////////////////////////////////
 
-                    // Compute zi and deltai.
-                    // 10^kappa <= deltai < 10^(kappa + 1)
-                    auto const deltai = format::compute_delta(cache, beta);
-                    // For the case of binary32, the result of integer check is not correct for
-                    // 29711844 * 2^-82
-                    // = 6.1442653300000000008655037797566933477355632930994033813476... * 10^-18
-                    // and 29711844 * 2^-81
-                    // = 1.2288530660000000001731007559513386695471126586198806762695... * 10^-17,
-                    // and they are the unique counterexamples. However, since 29711844 is even,
-                    // this does not cause any problem for the endpoints calculations; it can only
-                    // cause a problem when we need to perform integer check for the center.
-                    // Fortunately, with these inputs, that branch is never executed, so we are
-                    // fine.
-                    auto const z_result =
-                        format::compute_mul(carrier_uint((two_fc | 1) << beta), cache);
+                constexpr auto big_divisor = compute_power<kappa + 1>(carrier_uint(10));
 
+                // Using an upper bound on xi, we might be able to optimize the division
+                // better than the compiler; we are computing xi / big_divisor here.
+                carrier_uint decimal_significand = divide_by_pow10<
+                    kappa + 1, carrier_uint,
+                    carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
+                    x_result.integer_part);
+                auto r = carrier_uint(x_result.integer_part - big_divisor * decimal_significand);
 
-                    //////////////////////////////////////////////////////////////////////
-                    // Step 2: Try larger divisor; remove trailing zeros if necessary.
-                    //////////////////////////////////////////////////////////////////////
+                if (r != 0) {
+                    ++decimal_significand;
+                    r = carrier_uint(big_divisor - r);
+                }
 
-                    constexpr auto big_divisor = compute_power<kappa + 1>(carrier_uint(10));
-                    constexpr auto small_divisor = compute_power<kappa>(carrier_uint(10));
-
-                    // Using an upper bound on zi, we might be able to optimize the division
-                    // better than the compiler; we are computing zi / big_divisor here.
-                    carrier_uint decimal_significand = div::divide_by_pow10<
-                        kappa + 1, carrier_uint,
-                        carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
-                        z_result.integer_part);
-                    auto r = carrier_uint(z_result.integer_part - big_divisor * decimal_significand);
-
-                    do {
-                        if (r < deltai) {
-                            // Exclude the right endpoint if necessary.
-                            if ((r | carrier_uint(!z_result.is_integer) |
-                                 carrier_uint(normal_interval.include_right_endpoint)) == 0) {
-                                if constexpr (DecimalRoundPolicy == decimal_dont_care) {
-                                    decimal_significand *= 10;
-                                    --decimal_significand;
-                                    return no_trailing_zeros(decimal_significand, minus_k + kappa);
-                                }
-                                else {
-                                    --decimal_significand;
-                                    r = big_divisor;
-                                    break;
-                                }
-                            }
-                        }
-                        else if (r > deltai) {
-                            break;
-                        }
-                        else {
-                            // r == deltai; compare fractional parts.
-                            auto const x_result = format::compute_mul_parity(
-                                carrier_uint(two_fc - 1), cache, beta);
-
-                            if (!(x_result.parity |
-                                  (x_result.is_integer & normal_interval.include_left_endpoint))) {
+                do {
+                    if (r > deltai) {
+                        break;
+                    }
+                    else if (r == deltai) {
+                        // Compare the fractional parts.
+                        // This branch is never taken for the exceptional cases
+                        // 2f_c = 29711482, e = -81
+                        // (6.1442649164096937243516663440523473127541365101933479309082... *
+                        // 10^-18) and 2f_c = 29711482, e = -80
+                        // (1.2288529832819387448703332688104694625508273020386695861816... *
+                        // 10^-17).
+                        // For the case of compressed cache for binary32, there is another
+                        // exceptional case 2f_c = 33554430, e = -10 (16383.9990234375). In this
+                        // case, the recovered cache is two large to make compute_mul_parity
+                        // mistakenly conclude that z is not an integer, but actually z = 16384 is
+                        // an integer.
+                        if constexpr (carrier_bits == 32 && CachePolicy == cache_compact) {
+                            if (two_fc == 33554430 && binary_exponent == -10) {
                                 break;
                             }
                         }
-
-                        // We may need to remove trailing zeros.
-                        return may_have_trailing_zeros(decimal_significand, minus_k + kappa + 1);
-                    } while (false);
-
-
-                    //////////////////////////////////////////////////////////////////////
-                    // Step 3: Find the significand with the smaller divisor.
-                    //////////////////////////////////////////////////////////////////////
-
-                    decimal_significand *= 10;
-
-                    if constexpr (DecimalRoundPolicy == decimal_dont_care) {
-                        // Normally, we want to compute
-                        // significand += r / small_divisor
-                        // and return, but we need to take care of the case that the resulting
-                        // value is exactly the right endpoint, while that is not included in the
-                        // interval.
-                        if (!normal_interval.include_right_endpoint) {
-                            // Is r divisible by 10^kappa?
-                            if (div::check_divisibility_and_divide_by_pow10<kappa>(r) &&
-                                z_result.is_integer) {
-                                // This should be in the interval.
-                                decimal_significand += r - 1;
-                            }
-                            else {
-                                decimal_significand += r;
-                            }
-                        }
-                        else {
-                            decimal_significand += div::small_division_by_pow10<kappa>(r);
-                        }
-                    }
-                    else {
-                        // delta is equal to 10^(kappa + elog10(2) - floor(elog10(2))), so dist cannot
-                        // be larger than r.
-                        auto dist = carrier_uint(r - (deltai / 2) + (small_divisor / 2));
-                        bool const approx_y_parity = ((dist ^ (small_divisor / 2)) & 1) != 0;
-
-                        // Is dist divisible by 10^kappa?
-                        bool const divisible_by_small_divisor =
-                            div::check_divisibility_and_divide_by_pow10<kappa>(dist);
-
-                        // Add dist / 10^kappa to the significand.
-                        decimal_significand += dist;
-
-                        if (divisible_by_small_divisor) {
-                            // Check z^(f) >= epsilon^(f).
-                            // We have either yi == zi - epsiloni or yi == (zi - epsiloni) - 1,
-                            // where yi == zi - epsiloni if and only if z^(f) >= epsilon^(f).
-                            // Since there are only 2 possibilities, we only need to care about the
-                            // parity. Also, zi and r should have the same parity since the divisor
-                            // is an even number.
-                            auto const y_result =
-                                format::compute_mul_parity(two_fc, cache, beta);
-                            if (y_result.parity != approx_y_parity) {
-                                --decimal_significand;
-                            }
-                            else {
-                                // If z^(f) >= epsilon^(f), we might have a tie
-                                // when z^(f) == epsilon^(f), or equivalently, when y is an integer.
-                                // For tie-to-up case, we can just choose the upper one.
-                                if (prefer_round_down(decimal_significand) & y_result.is_integer) {
-                                    --decimal_significand;
-                                }
-                            }
-                        }
-                    }
-                    return no_trailing_zeros(decimal_significand, minus_k + kappa);
-                }
-
-                constexpr decimal_fp left_closed_directed() noexcept {
-
-                    carrier_uint two_fc = significand * 2;
-                    auto binary_exponent = exponent_bits;
-
-                    // Is the input a normal number?
-                    if (binary_exponent != 0) {
-                        binary_exponent += format::exponent_bias - format::significand_bits;
-                        two_fc |= (carrier_uint(1) << (format::significand_bits + 1));
-                    }
-                    // Is the input a subnormal number?
-                    else {
-                        binary_exponent = format::min_exponent - format::significand_bits;
-                    }
-
-                    //////////////////////////////////////////////////////////////////////
-                    // Step 1: Schubfach multiplier calculation.
-                    //////////////////////////////////////////////////////////////////////
-
-                    // Compute k and beta.
-                    int const minus_k = log::floor_log10_pow2(binary_exponent) - kappa;
-                    auto const cache = cache_.get_cache(-minus_k);
-                    int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
-
-                    // Compute xi and deltai.
-                    // 10^kappa <= deltai < 10^(kappa + 1)
-                    auto const deltai = format::compute_delta(cache, beta);
-                    auto x_result =
-                        format::compute_mul(carrier_uint(two_fc << beta), cache);
-
-                    // Deal with the unique exceptional cases
-                    // 29711844 * 2^-82
-                    // = 6.1442653300000000008655037797566933477355632930994033813476... * 10^-18
-                    // and 29711844 * 2^-81
-                    // = 1.2288530660000000001731007559513386695471126586198806762695... * 10^-17
-                    // for binary32.
-                    if constexpr (stdr::is_same<Float, float>::value) {
-                        if (binary_exponent <= -80) {
-                            x_result.is_integer = false;
-                        }
-                    }
-
-                    if (!x_result.is_integer) {
-                        ++x_result.integer_part;
-                    }
-
-                    //////////////////////////////////////////////////////////////////////
-                    // Step 2: Try larger divisor; remove trailing zeros if necessary.
-                    //////////////////////////////////////////////////////////////////////
-
-                    constexpr auto big_divisor = compute_power<kappa + 1>(carrier_uint(10));
-
-                    // Using an upper bound on xi, we might be able to optimize the division
-                    // better than the compiler; we are computing xi / big_divisor here.
-                    carrier_uint decimal_significand = div::divide_by_pow10<
-                        kappa + 1, carrier_uint,
-                        carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
-                        x_result.integer_part);
-                    auto r = carrier_uint(x_result.integer_part - big_divisor * decimal_significand);
-
-                    if (r != 0) {
-                        ++decimal_significand;
-                        r = carrier_uint(big_divisor - r);
-                    }
-
-                    do {
-                        if (r > deltai) {
+                        auto const z_result = format::compute_mul_parity(
+                            carrier_uint(two_fc + 2), cache, beta);
+                        if (z_result.parity || z_result.is_integer) {
                             break;
                         }
-                        else if (r == deltai) {
-                            // Compare the fractional parts.
-                            // This branch is never taken for the exceptional cases
-                            // 2f_c = 29711482, e = -81
-                            // (6.1442649164096937243516663440523473127541365101933479309082... *
-                            // 10^-18) and 2f_c = 29711482, e = -80
-                            // (1.2288529832819387448703332688104694625508273020386695861816... *
-                            // 10^-17).
-                            // For the case of compressed cache for binary32, there is another
-                            // exceptional case 2f_c = 33554430, e = -10 (16383.9990234375). In this
-                            // case, the recovered cache is two large to make compute_mul_parity
-                            // mistakenly conclude that z is not an integer, but actually z = 16384 is
-                            // an integer.
-                            if constexpr (Impl::carrier_bits == 32 && CachePolicy == cache_compact) {
-                                if (two_fc == 33554430 && binary_exponent == -10) {
-                                    break;
-                                }
-                            }
-                            auto const z_result = format::compute_mul_parity(
-                                carrier_uint(two_fc + 2), cache, beta);
-                            if (z_result.parity || z_result.is_integer) {
-                                break;
-                            }
-                        }
+                    }
 
-                        // The ceiling is inside, so we are done.
-                        return may_have_trailing_zeros(decimal_significand, minus_k + kappa + 1);
-                    } while (false);
+                    // The ceiling is inside, so we are done.
+                    return may_have_trailing_zeros(decimal_significand, minus_k + kappa + 1);
+                } while (false);
 
 
-                    //////////////////////////////////////////////////////////////////////
-                    // Step 3: Find the significand with the smaller divisor.
-                    //////////////////////////////////////////////////////////////////////
+                //////////////////////////////////////////////////////////////////////
+                // Step 3: Find the significand with the smaller divisor.
+                //////////////////////////////////////////////////////////////////////
 
-                    decimal_significand *= 10;
-                    decimal_significand -= div::small_division_by_pow10<kappa>(r);
-                    return no_trailing_zeros(decimal_significand, minus_k + kappa);
+                decimal_significand *= 10;
+                decimal_significand -= small_division_by_pow10<kappa>(r);
+                return no_trailing_zeros(decimal_significand, minus_k + kappa);
+            }
+
+            constexpr decimal_fp right_closed_directed() noexcept {
+
+                carrier_uint two_fc = significand * 2;
+                auto binary_exponent = exponent_bits;
+                bool shorter_interval = false;
+
+                // Is the input a normal number?
+                if (binary_exponent != 0) {
+                    if (two_fc == 0 && binary_exponent != 1) {
+                        shorter_interval = true;
+                    }
+                    binary_exponent += format::exponent_bias - format::significand_bits;
+                    two_fc |= (carrier_uint(1) << (format::significand_bits + 1));
+                }
+                // Is the input a subnormal number?
+                else {
+                    binary_exponent = format::min_exponent - format::significand_bits;
                 }
 
-                constexpr decimal_fp right_closed_directed() noexcept {
+                //////////////////////////////////////////////////////////////////////
+                // Step 1: Schubfach multiplier calculation.
+                //////////////////////////////////////////////////////////////////////
 
-                    carrier_uint two_fc = significand * 2;
-                    auto binary_exponent = exponent_bits;
-                    bool shorter_interval = false;
+                // Compute k and beta.
+                int const minus_k = log::floor_log10_pow2(binary_exponent - (shorter_interval ? 1 : 0)) - kappa;
+                auto const cache = cache_.get_cache(-minus_k);
+                int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
 
-                    // Is the input a normal number?
-                    if (binary_exponent != 0) {
-                        if (two_fc == 0 && binary_exponent != 1) {
-                            shorter_interval = true;
-                        }
-                        binary_exponent += format::exponent_bias - format::significand_bits;
-                        two_fc |= (carrier_uint(1) << (format::significand_bits + 1));
+                // Compute zi and deltai.
+                // 10^kappa <= deltai < 10^(kappa + 1)
+                auto const deltai = format::compute_delta(cache, beta - (shorter_interval ? 1 : 0));
+                carrier_uint const zi =
+                    format::compute_mul(carrier_uint(two_fc << beta), cache)
+                        .integer_part;
+
+
+                //////////////////////////////////////////////////////////////////////
+                // Step 2: Try larger divisor; remove trailing zeros if necessary.
+                //////////////////////////////////////////////////////////////////////
+
+                constexpr auto big_divisor = compute_power<kappa + 1>(carrier_uint(10));
+
+                // Using an upper bound on zi, we might be able to optimize the division better
+                // than the compiler; we are computing zi / big_divisor here.
+                carrier_uint decimal_significand = divide_by_pow10<
+                    kappa + 1, carrier_uint,
+                    carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
+                    zi);
+                auto const r = carrier_uint(zi - big_divisor * decimal_significand);
+
+                do {
+                    if (r > deltai) {
+                        break;
                     }
-                    // Is the input a subnormal number?
-                    else {
-                        binary_exponent = format::min_exponent - format::significand_bits;
-                    }
-
-                    //////////////////////////////////////////////////////////////////////
-                    // Step 1: Schubfach multiplier calculation.
-                    //////////////////////////////////////////////////////////////////////
-
-                    // Compute k and beta.
-                    int const minus_k = log::floor_log10_pow2(binary_exponent - (shorter_interval ? 1 : 0)) - kappa;
-                    auto const cache = cache_.get_cache(-minus_k);
-                    int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
-
-                    // Compute zi and deltai.
-                    // 10^kappa <= deltai < 10^(kappa + 1)
-                    auto const deltai = format::compute_delta(cache, beta - (shorter_interval ? 1 : 0));
-                    carrier_uint const zi =
-                        format::compute_mul(carrier_uint(two_fc << beta), cache)
-                            .integer_part;
-
-
-                    //////////////////////////////////////////////////////////////////////
-                    // Step 2: Try larger divisor; remove trailing zeros if necessary.
-                    //////////////////////////////////////////////////////////////////////
-
-                    constexpr auto big_divisor = compute_power<kappa + 1>(carrier_uint(10));
-
-                    // Using an upper bound on zi, we might be able to optimize the division better
-                    // than the compiler; we are computing zi / big_divisor here.
-                    carrier_uint decimal_significand = div::divide_by_pow10<
-                        kappa + 1, carrier_uint,
-                        carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
-                        zi);
-                    auto const r = carrier_uint(zi - big_divisor * decimal_significand);
-
-                    do {
-                        if (r > deltai) {
+                    else if (r == deltai) {
+                        // Compare the fractional parts.
+                        if (!format::compute_mul_parity(
+                                 carrier_uint(two_fc - (shorter_interval ? 1 : 2)), cache, beta)
+                                 .parity) {
                             break;
                         }
-                        else if (r == deltai) {
-                            // Compare the fractional parts.
-                            if (!format::compute_mul_parity(
-                                     carrier_uint(two_fc - (shorter_interval ? 1 : 2)), cache, beta)
-                                     .parity) {
-                                break;
-                            }
-                        }
+                    }
 
-                        // The floor is inside, so we are done.
-                        return may_have_trailing_zeros(decimal_significand, minus_k + kappa + 1);
-                    } while (false);
+                    // The floor is inside, so we are done.
+                    return may_have_trailing_zeros(decimal_significand, minus_k + kappa + 1);
+                } while (false);
 
 
-                    //////////////////////////////////////////////////////////////////////
-                    // Step 3: Find the significand with the small divisor.
-                    //////////////////////////////////////////////////////////////////////
+                //////////////////////////////////////////////////////////////////////
+                // Step 3: Find the significand with the small divisor.
+                //////////////////////////////////////////////////////////////////////
 
-                    decimal_significand *= 10;
-                    decimal_significand += div::small_division_by_pow10<kappa>(r);
-                    return no_trailing_zeros(decimal_significand, minus_k + kappa);
-                }
+                decimal_significand *= 10;
+                decimal_significand += small_division_by_pow10<kappa>(r);
+                return no_trailing_zeros(decimal_significand, minus_k + kappa);
+            }
 
-                static constexpr bool
-                is_right_endpoint_integer_shorter_interval(int binary_exponent) noexcept {
-                    return binary_exponent >= case_shorter_interval_right_endpoint_lower_threshold &&
-                           binary_exponent <= case_shorter_interval_right_endpoint_upper_threshold;
-                }
+            static constexpr bool
+            is_right_endpoint_integer_shorter_interval(int binary_exponent) noexcept {
+                return binary_exponent >= case_shorter_interval_right_endpoint_lower_threshold &&
+                       binary_exponent <= case_shorter_interval_right_endpoint_upper_threshold;
+            }
 
-                static constexpr bool
-                is_left_endpoint_integer_shorter_interval(int binary_exponent) noexcept {
-                    return binary_exponent >= case_shorter_interval_left_endpoint_lower_threshold &&
-                           binary_exponent <= case_shorter_interval_left_endpoint_upper_threshold;
-                }
-            };
-        }
+            static constexpr bool
+            is_left_endpoint_integer_shorter_interval(int binary_exponent) noexcept {
+                return binary_exponent >= case_shorter_interval_left_endpoint_lower_threshold &&
+                       binary_exponent <= case_shorter_interval_left_endpoint_upper_threshold;
+            }
+        };
 
         ////////////////////////////////////////////////////////////////////////////////////////
         // The interface function.
@@ -2199,31 +2150,34 @@ namespace jkj {
 
         namespace policy {
           namespace decimal_to_binary_rounding {
-            static constexpr policy_<binary_round_policy, binary_nearest_to_even> nearest_to_even;
-            static constexpr policy_<binary_round_policy, binary_nearest_to_odd> nearest_to_odd;
-            static constexpr policy_<binary_round_policy, binary_nearest_toward_plus_infinity> nearest_toward_plus_infinity;
-            static constexpr policy_<binary_round_policy, binary_nearest_toward_minus_infinity> nearest_toward_minus_infinity;
-            static constexpr policy_<binary_round_policy, binary_nearest_toward_zero> nearest_toward_zero;
-            static constexpr policy_<binary_round_policy, binary_nearest_away_from_zero> nearest_away_from_zero;
-            static constexpr policy_<binary_round_policy, binary_nearest_to_even_static_boundary> nearest_to_even_static_boundary;
-            static constexpr policy_<binary_round_policy, binary_nearest_to_odd_static_boundary> nearest_to_odd_static_boundary;
-            static constexpr policy_<binary_round_policy, binary_nearest_toward_plus_infinity_static_boundary> nearest_toward_plus_infinity_static_boundary;
-            static constexpr policy_<binary_round_policy, binary_nearest_toward_minus_infinity_static_boundary> nearest_toward_minus_infinity_static_boundary;
-            static constexpr policy_<binary_round_policy, binary_toward_plus_infinity> toward_plus_infinity;
-            static constexpr policy_<binary_round_policy, binary_toward_minus_infinity> toward_minus_infinity;
-            static constexpr policy_<binary_round_policy, binary_toward_zero> toward_zero;
-            static constexpr policy_<binary_round_policy, binary_away_from_zero> away_from_zero;
+            using type = binary_round_policy;
+            static constexpr policy_<type, type::binary_nearest_to_even> nearest_to_even;
+            static constexpr policy_<type, type::binary_nearest_to_odd> nearest_to_odd;
+            static constexpr policy_<type, type::binary_nearest_toward_plus_infinity> nearest_toward_plus_infinity;
+            static constexpr policy_<type, type::binary_nearest_toward_minus_infinity> nearest_toward_minus_infinity;
+            static constexpr policy_<type, type::binary_nearest_toward_zero> nearest_toward_zero;
+            static constexpr policy_<type, type::binary_nearest_away_from_zero> nearest_away_from_zero;
+            static constexpr policy_<type, type::binary_nearest_to_even_static_boundary> nearest_to_even_static_boundary;
+            static constexpr policy_<type, type::binary_nearest_to_odd_static_boundary> nearest_to_odd_static_boundary;
+            static constexpr policy_<type, type::binary_nearest_toward_plus_infinity_static_boundary> nearest_toward_plus_infinity_static_boundary;
+            static constexpr policy_<type, type::binary_nearest_toward_minus_infinity_static_boundary> nearest_toward_minus_infinity_static_boundary;
+            static constexpr policy_<type, type::binary_toward_plus_infinity> toward_plus_infinity;
+            static constexpr policy_<type, type::binary_toward_minus_infinity> toward_minus_infinity;
+            static constexpr policy_<type, type::binary_toward_zero> toward_zero;
+            static constexpr policy_<type, type::binary_away_from_zero> away_from_zero;
           }
           namespace binary_to_decimal_rounding {
-            static constexpr policy_<decimal_round_policy, decimal_to_even> to_even;
-            static constexpr policy_<decimal_round_policy, decimal_to_odd> to_odd;
-            static constexpr policy_<decimal_round_policy, decimal_away_from_zero> away_from_zero;
-            static constexpr policy_<decimal_round_policy, decimal_toward_zero> toward_zero;
-            static constexpr policy_<decimal_round_policy, decimal_dont_care> do_not_care;
+            using type = decimal_round_policy;
+            static constexpr policy_<type, type::decimal_to_even> to_even;
+            static constexpr policy_<type, type::decimal_to_odd> to_odd;
+            static constexpr policy_<type, type::decimal_away_from_zero> away_from_zero;
+            static constexpr policy_<type, type::decimal_toward_zero> toward_zero;
+            static constexpr policy_<type, type::decimal_dont_care> do_not_care;
           }
           namespace cache {
-            static constexpr policy_<cache_policy, cache_full> full;
-            static constexpr policy_<cache_policy, cache_compact> compact;
+            using type = cache_policy;
+            static constexpr policy_<type, type::cache_full> full;
+            static constexpr policy_<type, type::cache_compact> compact;
           }
         }
 
@@ -2244,14 +2198,14 @@ namespace jkj {
         struct get_policy<T, First, Rest...>: get_policy<T, Rest...> {};
 
         template <class Float, class... Policies>
-        constexpr decimal_fp to_decimal_ex(bool sign, int exponent, typename FloatFormat<Float>::carrier_uint significand) noexcept {
-            return detail::to_decimal_impl<Float, get_policy<binary_round_policy, Policies...>::value,
-                                                  get_policy<decimal_round_policy, Policies...>::value,
-                                                  get_policy<cache_policy, Policies...>::value>{significand, exponent, sign}.to_decimal();
+        constexpr auto to_decimal_ex(bool sign, int exponent, typename float_format<Float>::carrier_uint significand) noexcept {
+            return to_decimal_impl<Float, get_policy<binary_round_policy, Policies...>::value,
+                                          get_policy<decimal_round_policy, Policies...>::value,
+                                          get_policy<cache_policy, Policies...>::value> {significand, exponent, sign}.to_decimal();
         }
 
         template <class Float, class... Policies>
-        constexpr decimal_fp to_decimal(Float x, Policies...) noexcept {
+        constexpr auto to_decimal(Float x, Policies...) noexcept {
             auto const bits = float_bits(x);
             assert(bits.is_finite() && (bits.significand || bits.exponent));
             return to_decimal_ex<Float, Policies...>(bits.sign, bits.exponent, bits.significand);

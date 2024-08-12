@@ -435,7 +435,7 @@ namespace jkj {
 
         element_type carry = 0;
         for (std::size_t idx = 0; idx < elements.size(); ++idx) {
-            auto mul = jkj::dragonbox::detail::wuint::umul128(elements[idx], n);
+            auto mul = jkj::dragonbox::umul128(elements[idx], n);
             elements[idx] = mul.low() + carry;
             carry = mul.high() + (elements[idx] < mul.low() ? 1 : 0);
         }
@@ -458,7 +458,7 @@ namespace jkj {
         for (std::size_t y_idx = 0; y_idx < y.elements.size(); ++y_idx) {
             // Compute y.elements[y_idx] * x and accumulate it into the result
             for (std::size_t x_idx = 0; x_idx < x.elements.size(); ++x_idx) {
-                auto mul = jkj::dragonbox::detail::wuint::umul128(x.elements[x_idx], y.elements[y_idx]);
+                auto mul = jkj::dragonbox::umul128(x.elements[x_idx], y.elements[y_idx]);
 
                 // Add the first half
                 result.elements[x_idx + y_idx] += mul.low();

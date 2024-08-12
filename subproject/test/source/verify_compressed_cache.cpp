@@ -52,7 +52,7 @@ struct recovered_cache_t {
 template <class Float, class GetCache, class ConvertToBigUInt>
 bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to_big_uint,
                              std::size_t max_diff_for_multiplication) {
-    using impl = jkj::dragonbox::detail::impl<Float>;
+    using impl = jkj::dragonbox::impl<Float>;
     using format = typename impl::format;
 
     static constexpr jkj::dragonbox::cache_holder<Float, false> full_cache;
@@ -61,7 +61,7 @@ bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to
     auto n_max = jkj::big_uint::power_of_2(format::significand_bits + 2);
     for (int e = format::min_exponent - format::significand_bits;
          e <= format::max_exponent - format::significand_bits; ++e) {
-        int const k = impl::kappa - jkj::dragonbox::detail::log::floor_log10_pow2(e);
+        int const k = impl::kappa - jkj::dragonbox::log::floor_log10_pow2(e);
 
         auto const real_cache = full_cache.get_cache(k);
 
@@ -80,7 +80,7 @@ bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to
             }
 
             // For the case b <= n_max, integer check might be no longer valid.
-            int const beta = e + jkj::dragonbox::detail::log::floor_log2_pow10(k);
+            int const beta = e + jkj::dragonbox::log::floor_log2_pow10(k);
 
             // unit = 2^(e + k - 1) * 5^k = a/b.
             unit.numerator = 1;
@@ -135,7 +135,7 @@ int main() {
 
     std::cout << "[Verifying compressed cache for binary32...]\n";
     {
-        using format = jkj::dragonbox::FloatFormat<float>;
+        using format = jkj::dragonbox::float_format<float>;
         static constexpr jkj::dragonbox::cache_holder<float, true> cache_;
 
         if (verify_compressed_cache<float>(
@@ -154,7 +154,7 @@ int main() {
 
     std::cout << "[Verifying compressed cache for binary64...]\n";
     {
-        using cache_entry = typename jkj::dragonbox::FloatFormat<double>::cache_entry;
+        using cache_entry = typename jkj::dragonbox::float_format<double>::cache_entry;
         static constexpr jkj::dragonbox::cache_holder<double, true> cache_;
 
         if (verify_compressed_cache<double>(
@@ -174,12 +174,12 @@ int main() {
                         auto const pow5 = cache_.pow5_table[offset];
 
                         // Compute the required amount of bit-shifts.
-                        using jkj::dragonbox::detail::log::floor_log2_pow10;
+                        using jkj::dragonbox::log::floor_log2_pow10;
                         auto const alpha = floor_log2_pow10(k) - floor_log2_pow10(kb) - offset;
                         assert(alpha > 0 && alpha < 64);
 
                         // Try to recover the real cache.
-                        using jkj::dragonbox::detail::wuint::umul128;
+                        using jkj::dragonbox::umul128;
                         auto recovered_cache = umul128(base_cache.high(), pow5);
                         auto const middle_low = umul128(base_cache.low(), pow5);
 

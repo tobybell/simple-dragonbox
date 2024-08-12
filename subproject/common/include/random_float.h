@@ -75,7 +75,7 @@ inline std::mt19937_64 generate_correctly_seeded_mt19937_64() {
 
 template <class Float, class RandGen>
 Float uniformly_randomly_generate_finite_float(RandGen& rg) {
-    using format = typename jkj::dragonbox::FloatFormat<Float>;
+    using format = typename jkj::dragonbox::float_format<Float>;
     using carrier_uint = typename format::carrier_uint;
     using uniform_distribution = std::uniform_int_distribution<carrier_uint>;
 
@@ -92,18 +92,18 @@ Float uniformly_randomly_generate_finite_float(RandGen& rg) {
     auto bit_representation = (sign_bit << (format::carrier_bits - 1)) |
                               (exponent_bits << (format::significand_bits)) | significand_bits;
 
-    return jkj::dragonbox::detail::impl<Float>::carrier_to_float(bit_representation);
+    return jkj::dragonbox::impl<Float>::carrier_to_float(bit_representation);
 }
 
 template <class Float, class RandGen>
 Float uniformly_randomly_generate_general_float(RandGen& rg) {
-    using format = typename jkj::dragonbox::FloatFormat<Float>;
+    using format = typename jkj::dragonbox::float_format<Float>;
     using carrier_uint = typename format::carrier_uint;
     using uniform_distribution = std::uniform_int_distribution<carrier_uint>;
 
     // Generate sign bit
     auto bit_representation = uniform_distribution{0, std::numeric_limits<carrier_uint>::max()}(rg);
-    return jkj::dragonbox::detail::impl<Float>::carrier_to_float(bit_representation);
+    return jkj::dragonbox::impl<Float>::carrier_to_float(bit_representation);
 }
 
 template <class Float>
@@ -124,7 +124,7 @@ struct std_string_to_float<double> {
 // However, I don't think there is an easy way to do it correctly.
 template <class Float, class RandGen>
 Float randomly_generate_float_with_given_digits(unsigned int digits, RandGen& rg) {
-    using carrier_uint = typename jkj::dragonbox::FloatFormat<Float>::carrier_uint;
+    using carrier_uint = typename jkj::dragonbox::float_format<Float>::carrier_uint;
     using signed_int_t = std::make_signed_t<carrier_uint>;
 
     assert(digits >= 1);

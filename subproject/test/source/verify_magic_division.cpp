@@ -22,7 +22,7 @@
 
 template <int N, class UInt>
 static bool verify_check_divisibility_and_divide_by_pow10() {
-    using namespace jkj::dragonbox::detail;
+    using namespace jkj::dragonbox;
 
     constexpr auto max_n = compute_power<N + 1>(UInt(10));
     constexpr auto divisor = compute_power<N>(UInt(10));
@@ -31,7 +31,7 @@ static bool verify_check_divisibility_and_divide_by_pow10() {
     for (UInt n = 0; n <= max_n; ++n) {
         UInt computed_quotient = n;
         auto computed_divisibility =
-            div::check_divisibility_and_divide_by_pow10<N>(computed_quotient);
+            check_divisibility_and_divide_by_pow10<N>(computed_quotient);
 
         if (computed_quotient != (n / divisor)) {
             std::cout << "Dividing n = " << n << " by " << divisor
@@ -59,14 +59,14 @@ static bool verify_check_divisibility_and_divide_by_pow10() {
 
 template <int N, class UInt>
 static bool verify_divide_by_pow10() {
-    using namespace jkj::dragonbox::detail;
+    using namespace jkj::dragonbox;
 
     constexpr auto max_n = compute_power<N + 1>(UInt(10));
     constexpr auto divisor = compute_power<N>(UInt(10));
 
     bool success = true;
     for (UInt n = 0; n <= max_n; ++n) {
-        auto computed_quotient = div::small_division_by_pow10<N>(n);
+        auto computed_quotient = small_division_by_pow10<N>(n);
 
         if (computed_quotient != (n / divisor)) {
             std::cout << "Dividing n = " << n << " by " << divisor

@@ -168,7 +168,7 @@ static void benchmark_test(std::string_view float_name, std::size_t number_of_un
     ;
     out_file << "name,sample,bit_representation,time\n";
 
-    typename jkj::dragonbox::FloatFormat<Float>::carrier_uint br;
+    typename jkj::dragonbox::float_format<Float>::carrier_uint br;
     for (auto& name_result_pair : out) {
         for (auto const& data_time_pair : name_result_pair.second[0]) {
             std::memcpy(&br, &data_time_pair.first, sizeof(Float));

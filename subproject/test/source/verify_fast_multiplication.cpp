@@ -23,7 +23,7 @@
 
 template <class Float, jkj::dragonbox::cache_policy CachePolicy>
 static bool verify_fast_multiplication_xz() {
-    using impl = jkj::dragonbox::detail::impl<Float>;
+    using impl = jkj::dragonbox::impl<Float>;
     using format = typename impl::format;
     using carrier_uint = typename impl::carrier_uint;
 
@@ -32,8 +32,8 @@ static bool verify_fast_multiplication_xz() {
     constexpr auto four_fl = (carrier_uint(1) << (impl::significand_bits + 2)) - 1;
     constexpr auto two_fr = (carrier_uint(1) << (impl::significand_bits + 1)) + 1;
 
-    using jkj::dragonbox::detail::log::floor_log10_pow2_minus_log10_4_over_3;
-    using jkj::dragonbox::detail::log::floor_log2_pow10;
+    using jkj::dragonbox::log::floor_log10_pow2_minus_log10_4_over_3;
+    using jkj::dragonbox::log::floor_log2_pow10;
 
     bool success = true;
 
@@ -93,7 +93,7 @@ static bool verify_fast_multiplication_xz() {
 
 template <class Float, jkj::dragonbox::cache_policy CachePolicy>
 static bool verify_fast_multiplication_yru() {
-    using impl = jkj::dragonbox::detail::impl<Float>;
+    using impl = jkj::dragonbox::impl<Float>;
     using format = typename impl::format;
 
     static constexpr jkj::dragonbox::cache_holder<Float, CachePolicy> cache_;
@@ -117,7 +117,7 @@ static bool verify_fast_multiplication_yru() {
         // If the lower half is zero, we need to check if the cache is precise.
         if (lower_half == 0) {
             if (k < 0 ||
-                k > jkj::dragonbox::detail::log::floor_log5_pow2(format::cache_bits)) {
+                k > jkj::dragonbox::log::floor_log5_pow2(format::cache_bits)) {
                 std::cout << "(k = " << k << ") computation might be incorrect\n";
                 success = false;
             }
