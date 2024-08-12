@@ -84,35 +84,30 @@ namespace jkj {
                     return count;
                 }
 
-                template <class Return = int_fast16_t>
-                constexpr Return floor_log10_pow2(int e) noexcept {
+                constexpr int floor_log10_pow2(int e) noexcept {
                     assert(-2620 <= e && e <= 2620);
-                    return static_cast<Return>((e * 315653) >> 20);
+                    return (e * 315653) >> 20;
                 }
 
-                template <class Return = int_fast16_t>
-                constexpr Return floor_log2_pow10(int e) noexcept {
+                constexpr int floor_log2_pow10(int e) noexcept {
                     // Formula itself holds on [-4003,4003]; [-1233,1233] is to ensure no overflow.
                     assert(-1233 <= e && e <= 1233);
-                    return static_cast<Return>((e * 1741647) >> 19);
+                    return (e * 1741647) >> 19;
                 }
 
-                template <class Return = int_fast16_t>
-                constexpr Return floor_log10_pow2_minus_log10_4_over_3(int e) noexcept {
+                constexpr int floor_log10_pow2_minus_log10_4_over_3(int e) noexcept {
                     assert(-2985 <= e && e <= 2936);
-                    return static_cast<Return>((e * 631305 - 261663) >> 21);
+                    return (e * 631305 - 261663) >> 21;
                 }
 
-                template <class Return = int_fast32_t>
-                constexpr Return floor_log5_pow2(int e) noexcept {
+                constexpr int floor_log5_pow2(int e) noexcept {
                     assert(-1831 <= e && e <= 1831);
-                    return static_cast<Return>((e * 225799) >> 19);
+                    return (e * 225799) >> 19;
                 }
 
-                template <class Return = int_fast32_t>
-                constexpr Return floor_log5_pow2_minus_log5_3(int e) noexcept {
+                constexpr int floor_log5_pow2_minus_log5_3(int e) noexcept {
                     assert(-3543 <= e && e <= 2427);
-                    return static_cast<Return>((e * 451597 - 715764) >> 20);
+                    return (e * 451597 - 715764) >> 20;
                 }
             }
 
