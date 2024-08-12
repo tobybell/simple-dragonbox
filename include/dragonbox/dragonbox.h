@@ -67,48 +67,46 @@ namespace jkj {
             // Utilities for fast/constexpr log computation.
             ////////////////////////////////////////////////////////////////////////////////////////
 
-            namespace log {
-                static_assert((int_fast32_t(-1) >> 1) == int_fast32_t(-1) &&
-                              (int_fast16_t(-1) >> 1) == int_fast16_t(-1),
-                              "jkj::dragonbox: right-shift for signed integers must be arithmetic");
+            static_assert((int_fast32_t(-1) >> 1) == int_fast32_t(-1) &&
+                          (int_fast16_t(-1) >> 1) == int_fast16_t(-1),
+                          "jkj::dragonbox: right-shift for signed integers must be arithmetic");
 
-                // For constexpr computation.
-                // Returns -1 when n = 0.
-                template <class UInt>
-                constexpr int floor_log2(UInt n) noexcept {
-                    int count = -1;
-                    while (n != 0) {
-                        ++count;
-                        n >>= 1;
-                    }
-                    return count;
+            // For constexpr computation.
+            // Returns -1 when n = 0.
+            template <class UInt>
+            constexpr int floor_log2(UInt n) noexcept {
+                int count = -1;
+                while (n != 0) {
+                    ++count;
+                    n >>= 1;
                 }
+                return count;
+            }
 
-                constexpr int floor_log10_pow2(int e) noexcept {
-                    assert(-2620 <= e && e <= 2620);
-                    return (e * 315653) >> 20;
-                }
+            constexpr int floor_log10_pow2(int e) noexcept {
+                assert(-2620 <= e && e <= 2620);
+                return (e * 315653) >> 20;
+            }
 
-                constexpr int floor_log2_pow10(int e) noexcept {
-                    // Formula itself holds on [-4003,4003]; [-1233,1233] is to ensure no overflow.
-                    assert(-1233 <= e && e <= 1233);
-                    return (e * 1741647) >> 19;
-                }
+            constexpr int floor_log2_pow10(int e) noexcept {
+                // Formula itself holds on [-4003,4003]; [-1233,1233] is to ensure no overflow.
+                assert(-1233 <= e && e <= 1233);
+                return (e * 1741647) >> 19;
+            }
 
-                constexpr int floor_log10_pow2_minus_log10_4_over_3(int e) noexcept {
-                    assert(-2985 <= e && e <= 2936);
-                    return (e * 631305 - 261663) >> 21;
-                }
+            constexpr int floor_log10_pow2_minus_log10_4_over_3(int e) noexcept {
+                assert(-2985 <= e && e <= 2936);
+                return (e * 631305 - 261663) >> 21;
+            }
 
-                constexpr int floor_log5_pow2(int e) noexcept {
-                    assert(-1831 <= e && e <= 1831);
-                    return (e * 225799) >> 19;
-                }
+            constexpr int floor_log5_pow2(int e) noexcept {
+                assert(-1831 <= e && e <= 1831);
+                return (e * 225799) >> 19;
+            }
 
-                constexpr int floor_log5_pow2_minus_log5_3(int e) noexcept {
-                    assert(-3543 <= e && e <= 2427);
-                    return (e * 451597 - 715764) >> 20;
-                }
+            constexpr int floor_log5_pow2_minus_log5_3(int e) noexcept {
+                assert(-3543 <= e && e <= 2427);
+                return (e * 451597 - 715764) >> 20;
             }
 
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -568,8 +566,8 @@ namespace jkj {
               } else {
                   // Compute the required amount of bit-shift.
                   auto const alpha =
-                      int(log::floor_log2_pow10(k) -
-                                      log::floor_log2_pow10(kb) - offset);
+                      int(floor_log2_pow10(k) -
+                                      floor_log2_pow10(kb) - offset);
                   assert(alpha > 0 && alpha < 64);
 
                   // Try to recover the real cache.
@@ -1272,8 +1270,8 @@ namespace jkj {
                 } else {
                     // Compute the required amount of bit-shift.
                     auto const alpha =
-                        int(log::floor_log2_pow10(k) -
-                                        log::floor_log2_pow10(kb) - offset);
+                        int(floor_log2_pow10(k) -
+                                        floor_log2_pow10(kb) - offset);
                     assert(alpha > 0 && alpha < 64);
 
                     // Try to recover the real cache.
@@ -1409,7 +1407,7 @@ namespace jkj {
                 template <int N, class UInt>
                 constexpr bool check_divisibility_and_divide_by_pow10(UInt& n) noexcept {
                     // Make sure the computation for max_n does not overflow.
-                    static_assert(N + 1 <= log::floor_log10_pow2(value_bits<UInt>), "");
+                    static_assert(N + 1 <= floor_log10_pow2(value_bits<UInt>), "");
                     assert(n <= compute_power<N + 1>(UInt(10)));
 
                     using info = divide_by_pow10_info<N, UInt>;
@@ -1429,7 +1427,7 @@ namespace jkj {
                 template <int N, class UInt>
                 constexpr UInt small_division_by_pow10(UInt n) noexcept {
                     // Make sure the computation for max_n does not overflow.
-                    static_assert(N + 1 <= log::floor_log10_pow2(value_bits<UInt>), "");
+                    static_assert(N + 1 <= floor_log10_pow2(value_bits<UInt>), "");
                     assert(n <= compute_power<N + 1>(UInt(10)));
 
                     return UInt((n * divide_by_pow10_info<N, UInt>::magic_number) >>
@@ -1548,37 +1546,37 @@ namespace jkj {
               significand_bits = format::significand_bits,
               carrier_bits = value_bits<carrier_uint>,
 
-              kappa = log::floor_log10_pow2(carrier_bits - significand_bits - 2) - 1,
+              kappa = floor_log10_pow2(carrier_bits - significand_bits - 2) - 1,
 
-              min_k = min(-log::floor_log10_pow2_minus_log10_4_over_3(max_exponent - significand_bits),
-                          -log::floor_log10_pow2(max_exponent - significand_bits) + kappa),
+              min_k = min(-floor_log10_pow2_minus_log10_4_over_3(max_exponent - significand_bits),
+                          -floor_log10_pow2(max_exponent - significand_bits) + kappa),
 
               // We do invoke shorter_interval_case for exponent == min_exponent case,
               // so we should not add 1 here.
-              max_k = max(-log::floor_log10_pow2_minus_log10_4_over_3(min_exponent - significand_bits /*+ 1*/),
-                          -log::floor_log10_pow2(min_exponent - significand_bits) + kappa),
+              max_k = max(-floor_log10_pow2_minus_log10_4_over_3(min_exponent - significand_bits /*+ 1*/),
+                          -floor_log10_pow2(min_exponent - significand_bits) + kappa),
 
               case_shorter_interval_left_endpoint_lower_threshold = 2,
 
               case_shorter_interval_left_endpoint_upper_threshold =
-                  2 + log::floor_log2(compute_power<count_factors<5>(
+                  2 + floor_log2(compute_power<count_factors<5>(
                       (carrier_uint(1) << (significand_bits + 2)) - 1) + 1>(10) / 3),
 
               case_shorter_interval_right_endpoint_lower_threshold = 0,
 
               case_shorter_interval_right_endpoint_upper_threshold =
-                  2 + log::floor_log2(compute_power<count_factors<5>(
+                  2 + floor_log2(compute_power<count_factors<5>(
                       (carrier_uint(1) << (significand_bits + 1)) + 1) + 1>(10) / 3),
 
               shorter_interval_tie_lower_threshold =
-                  -log::floor_log5_pow2_minus_log5_3(significand_bits + 4) - 2 - significand_bits,
+                  -floor_log5_pow2_minus_log5_3(significand_bits + 4) - 2 - significand_bits,
 
               shorter_interval_tie_upper_threshold =
-                  -log::floor_log5_pow2(significand_bits + 2) - 2 - significand_bits,
+                  -floor_log5_pow2(significand_bits + 2) - 2 - significand_bits,
             };
 
             static_assert(kappa >= 1);
-            static_assert(carrier_bits >= significand_bits + 2 + log::floor_log2_pow10(kappa + 1));
+            static_assert(carrier_bits >= significand_bits + 2 + floor_log2_pow10(kappa + 1));
             static_assert(min_k >= format::min_k && max_k <= format::max_k);
 
             static constexpr Float carrier_to_float(carrier_uint u) noexcept {
@@ -1739,8 +1737,8 @@ namespace jkj {
                     if (two_fc == 0) {
 
                         // Compute k and beta.
-                        int const minus_k = log::floor_log10_pow2_minus_log10_4_over_3(binary_exponent);
-                        int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
+                        int const minus_k = floor_log10_pow2_minus_log10_4_over_3(binary_exponent);
+                        int const beta = binary_exponent + floor_log2_pow10(-minus_k);
 
                         // Compute xi and zi.
                         auto const cache = cache_.get_cache(-minus_k);
@@ -1809,9 +1807,9 @@ namespace jkj {
                 //////////////////////////////////////////////////////////////////////
 
                 // Compute k and beta.
-                int const minus_k = log::floor_log10_pow2(binary_exponent) - kappa;
+                int const minus_k = floor_log10_pow2(binary_exponent) - kappa;
                 auto const cache = cache_.get_cache(-minus_k);
-                int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
+                int const beta = binary_exponent + floor_log2_pow10(-minus_k);
 
                 // Compute zi and deltai.
                 // 10^kappa <= deltai < 10^(kappa + 1)
@@ -1958,9 +1956,9 @@ namespace jkj {
                 //////////////////////////////////////////////////////////////////////
 
                 // Compute k and beta.
-                int const minus_k = log::floor_log10_pow2(binary_exponent) - kappa;
+                int const minus_k = floor_log10_pow2(binary_exponent) - kappa;
                 auto const cache = cache_.get_cache(-minus_k);
-                int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
+                int const beta = binary_exponent + floor_log2_pow10(-minus_k);
 
                 // Compute xi and deltai.
                 // 10^kappa <= deltai < 10^(kappa + 1)
@@ -1974,7 +1972,7 @@ namespace jkj {
                 // and 29711844 * 2^-81
                 // = 1.2288530660000000001731007559513386695471126586198806762695... * 10^-17
                 // for binary32.
-                if constexpr (is_same<Float, float>::value) {
+                if constexpr (carrier_bits == 32) {
                     if (binary_exponent <= -80) {
                         x_result.is_integer = false;
                     }
@@ -2070,9 +2068,9 @@ namespace jkj {
                 //////////////////////////////////////////////////////////////////////
 
                 // Compute k and beta.
-                int const minus_k = log::floor_log10_pow2(binary_exponent - (shorter_interval ? 1 : 0)) - kappa;
+                int const minus_k = floor_log10_pow2(binary_exponent - (shorter_interval ? 1 : 0)) - kappa;
                 auto const cache = cache_.get_cache(-minus_k);
-                int const beta = binary_exponent + log::floor_log2_pow10(-minus_k);
+                int const beta = binary_exponent + floor_log2_pow10(-minus_k);
 
                 // Compute zi and deltai.
                 // 10^kappa <= deltai < 10^(kappa + 1)

@@ -33,7 +33,7 @@ auto generate_cache(std::size_t cache_bits) {
         // (2f_c +- 1) * 2^beta * (2^(k - e_k - Q) * 5^k)
         // e_k = floor(k log2(10)) - Q + 1, so
         // k - e_k - Q = k - floor(k log2(10)) - 1.
-        int exp_2 = k - jkj::dragonbox::log::floor_log2_pow10(k) - 1;
+        int exp_2 = k - jkj::dragonbox::floor_log2_pow10(k) - 1;
 
         target_number.numerator = 1;
         target_number.denominator = 1;

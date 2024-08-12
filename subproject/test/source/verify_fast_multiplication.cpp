@@ -32,8 +32,8 @@ static bool verify_fast_multiplication_xz() {
     constexpr auto four_fl = (carrier_uint(1) << (impl::significand_bits + 2)) - 1;
     constexpr auto two_fr = (carrier_uint(1) << (impl::significand_bits + 1)) + 1;
 
-    using jkj::dragonbox::log::floor_log10_pow2_minus_log10_4_over_3;
-    using jkj::dragonbox::log::floor_log2_pow10;
+    using jkj::dragonbox::floor_log10_pow2_minus_log10_4_over_3;
+    using jkj::dragonbox::floor_log2_pow10;
 
     bool success = true;
 
@@ -117,7 +117,7 @@ static bool verify_fast_multiplication_yru() {
         // If the lower half is zero, we need to check if the cache is precise.
         if (lower_half == 0) {
             if (k < 0 ||
-                k > jkj::dragonbox::log::floor_log5_pow2(format::cache_bits)) {
+                k > jkj::dragonbox::floor_log5_pow2(format::cache_bits)) {
                 std::cout << "(k = " << k << ") computation might be incorrect\n";
                 success = false;
             }

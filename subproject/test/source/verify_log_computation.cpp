@@ -22,7 +22,7 @@
 #include <iostream>
 
 static std::int_least32_t floor_log10_pow2_precise(std::int_least32_t e) {
-    using namespace jkj::dragonbox::log;
+    using namespace jkj::dragonbox;
     bool is_negative;
     if (e < 0) {
         is_negative = true;
@@ -245,7 +245,7 @@ struct verify_all_tiers {
 };
 
 int main() {
-    using namespace jkj::dragonbox::log;
+    using namespace jkj::dragonbox;
 
     bool success = true;
     std::cout << "[Verifying log computation...]\n";

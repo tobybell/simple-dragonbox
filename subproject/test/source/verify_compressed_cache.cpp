@@ -61,7 +61,7 @@ bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to
     auto n_max = jkj::big_uint::power_of_2(format::significand_bits + 2);
     for (int e = format::min_exponent - format::significand_bits;
          e <= format::max_exponent - format::significand_bits; ++e) {
-        int const k = impl::kappa - jkj::dragonbox::log::floor_log10_pow2(e);
+        int const k = impl::kappa - jkj::dragonbox::floor_log10_pow2(e);
 
         auto const real_cache = full_cache.get_cache(k);
 
@@ -80,7 +80,7 @@ bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to
             }
 
             // For the case b <= n_max, integer check might be no longer valid.
-            int const beta = e + jkj::dragonbox::log::floor_log2_pow10(k);
+            int const beta = e + jkj::dragonbox::floor_log2_pow10(k);
 
             // unit = 2^(e + k - 1) * 5^k = a/b.
             unit.numerator = 1;
@@ -174,7 +174,7 @@ int main() {
                         auto const pow5 = cache_.pow5_table[offset];
 
                         // Compute the required amount of bit-shifts.
-                        using jkj::dragonbox::log::floor_log2_pow10;
+                        using jkj::dragonbox::floor_log2_pow10;
                         auto const alpha = floor_log2_pow10(k) - floor_log2_pow10(kb) - offset;
                         assert(alpha > 0 && alpha < 64);
 
