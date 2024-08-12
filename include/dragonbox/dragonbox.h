@@ -6,14 +6,6 @@
 #include <limits>
 #include <type_traits>
 
-#if defined(__GNUC__) || defined(__clang__)
-    #define JKJ_FORCEINLINE inline __attribute__((always_inline))
-#elif defined(_MSC_VER)
-    #define JKJ_FORCEINLINE __forceinline
-#else
-    #define JKJ_FORCEINLINE inline
-#endif
-
 #if defined(_MSC_VER)
     #include <intrin.h>
 #elif defined(__INTEL_COMPILER)
@@ -187,7 +179,7 @@ namespace jkj {
                     }
                 };
 
-                inline constexpr stdr::uint_least64_t umul64(stdr::uint_least32_t x,
+                constexpr stdr::uint_least64_t umul64(stdr::uint_least32_t x,
                                                                    stdr::uint_least32_t y) noexcept {
 #if defined(_MSC_VER) && defined(_M_IX86)
                     JKJ_IF_NOT_CONSTEVAL { return __emulu(x, y); }
@@ -196,7 +188,7 @@ namespace jkj {
                 }
 
                 // Get 128-bit result of multiplication of two 64-bit unsigned integers.
-                inline constexpr uint128
+                constexpr uint128
                 umul128(stdr::uint_least64_t x, stdr::uint_least64_t y) noexcept {
                     auto const generic_impl = [=]() -> uint128 {
                         auto const a = stdr::uint_least32_t(x >> 32);
@@ -242,7 +234,7 @@ namespace jkj {
 
                 // Get high half of the 128-bit result of multiplication of two 64-bit unsigned
                 // integers.
-                inline constexpr stdr::uint_least64_t
+                constexpr stdr::uint_least64_t
                 umul128_upper64(stdr::uint_least64_t x, stdr::uint_least64_t y) noexcept {
                     auto const generic_impl = [=]() -> stdr::uint_least64_t {
                         auto const a = stdr::uint_least32_t(x >> 32);
@@ -287,7 +279,7 @@ namespace jkj {
 
                 // Get upper 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
                 // unsigned integer.
-                inline constexpr uint128 umul192_upper128(stdr::uint_least64_t x,
+                constexpr uint128 umul192_upper128(stdr::uint_least64_t x,
                                                                                 uint128 y) noexcept {
                     auto r = umul128(x, y.high());
                     r += umul128_upper64(x, y.low());
@@ -296,7 +288,7 @@ namespace jkj {
 
                 // Get upper 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit
                 // unsigned integer.
-                inline constexpr stdr::uint_least64_t
+                constexpr stdr::uint_least64_t
                 umul96_upper64(stdr::uint_least32_t x, stdr::uint_least64_t y) noexcept {
 #if defined(__SIZEOF_INT128__) || (defined(_MSC_VER) && defined(_M_X64))
                     return umul128_upper64(stdr::uint_least64_t(x) << 32, y);
@@ -313,7 +305,7 @@ namespace jkj {
 
                 // Get lower 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
                 // unsigned integer.
-                inline constexpr uint128 umul192_lower128(stdr::uint_least64_t x,
+                constexpr uint128 umul192_lower128(stdr::uint_least64_t x,
                                                                                 uint128 y) noexcept {
                     auto const high = x * y.high();
                     auto const high_low = umul128(x, y.low());
@@ -2002,8 +1994,7 @@ namespace jkj {
                     return no_trailing_zeros(decimal_significand, minus_k + kappa);
                 }
 
-                JKJ_FORCEINLINE constexpr
-                decimal_fp left_closed_directed() noexcept {
+                constexpr decimal_fp left_closed_directed() noexcept {
 
                     carrier_uint two_fc = significand * 2;
                     auto binary_exponent = exponent_bits;
@@ -2111,8 +2102,7 @@ namespace jkj {
                     return no_trailing_zeros(decimal_significand, minus_k + kappa);
                 }
 
-                JKJ_FORCEINLINE constexpr
-                decimal_fp right_closed_directed() noexcept {
+                constexpr decimal_fp right_closed_directed() noexcept {
 
                     carrier_uint two_fc = significand * 2;
                     auto binary_exponent = exponent_bits;
@@ -2271,5 +2261,3 @@ namespace jkj {
         }
     }
 }
-
-#undef JKJ_FORCEINLINE
