@@ -73,17 +73,14 @@ namespace jkj {
                     typename stdr::enable_if<stdr::is_integral<T>::value, T>::type>::digits;
             };
 
-            namespace bits {
-                // Most compilers should be able to optimize this into the ROR instruction.
-                // n is assumed to be at most of bit_width bits.
-                template <stdr::size_t bit_width, class UInt>
-                constexpr UInt rotr(UInt n, unsigned int r) noexcept {
-                    static_assert(bit_width > 0, "jkj::dragonbox: rotation bit-width must be positive");
-                    static_assert(bit_width <= value_bits<UInt>::value,
-                                  "jkj::dragonbox: rotation bit-width is too large");
-                    r &= (bit_width - 1);
-                    return (n >> r) | (n << ((bit_width - r) & (bit_width - 1)));
-                }
+            constexpr stdr::uint_least32_t rotr32(stdr::uint_least32_t n, unsigned r) noexcept {
+                r &= 31;
+                return (n >> r) | (n << ((32 - r) & 31));
+            }
+
+            constexpr stdr::uint_least64_t rotr64(stdr::uint_least64_t n, unsigned r) noexcept {
+                r &= 63;
+                return (n >> r) | (n << ((64 - r) & 63));
             }
 
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -361,19 +358,19 @@ namespace jkj {
                 // The idea of branchless search below is by reddit users r/pigeon768 and
                 // r/TheoreticalDumbass.
 
-                auto r = detail::bits::rotr<32>(
+                auto r = detail::rotr32(
                     carrier_uint(significand * UINT32_C(184254097)), 4);
                 auto b = r < UINT32_C(429497);
                 auto s = detail::stdr::size_t(b);
                 significand = b ? r : significand;
 
-                r = detail::bits::rotr<32>(
+                r = detail::rotr32(
                     carrier_uint(significand * UINT32_C(42949673)), 2);
                 b = r < UINT32_C(42949673);
                 s = s * 2 + b;
                 significand = b ? r : significand;
 
-                r = detail::bits::rotr<32>(
+                r = detail::rotr32(
                     carrier_uint(significand * UINT32_C(1288490189)), 1);
                 b = r < UINT32_C(429496730);
                 s = s * 2 + b;
@@ -435,25 +432,25 @@ namespace jkj {
                 // The idea of branchless search below is by reddit users r/pigeon768 and
                 // r/TheoreticalDumbass.
 
-                auto r = detail::bits::rotr<64>(
+                auto r = detail::rotr64(
                     carrier_uint(significand * UINT64_C(28999941890838049)), 8);
                 auto b = r < UINT64_C(184467440738);
                 auto s = detail::stdr::size_t(b);
                 significand = b ? r : significand;
 
-                r = detail::bits::rotr<64>(
+                r = detail::rotr64(
                     carrier_uint(significand * UINT64_C(182622766329724561)), 4);
                 b = r < UINT64_C(1844674407370956);
                 s = s * 2 + b;
                 significand = b ? r : significand;
 
-                r = detail::bits::rotr<64>(
+                r = detail::rotr64(
                     carrier_uint(significand * UINT64_C(10330176681277348905)), 2);
                 b = r < UINT64_C(184467440737095517);
                 s = s * 2 + b;
                 significand = b ? r : significand;
 
-                r = detail::bits::rotr<64>(
+                r = detail::rotr64(
                     carrier_uint(significand * UINT64_C(14757395258967641293)), 1);
                 b = r < UINT64_C(1844674407370955162);
                 s = s * 2 + b;
