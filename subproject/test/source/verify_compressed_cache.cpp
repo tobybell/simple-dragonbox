@@ -55,7 +55,7 @@ bool verify_compressed_cache(GetCache&& get_cache, ConvertToBigUInt&& convert_to
     using impl = jkj::dragonbox::impl<Float>;
     using format = typename impl::format;
 
-    static constexpr jkj::dragonbox::cache_holder<Float, false> full_cache;
+    static constexpr jkj::dragonbox::cache_holder<Float, jkj::dragonbox::cache_policy::full> full_cache;
 
     jkj::unsigned_rational<jkj::big_uint> unit;
     auto n_max = jkj::big_uint::power_of_2(format::significand_bits + 2);
@@ -136,7 +136,7 @@ int main() {
     std::cout << "[Verifying compressed cache for binary32...]\n";
     {
         using format = jkj::dragonbox::float_format<float>;
-        static constexpr jkj::dragonbox::cache_holder<float, true> cache_;
+        static constexpr jkj::dragonbox::cache_holder<float, jkj::dragonbox::cache_policy::compact> cache_;
 
         if (verify_compressed_cache<float>(
                 [](int k) {
@@ -155,7 +155,7 @@ int main() {
     std::cout << "[Verifying compressed cache for binary64...]\n";
     {
         using cache_entry = typename jkj::dragonbox::float_format<double>::cache_entry;
-        static constexpr jkj::dragonbox::cache_holder<double, true> cache_;
+        static constexpr jkj::dragonbox::cache_holder<double, jkj::dragonbox::cache_policy::compact> cache_;
 
         if (verify_compressed_cache<double>(
                 [](int k) {

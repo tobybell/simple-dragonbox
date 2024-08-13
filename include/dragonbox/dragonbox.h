@@ -36,7 +36,6 @@ namespace jkj {
 
             // <cstring>
             using std::size_t;
-            using std::memcpy;
 
             // <limits>
             template <class T>
@@ -462,11 +461,16 @@ namespace jkj {
             }
         };
 
-        template <class Float, bool compact>
+        enum class cache_policy {
+          full,
+          compact,
+        };
+
+        template <class Float, cache_policy>
         struct cache_holder;
 
         template <>
-        struct cache_holder<float, false> {
+        struct cache_holder<float, cache_policy::full> {
           using format = float_format<float>;
 
           static constexpr typename format::cache_entry cache[format::max_k - format::min_k + 1] {
@@ -517,7 +521,7 @@ namespace jkj {
         };
 
         template <>
-        struct cache_holder<float, true> {
+        struct cache_holder<float, cache_policy::compact> {
             using format = float_format<float>;
             using cache_entry = typename format::cache_entry;
             enum {
@@ -534,7 +538,7 @@ namespace jkj {
 
             constexpr cache_holder() {
               for (size_t i = 0; i < compressed_table_size; ++i) {
-                  cache[i] = cache_holder<float, false>::cache[i * compression_ratio];
+                  cache[i] = cache_holder<float, cache_policy::full>::cache[i * compression_ratio];
               }
               uint_least16_t p = 1;
               for (size_t i = 0; i < pow5_table_size; ++i) {
@@ -590,7 +594,7 @@ namespace jkj {
         };
 
         template <>
-        struct cache_holder<double, false> {
+        struct cache_holder<double, cache_policy::full> {
             using format = float_format<double>;
 
             static constexpr typename format::cache_entry cache[format::max_k - format::min_k + 1] {
@@ -1221,7 +1225,7 @@ namespace jkj {
         };
 
         template <>
-        struct cache_holder<double, true> {
+        struct cache_holder<double, cache_policy::compact> {
             using format = float_format<double>;
             using cache_entry = typename format::cache_entry;
             enum {
@@ -1238,7 +1242,7 @@ namespace jkj {
 
             constexpr cache_holder() {
                 for (size_t i = 0; i < compressed_table_size; ++i) {
-                    cache[i] = cache_holder<double, false>::cache[i * compression_ratio];
+                    cache[i] = cache_holder<double, cache_policy::full>::cache[i * compression_ratio];
                 }
                 uint_least64_t p = 1;
                 for (size_t i = 0; i < pow5_table_size; ++i) {
@@ -1312,7 +1316,7 @@ namespace jkj {
           constexpr explicit float_bits(Float x) {
             carrier_uint bits;
             static_assert(sizeof(x) == sizeof(bits));
-            memcpy(&bits, &x, sizeof(x));
+            std::memcpy(&bits, &x, sizeof(x));
             significand = bits & ((carrier_uint(1) << format::significand_bits) - 1);
             exponent = bits >> format::significand_bits & ((1u << format::exponent_bits) - 1);
             sign = bits >> (format::significand_bits + format::exponent_bits);
@@ -1475,49 +1479,34 @@ namespace jkj {
                     }
                 }
 
-        ////////////////////////////////////////////////////////////////////////////////////////
-        // Return types for the main interface function.
-        ////////////////////////////////////////////////////////////////////////////////////////
-
-        struct decimal_fp {
-            unsigned long long significand;
-            int exponent;
-            bool sign;
-        };
-
         struct interval {
           bool include_left_endpoint;
           bool include_right_endpoint;
         };
 
-        enum binary_round_policy {
-          binary_nearest_to_even,
-          binary_nearest_to_odd,
-          binary_nearest_toward_plus_infinity,
-          binary_nearest_toward_minus_infinity,
-          binary_nearest_toward_zero,
-          binary_nearest_away_from_zero,
-          binary_nearest_to_even_static_boundary,
-          binary_nearest_to_odd_static_boundary,
-          binary_nearest_toward_plus_infinity_static_boundary,
-          binary_nearest_toward_minus_infinity_static_boundary,
-          binary_toward_plus_infinity,
-          binary_toward_minus_infinity,
-          binary_toward_zero,
-          binary_away_from_zero,
+        enum class binary_round_policy {
+          nearest_to_even,
+          nearest_to_odd,
+          nearest_toward_plus_infinity,
+          nearest_toward_minus_infinity,
+          nearest_toward_zero,
+          nearest_away_from_zero,
+          nearest_to_even_static_boundary,
+          nearest_to_odd_static_boundary,
+          nearest_toward_plus_infinity_static_boundary,
+          nearest_toward_minus_infinity_static_boundary,
+          toward_plus_infinity,
+          toward_minus_infinity,
+          toward_zero,
+          away_from_zero,
         };
 
-        enum decimal_round_policy {
-          decimal_to_even,
-          decimal_to_odd,
-          decimal_away_from_zero,
-          decimal_toward_zero,
-          decimal_dont_care,
-        };
-
-        enum cache_policy {
-          cache_full,
-          cache_compact,
+        enum class decimal_round_policy {
+          to_even,
+          to_odd,
+          away_from_zero,
+          toward_zero,
+          dont_care,
         };
 
         template <class Float>
@@ -1614,12 +1603,13 @@ namespace jkj {
             bool sign;
 
             static bool prefer_round_down(carrier_uint decimal_significand) noexcept {
+              using e = decimal_round_policy;
               switch (DecimalRoundPolicy) {
-                case decimal_dont_care: return false;
-                case decimal_to_even: return decimal_significand % 2 != 0;
-                case decimal_to_odd: return decimal_significand % 2 == 0;
-                case decimal_away_from_zero: return false;
-                case decimal_toward_zero: return true;
+                case e::dont_care: return false;
+                case e::to_even: return decimal_significand % 2 != 0;
+                case e::to_odd: return decimal_significand % 2 == 0;
+                case e::away_from_zero: return false;
+                case e::toward_zero: return true;
               }
             }
 
@@ -1674,21 +1664,22 @@ namespace jkj {
 
             decimal_fp to_decimal() {
               bool even = significand % 2 == 0;
+              using e = binary_round_policy;
               switch (BinaryRoundPolicy) {
-                case binary_nearest_to_even: return nearest_to_even();
-                case binary_nearest_to_odd: return nearest_to_odd();
-                case binary_nearest_toward_plus_infinity: return nearest_toward_plus_infinity();
-                case binary_nearest_toward_minus_infinity: return nearest_toward_minus_infinity();
-                case binary_nearest_toward_zero: return nearest_toward_zero();
-                case binary_nearest_away_from_zero: return nearest_away_from_zero();
-                case binary_nearest_to_even_static_boundary: return even ? nearest_always_closed() : nearest_always_open();
-                case binary_nearest_to_odd_static_boundary: return even ? nearest_always_open() : nearest_always_closed();
-                case binary_nearest_toward_plus_infinity_static_boundary: return sign ? nearest_toward_zero() : nearest_away_from_zero();
-                case binary_nearest_toward_minus_infinity_static_boundary: return sign ? nearest_away_from_zero() : nearest_toward_zero();
-                case binary_toward_plus_infinity: return sign ? left_closed_directed() : right_closed_directed();
-                case binary_toward_minus_infinity: return sign ? right_closed_directed() : left_closed_directed();
-                case binary_toward_zero: return left_closed_directed();
-                case binary_away_from_zero: return right_closed_directed();
+                case e::nearest_to_even: return nearest_to_even();
+                case e::nearest_to_odd: return nearest_to_odd();
+                case e::nearest_toward_plus_infinity: return nearest_toward_plus_infinity();
+                case e::nearest_toward_minus_infinity: return nearest_toward_minus_infinity();
+                case e::nearest_toward_zero: return nearest_toward_zero();
+                case e::nearest_away_from_zero: return nearest_away_from_zero();
+                case e::nearest_to_even_static_boundary: return even ? nearest_always_closed() : nearest_always_open();
+                case e::nearest_to_odd_static_boundary: return even ? nearest_always_open() : nearest_always_closed();
+                case e::nearest_toward_plus_infinity_static_boundary: return sign ? nearest_toward_zero() : nearest_away_from_zero();
+                case e::nearest_toward_minus_infinity_static_boundary: return sign ? nearest_away_from_zero() : nearest_toward_zero();
+                case e::toward_plus_infinity: return sign ? left_closed_directed() : right_closed_directed();
+                case e::toward_minus_infinity: return sign ? right_closed_directed() : left_closed_directed();
+                case e::toward_zero: return left_closed_directed();
+                case e::away_from_zero: return right_closed_directed();
               }
             }
 
@@ -1848,7 +1839,7 @@ namespace jkj {
                         // Exclude the right endpoint if necessary.
                         if ((r | carrier_uint(!z_result.is_integer) |
                              carrier_uint(normal_interval.include_right_endpoint)) == 0) {
-                            if (DecimalRoundPolicy == decimal_dont_care) {
+                            if (DecimalRoundPolicy == decimal_round_policy::dont_care) {
                                 decimal_significand *= 10;
                                 --decimal_significand;
                                 return no_trailing_zeros(decimal_significand, minus_k + kappa);
@@ -1881,7 +1872,7 @@ namespace jkj {
 
                 decimal_significand *= 10;
 
-                if (DecimalRoundPolicy == decimal_dont_care) {
+                if (DecimalRoundPolicy == decimal_round_policy::dont_care) {
                     // Normally, we want to compute
                     // significand += r / small_divisor
                     // and return, but we need to take care of the case that the resulting
@@ -2018,7 +2009,7 @@ namespace jkj {
                         // case, the recovered cache is two large to make compute_mul_parity
                         // mistakenly conclude that z is not an integer, but actually z = 16384 is
                         // an integer.
-                        if constexpr (carrier_bits == 32 && CachePolicy == cache_compact) {
+                        if constexpr (carrier_bits == 32 && CachePolicy == cache_policy::compact) {
                             if (two_fc == 33554430 && binary_exponent == -10) {
                                 break;
                             }
@@ -2144,33 +2135,33 @@ namespace jkj {
         namespace policy {
           namespace decimal_to_binary_rounding {
             using type = binary_round_policy;
-            static constexpr policy_<type, type::binary_nearest_to_even> nearest_to_even;
-            static constexpr policy_<type, type::binary_nearest_to_odd> nearest_to_odd;
-            static constexpr policy_<type, type::binary_nearest_toward_plus_infinity> nearest_toward_plus_infinity;
-            static constexpr policy_<type, type::binary_nearest_toward_minus_infinity> nearest_toward_minus_infinity;
-            static constexpr policy_<type, type::binary_nearest_toward_zero> nearest_toward_zero;
-            static constexpr policy_<type, type::binary_nearest_away_from_zero> nearest_away_from_zero;
-            static constexpr policy_<type, type::binary_nearest_to_even_static_boundary> nearest_to_even_static_boundary;
-            static constexpr policy_<type, type::binary_nearest_to_odd_static_boundary> nearest_to_odd_static_boundary;
-            static constexpr policy_<type, type::binary_nearest_toward_plus_infinity_static_boundary> nearest_toward_plus_infinity_static_boundary;
-            static constexpr policy_<type, type::binary_nearest_toward_minus_infinity_static_boundary> nearest_toward_minus_infinity_static_boundary;
-            static constexpr policy_<type, type::binary_toward_plus_infinity> toward_plus_infinity;
-            static constexpr policy_<type, type::binary_toward_minus_infinity> toward_minus_infinity;
-            static constexpr policy_<type, type::binary_toward_zero> toward_zero;
-            static constexpr policy_<type, type::binary_away_from_zero> away_from_zero;
+            static constexpr policy_<type, type::nearest_to_even> nearest_to_even;
+            static constexpr policy_<type, type::nearest_to_odd> nearest_to_odd;
+            static constexpr policy_<type, type::nearest_toward_plus_infinity> nearest_toward_plus_infinity;
+            static constexpr policy_<type, type::nearest_toward_minus_infinity> nearest_toward_minus_infinity;
+            static constexpr policy_<type, type::nearest_toward_zero> nearest_toward_zero;
+            static constexpr policy_<type, type::nearest_away_from_zero> nearest_away_from_zero;
+            static constexpr policy_<type, type::nearest_to_even_static_boundary> nearest_to_even_static_boundary;
+            static constexpr policy_<type, type::nearest_to_odd_static_boundary> nearest_to_odd_static_boundary;
+            static constexpr policy_<type, type::nearest_toward_plus_infinity_static_boundary> nearest_toward_plus_infinity_static_boundary;
+            static constexpr policy_<type, type::nearest_toward_minus_infinity_static_boundary> nearest_toward_minus_infinity_static_boundary;
+            static constexpr policy_<type, type::toward_plus_infinity> toward_plus_infinity;
+            static constexpr policy_<type, type::toward_minus_infinity> toward_minus_infinity;
+            static constexpr policy_<type, type::toward_zero> toward_zero;
+            static constexpr policy_<type, type::away_from_zero> away_from_zero;
           }
           namespace binary_to_decimal_rounding {
             using type = decimal_round_policy;
-            static constexpr policy_<type, type::decimal_to_even> to_even;
-            static constexpr policy_<type, type::decimal_to_odd> to_odd;
-            static constexpr policy_<type, type::decimal_away_from_zero> away_from_zero;
-            static constexpr policy_<type, type::decimal_toward_zero> toward_zero;
-            static constexpr policy_<type, type::decimal_dont_care> do_not_care;
+            static constexpr policy_<type, type::to_even> to_even;
+            static constexpr policy_<type, type::to_odd> to_odd;
+            static constexpr policy_<type, type::away_from_zero> away_from_zero;
+            static constexpr policy_<type, type::toward_zero> toward_zero;
+            static constexpr policy_<type, type::dont_care> do_not_care;
           }
           namespace cache {
             using type = cache_policy;
-            static constexpr policy_<type, type::cache_full> full;
-            static constexpr policy_<type, type::cache_compact> compact;
+            static constexpr policy_<type, type::full> full;
+            static constexpr policy_<type, type::compact> compact;
           }
         }
 
