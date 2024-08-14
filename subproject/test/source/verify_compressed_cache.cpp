@@ -180,22 +180,22 @@ int main() {
 
                         // Try to recover the real cache.
                         using jkj::dragonbox::umul128;
-                        auto recovered_cache = umul128(base_cache.high(), pow5);
-                        auto const middle_low = umul128(base_cache.low(), pow5);
+                        auto recovered_cache = umul128(base_cache.high, pow5);
+                        auto const middle_low = umul128(base_cache.low, pow5);
 
-                        recovered_cache += middle_low.high();
+                        recovered_cache += middle_low.high;
 
                         auto const high_to_middle = std::uint_least64_t(
-                            (recovered_cache.high() << (64 - alpha)) & UINT64_C(0xffffffffffffffff));
+                            (recovered_cache.high << (64 - alpha)) & UINT64_C(0xffffffffffffffff));
                         auto const middle_to_low = std::uint_least64_t(
-                            (recovered_cache.low() << (64 - alpha)) & UINT64_C(0xffffffffffffffff));
+                            (recovered_cache.low << (64 - alpha)) & UINT64_C(0xffffffffffffffff));
 
-                        recovered_cache = {(recovered_cache.low() >> alpha) | high_to_middle,
-                                           ((middle_low.low() >> alpha) | middle_to_low)};
-                        recovered_cache = {recovered_cache.high(),
-                                           std::uint_least64_t(recovered_cache.low() + 1)};
+                        recovered_cache = {(recovered_cache.low >> alpha) | high_to_middle,
+                                           ((middle_low.low >> alpha) | middle_to_low)};
+                        recovered_cache = {recovered_cache.high,
+                                           std::uint_least64_t(recovered_cache.low + 1)};
 
-                        if (recovered_cache.low() == 0) {
+                        if (recovered_cache.low == 0) {
                             std::cout
                                 << "Overflow detected - taking the ceil requires addition-with-carry";
                             return recovered_cache_t<cache_entry>{
@@ -211,7 +211,7 @@ int main() {
                     }
                 },
                 [](cache_entry value) {
-                    return jkj::big_uint{value.low(), value.high()};
+                    return jkj::big_uint{value.low, value.high};
                 },
                 13)) {
             std::cout << "Verification succeeded. No error detected.\n\n";

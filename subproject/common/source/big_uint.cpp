@@ -436,8 +436,8 @@ namespace jkj {
         element_type carry = 0;
         for (std::size_t idx = 0; idx < elements.size(); ++idx) {
             auto mul = jkj::dragonbox::umul128(elements[idx], n);
-            elements[idx] = mul.low() + carry;
-            carry = mul.high() + (elements[idx] < mul.low() ? 1 : 0);
+            elements[idx] = mul.low + carry;
+            carry = mul.high + (elements[idx] < mul.low ? 1 : 0);
         }
         if (carry != 0) {
             elements.push_back(carry);
@@ -461,12 +461,12 @@ namespace jkj {
                 auto mul = jkj::dragonbox::umul128(x.elements[x_idx], y.elements[y_idx]);
 
                 // Add the first half
-                result.elements[x_idx + y_idx] += mul.low();
-                unsigned int carry = result.elements[x_idx + y_idx] < mul.low() ? 1 : 0;
+                result.elements[x_idx + y_idx] += mul.low;
+                unsigned int carry = result.elements[x_idx + y_idx] < mul.low ? 1 : 0;
 
                 // Add the second half
-                auto with_carry = mul.high() + carry;
-                carry = with_carry < mul.high() ? 1 : 0;
+                auto with_carry = mul.high + carry;
+                carry = with_carry < mul.high ? 1 : 0;
                 result.elements[x_idx + y_idx + 1] += with_carry;
 
                 // If there is carry,
