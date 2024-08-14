@@ -30,15 +30,6 @@ namespace jkj {
             template <class T>
             using numeric_limits = std::numeric_limits<T>;
 
-template <class T, class S>
-struct is_same_t { enum { value = 0 }; };
-
-template <class T>
-struct is_same_t<T, T> { enum { value = 1 }; };
-
-template <class T, class S>
-static constexpr bool is_same = is_same_t<T, S>::value;
-
             template <class T>
             static constexpr unsigned value_bits = 8 * sizeof(T);
 
