@@ -300,7 +300,6 @@ namespace jkj {
         template <>
         struct float_format<float> {
             using carrier_uint = uint_least32_t;
-            using cache_entry = uint_least64_t;
             enum {
               total_bits = 32,
               significand_bits = 23,
@@ -341,16 +340,16 @@ namespace jkj {
                 exponent += s;
             }
 
-            static compute_mul_result<carrier_uint> compute_mul(carrier_uint u, cache_entry cache) noexcept {
+            static compute_mul_result<carrier_uint> compute_mul(carrier_uint u, uint_least64_t cache) noexcept {
                 auto const r = umul96_upper64(u, cache);
                 return {carrier_uint(r >> 32), carrier_uint(r) == 0};
             }
 
-            static carrier_uint compute_delta(cache_entry cache, int beta) noexcept {
+            static carrier_uint compute_delta(uint_least64_t cache, int beta) noexcept {
                 return static_cast<carrier_uint>(cache >> (cache_bits - 1 - beta));
             }
 
-            static compute_mul_parity_result compute_mul_parity(carrier_uint two_f, cache_entry cache, int beta) noexcept {
+            static compute_mul_parity_result compute_mul_parity(carrier_uint two_f, uint_least64_t cache, int beta) noexcept {
                 assert(beta >= 1);
                 assert(beta <= 32);
                 auto const r = umul96_lower64(two_f, cache);
@@ -358,15 +357,15 @@ namespace jkj {
                         (UINT32_C(0xffffffff) & (r >> (32 - beta))) == 0};
             }
 
-            static carrier_uint compute_left_endpoint_for_shorter_interval_case(cache_entry cache, int beta) noexcept {
+            static carrier_uint compute_left_endpoint_for_shorter_interval_case(uint64_t cache, int beta) noexcept {
                 return (cache - (cache >> (significand_bits + 2))) >> (cache_bits - significand_bits - 1 - beta);
             }
 
-            static carrier_uint compute_right_endpoint_for_shorter_interval_case(cache_entry cache, int beta) noexcept {
+            static carrier_uint compute_right_endpoint_for_shorter_interval_case(uint64_t cache, int beta) noexcept {
                 return (cache + (cache >> (significand_bits + 1))) >> (cache_bits - significand_bits - 1 - beta);
             }
 
-            static carrier_uint compute_round_up_for_shorter_interval_case(cache_entry cache, int beta) noexcept {
+            static carrier_uint compute_round_up_for_shorter_interval_case(uint64_t cache, int beta) noexcept {
                 return (carrier_uint(cache >> (cache_bits - significand_bits - 2 - beta)) + 1) / 2;
             }
         };
@@ -374,7 +373,6 @@ namespace jkj {
         template <>
         struct float_format<double> {
             using carrier_uint = uint_least64_t;
-            using cache_entry = uint128;
             enum {
               total_bits = 64,
               significand_bits = 52,
@@ -421,16 +419,16 @@ namespace jkj {
                 exponent += s;
             }
 
-            static compute_mul_result<carrier_uint> compute_mul(carrier_uint u, cache_entry cache) noexcept {
+            static compute_mul_result<carrier_uint> compute_mul(carrier_uint u, uint128 cache) noexcept {
                 auto const r = umul192_upper128(u, cache);
                 return {r.high, r.low == 0};
             }
 
-            static carrier_uint compute_delta(cache_entry cache, int beta) noexcept {
+            static carrier_uint compute_delta(uint128 cache, int beta) noexcept {
                 return cache.high >> (total_bits - 1 - beta);
             }
 
-            static compute_mul_parity_result compute_mul_parity(carrier_uint two_f, cache_entry cache, int beta) noexcept {
+            static compute_mul_parity_result compute_mul_parity(carrier_uint two_f, uint128 cache, int beta) noexcept {
                 assert(beta >= 1);
                 assert(beta < 64);
                 auto const r = umul192_lower128(two_f, cache);
@@ -439,20 +437,61 @@ namespace jkj {
                          (r.low >> (64 - beta))) == 0};
             }
 
-            static carrier_uint compute_left_endpoint_for_shorter_interval_case(cache_entry cache, int beta) noexcept {
+            static carrier_uint compute_left_endpoint_for_shorter_interval_case(uint128 cache, int beta) noexcept {
                 return (cache.high - (cache.high >> (significand_bits + 2))) >>
                        (total_bits - significand_bits - 1 - beta);
             }
 
-            static carrier_uint compute_right_endpoint_for_shorter_interval_case(cache_entry cache, int beta) noexcept {
+            static carrier_uint compute_right_endpoint_for_shorter_interval_case(uint128 cache, int beta) noexcept {
                 return (cache.high + (cache.high >> (significand_bits + 1))) >>
                        (total_bits - significand_bits - 1 - beta);
             }
 
-            static carrier_uint compute_round_up_for_shorter_interval_case(cache_entry const& cache, int beta) noexcept {
+            static carrier_uint compute_round_up_for_shorter_interval_case(uint128 cache, int beta) noexcept {
                 return ((cache.high >> (total_bits - significand_bits - 2 - beta)) + 1) / 2;
             }
         };
+
+static constexpr uint_least64_t cache32[78] {
+  UINT64_C(0x81ceb32c4b43fcf5), UINT64_C(0xa2425ff75e14fc32),
+  UINT64_C(0xcad2f7f5359a3b3f), UINT64_C(0xfd87b5f28300ca0e),
+  UINT64_C(0x9e74d1b791e07e49), UINT64_C(0xc612062576589ddb),
+  UINT64_C(0xf79687aed3eec552), UINT64_C(0x9abe14cd44753b53),
+  UINT64_C(0xc16d9a0095928a28), UINT64_C(0xf1c90080baf72cb2),
+  UINT64_C(0x971da05074da7bef), UINT64_C(0xbce5086492111aeb),
+  UINT64_C(0xec1e4a7db69561a6), UINT64_C(0x9392ee8e921d5d08),
+  UINT64_C(0xb877aa3236a4b44a), UINT64_C(0xe69594bec44de15c),
+  UINT64_C(0x901d7cf73ab0acda), UINT64_C(0xb424dc35095cd810),
+  UINT64_C(0xe12e13424bb40e14), UINT64_C(0x8cbccc096f5088cc),
+  UINT64_C(0xafebff0bcb24aaff), UINT64_C(0xdbe6fecebdedd5bf),
+  UINT64_C(0x89705f4136b4a598), UINT64_C(0xabcc77118461cefd),
+  UINT64_C(0xd6bf94d5e57a42bd), UINT64_C(0x8637bd05af6c69b6),
+  UINT64_C(0xa7c5ac471b478424), UINT64_C(0xd1b71758e219652c),
+  UINT64_C(0x83126e978d4fdf3c), UINT64_C(0xa3d70a3d70a3d70b),
+  UINT64_C(0xcccccccccccccccd), UINT64_C(0x8000000000000000),
+  UINT64_C(0xa000000000000000), UINT64_C(0xc800000000000000),
+  UINT64_C(0xfa00000000000000), UINT64_C(0x9c40000000000000),
+  UINT64_C(0xc350000000000000), UINT64_C(0xf424000000000000),
+  UINT64_C(0x9896800000000000), UINT64_C(0xbebc200000000000),
+  UINT64_C(0xee6b280000000000), UINT64_C(0x9502f90000000000),
+  UINT64_C(0xba43b74000000000), UINT64_C(0xe8d4a51000000000),
+  UINT64_C(0x9184e72a00000000), UINT64_C(0xb5e620f480000000),
+  UINT64_C(0xe35fa931a0000000), UINT64_C(0x8e1bc9bf04000000),
+  UINT64_C(0xb1a2bc2ec5000000), UINT64_C(0xde0b6b3a76400000),
+  UINT64_C(0x8ac7230489e80000), UINT64_C(0xad78ebc5ac620000),
+  UINT64_C(0xd8d726b7177a8000), UINT64_C(0x878678326eac9000),
+  UINT64_C(0xa968163f0a57b400), UINT64_C(0xd3c21bcecceda100),
+  UINT64_C(0x84595161401484a0), UINT64_C(0xa56fa5b99019a5c8),
+  UINT64_C(0xcecb8f27f4200f3a), UINT64_C(0x813f3978f8940985),
+  UINT64_C(0xa18f07d736b90be6), UINT64_C(0xc9f2c9cd04674edf),
+  UINT64_C(0xfc6f7c4045812297), UINT64_C(0x9dc5ada82b70b59e),
+  UINT64_C(0xc5371912364ce306), UINT64_C(0xf684df56c3e01bc7),
+  UINT64_C(0x9a130b963a6c115d), UINT64_C(0xc097ce7bc90715b4),
+  UINT64_C(0xf0bdc21abb48db21), UINT64_C(0x96769950b50d88f5),
+  UINT64_C(0xbc143fa4e250eb32), UINT64_C(0xeb194f8e1ae525fe),
+  UINT64_C(0x92efd1b8d0cf37bf), UINT64_C(0xb7abc627050305ae),
+  UINT64_C(0xe596b7b0c643c71a), UINT64_C(0x8f7e32ce7bea5c70),
+  UINT64_C(0xb35dbf821ae4f38c), UINT64_C(0xe0352f62a19e306f)};
 
 static constexpr uint128 cache64[619] = {
   {UINT64_C(0xff77b1fcbebcdc4f), UINT64_C(0x25e8e89c13bb0f7b)},
@@ -1085,59 +1124,17 @@ static constexpr uint128 cache64[619] = {
 
         template <>
         struct cache_holder<float, cache_policy::full> {
-          using format = float_format<float>;
+            using format = float_format<float>;
 
-          static constexpr typename format::cache_entry cache[format::max_k - format::min_k + 1] {
-            UINT64_C(0x81ceb32c4b43fcf5), UINT64_C(0xa2425ff75e14fc32),
-            UINT64_C(0xcad2f7f5359a3b3f), UINT64_C(0xfd87b5f28300ca0e),
-            UINT64_C(0x9e74d1b791e07e49), UINT64_C(0xc612062576589ddb),
-            UINT64_C(0xf79687aed3eec552), UINT64_C(0x9abe14cd44753b53),
-            UINT64_C(0xc16d9a0095928a28), UINT64_C(0xf1c90080baf72cb2),
-            UINT64_C(0x971da05074da7bef), UINT64_C(0xbce5086492111aeb),
-            UINT64_C(0xec1e4a7db69561a6), UINT64_C(0x9392ee8e921d5d08),
-            UINT64_C(0xb877aa3236a4b44a), UINT64_C(0xe69594bec44de15c),
-            UINT64_C(0x901d7cf73ab0acda), UINT64_C(0xb424dc35095cd810),
-            UINT64_C(0xe12e13424bb40e14), UINT64_C(0x8cbccc096f5088cc),
-            UINT64_C(0xafebff0bcb24aaff), UINT64_C(0xdbe6fecebdedd5bf),
-            UINT64_C(0x89705f4136b4a598), UINT64_C(0xabcc77118461cefd),
-            UINT64_C(0xd6bf94d5e57a42bd), UINT64_C(0x8637bd05af6c69b6),
-            UINT64_C(0xa7c5ac471b478424), UINT64_C(0xd1b71758e219652c),
-            UINT64_C(0x83126e978d4fdf3c), UINT64_C(0xa3d70a3d70a3d70b),
-            UINT64_C(0xcccccccccccccccd), UINT64_C(0x8000000000000000),
-            UINT64_C(0xa000000000000000), UINT64_C(0xc800000000000000),
-            UINT64_C(0xfa00000000000000), UINT64_C(0x9c40000000000000),
-            UINT64_C(0xc350000000000000), UINT64_C(0xf424000000000000),
-            UINT64_C(0x9896800000000000), UINT64_C(0xbebc200000000000),
-            UINT64_C(0xee6b280000000000), UINT64_C(0x9502f90000000000),
-            UINT64_C(0xba43b74000000000), UINT64_C(0xe8d4a51000000000),
-            UINT64_C(0x9184e72a00000000), UINT64_C(0xb5e620f480000000),
-            UINT64_C(0xe35fa931a0000000), UINT64_C(0x8e1bc9bf04000000),
-            UINT64_C(0xb1a2bc2ec5000000), UINT64_C(0xde0b6b3a76400000),
-            UINT64_C(0x8ac7230489e80000), UINT64_C(0xad78ebc5ac620000),
-            UINT64_C(0xd8d726b7177a8000), UINT64_C(0x878678326eac9000),
-            UINT64_C(0xa968163f0a57b400), UINT64_C(0xd3c21bcecceda100),
-            UINT64_C(0x84595161401484a0), UINT64_C(0xa56fa5b99019a5c8),
-            UINT64_C(0xcecb8f27f4200f3a), UINT64_C(0x813f3978f8940985),
-            UINT64_C(0xa18f07d736b90be6), UINT64_C(0xc9f2c9cd04674edf),
-            UINT64_C(0xfc6f7c4045812297), UINT64_C(0x9dc5ada82b70b59e),
-            UINT64_C(0xc5371912364ce306), UINT64_C(0xf684df56c3e01bc7),
-            UINT64_C(0x9a130b963a6c115d), UINT64_C(0xc097ce7bc90715b4),
-            UINT64_C(0xf0bdc21abb48db21), UINT64_C(0x96769950b50d88f5),
-            UINT64_C(0xbc143fa4e250eb32), UINT64_C(0xeb194f8e1ae525fe),
-            UINT64_C(0x92efd1b8d0cf37bf), UINT64_C(0xb7abc627050305ae),
-            UINT64_C(0xe596b7b0c643c71a), UINT64_C(0x8f7e32ce7bea5c70),
-            UINT64_C(0xb35dbf821ae4f38c), UINT64_C(0xe0352f62a19e306f)};
-
-            constexpr typename format::cache_entry get_cache(int k) const noexcept {
+            constexpr uint_least64_t get_cache(int k) const noexcept {
               assert(k >= format::min_k && k <= format::max_k);
-              return cache[k - format::min_k];
+              return cache32[k - format::min_k];
             }
         };
 
         template <>
         struct cache_holder<float, cache_policy::compact> {
             using format = float_format<float>;
-            using cache_entry = typename format::cache_entry;
             enum {
               cache_bits = format::cache_bits,
               min_k = format::min_k,
@@ -1147,12 +1144,12 @@ static constexpr uint128 cache64[619] = {
               pow5_table_size = (compression_ratio + 1) / 2,
             };
 
-            cache_entry cache[compressed_table_size] {};
+            uint_least64_t cache[compressed_table_size] {};
             uint_least16_t pow5_table[pow5_table_size] {};
 
             constexpr cache_holder() {
               for (size_t i = 0; i < compressed_table_size; ++i) {
-                  cache[i] = cache_holder<float, cache_policy::full>::cache[i * compression_ratio];
+                  cache[i] = cache32[i * compression_ratio];
               }
               uint_least16_t p = 1;
               for (size_t i = 0; i < pow5_table_size; ++i) {
@@ -1161,18 +1158,15 @@ static constexpr uint128 cache64[619] = {
               }
             }
 
-            constexpr cache_entry get_cache(int k) const noexcept {
+            constexpr uint_least64_t get_cache(int k) const noexcept {
               assert(k >= min_k && k <= max_k);
 
               // Compute the base index.
               // Supposed to compute (k - min_k) / compression_ratio.
               static_assert(max_k - min_k <= 89 && compression_ratio == 13, "");
-              static_assert(max_k - min_k <= numeric_limits<int>::max(),
-                            "");
+              static_assert(max_k - min_k <= numeric_limits<int>::max(), "");
               auto const cache_index =
-                  int(uint_fast16_t(int(k - min_k) *
-                                                                  int_fast16_t(79)) >>
-                                      10);
+                  int(uint_fast16_t(int(k - min_k) * int_fast16_t(79)) >> 10);
               auto const kb = int(cache_index * compression_ratio + min_k);
               auto const offset = int(k - kb);
 
@@ -1196,7 +1190,7 @@ static constexpr uint128 cache64[619] = {
                           : uint_fast32_t(pow5_table[offset]);
                   auto mul_result = umul128(base_cache, pow5);
                   auto const recovered_cache =
-                      cache_entry((((mul_result.high << int(64 - alpha)) |
+                      uint_least64_t((((mul_result.high << int(64 - alpha)) |
                                          (mul_result.low >> alpha)) +
                                         1) &
                                        UINT64_C(0xffffffffffffffff));
@@ -1211,7 +1205,7 @@ static constexpr uint128 cache64[619] = {
         struct cache_holder<double, cache_policy::full> {
             using format = float_format<double>;
 
-            constexpr typename format::cache_entry get_cache(int k) const noexcept {
+            constexpr uint128 get_cache(int k) const noexcept {
                 assert(k >= format::min_k && k <= format::max_k);
                 return cache64[k - format::min_k];
             }
@@ -1220,7 +1214,6 @@ static constexpr uint128 cache64[619] = {
         template <>
         struct cache_holder<double, cache_policy::compact> {
             using format = float_format<double>;
-            using cache_entry = typename format::cache_entry;
             enum {
               cache_bits = format::cache_bits,
               min_k = format::min_k,
@@ -1230,7 +1223,7 @@ static constexpr uint128 cache64[619] = {
               pow5_table_size = compression_ratio,
             };
 
-            cache_entry cache[compressed_table_size] {};
+            uint128 cache[compressed_table_size] {};
             uint_least64_t pow5_table[pow5_table_size] {};
 
             constexpr cache_holder() {
@@ -1244,7 +1237,7 @@ static constexpr uint128 cache64[619] = {
                 }
             }
 
-            constexpr cache_entry get_cache(int k) const noexcept {
+            constexpr uint128 get_cache(int k) const noexcept {
                 assert(k >= min_k && k <= max_k);
 
                 // Compute the base index.

@@ -140,10 +140,10 @@ int main() {
 
         if (verify_compressed_cache<float>(
                 [](int k) {
-                    return recovered_cache_t<format::cache_entry>{
+                    return recovered_cache_t<uint_least64_t>{
                         cache_.get_cache(k), true};
                 },
-                [](format::cache_entry value) { return jkj::big_uint{value}; }, 7)) {
+                [](uint_least64_t value) { return jkj::big_uint{value}; }, 7)) {
             std::cout << "Verification succeeded. No error detected.\n\n";
         }
         else {
@@ -154,7 +154,7 @@ int main() {
 
     std::cout << "[Verifying compressed cache for binary64...]\n";
     {
-        using cache_entry = typename jkj::dragonbox::float_format<double>::cache_entry;
+        using jkj::dragonbox::uint128;
         static constexpr jkj::dragonbox::cache_holder<double, jkj::dragonbox::cache_policy::compact> cache_;
 
         if (verify_compressed_cache<double>(
@@ -198,19 +198,19 @@ int main() {
                         if (recovered_cache.low == 0) {
                             std::cout
                                 << "Overflow detected - taking the ceil requires addition-with-carry";
-                            return recovered_cache_t<cache_entry>{
+                            return recovered_cache_t<uint128>{
                                 recovered_cache, false};
                         }
                         else {
-                            return recovered_cache_t<cache_entry>{
+                            return recovered_cache_t<uint128>{
                                 recovered_cache, true};
                         }
                     }
                     else {
-                        return recovered_cache_t<cache_entry>{base_cache, true};
+                        return recovered_cache_t<uint128>{base_cache, true};
                     }
                 },
-                [](cache_entry value) {
+                [](uint128 value) {
                     return jkj::big_uint{value.low, value.high};
                 },
                 13)) {

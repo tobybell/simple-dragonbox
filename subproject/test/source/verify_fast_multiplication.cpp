@@ -110,7 +110,7 @@ static bool verify_fast_multiplication_yru() {
                 return std::uint32_t(cache);
             }
             else {
-                return cache.low();
+                return cache.low;
             }
         }();
 
