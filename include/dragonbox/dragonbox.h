@@ -1381,37 +1381,19 @@ static constexpr uint128 cache64[619] = {
                 // Returns true if and only if n is divisible by 10^N.
                 // Precondition: n <= 10^(N+1)
                 // !!It takes an in-out parameter!!
-                template <int N, class UInt>
+                template <int N>
                 struct divide_by_pow10_info;
 
-                template <class UInt>
-                struct divide_by_pow10_info<1, UInt> {
+                template <>
+                struct divide_by_pow10_info<1> {
                     static constexpr uint_fast32_t magic_number = 6554;
                     static constexpr int shift_amount = 16;
                 };
 
                 template <>
-                struct divide_by_pow10_info<1, uint8_t> {
-                    static constexpr uint_fast16_t magic_number = 103;
-                    static constexpr int shift_amount = 10;
-                };
-
-                template <>
-                struct divide_by_pow10_info<1, uint16_t> {
-                    static constexpr uint_fast16_t magic_number = 103;
-                    static constexpr int shift_amount = 10;
-                };
-
-                template <class UInt>
-                struct divide_by_pow10_info<2, UInt> {
+                struct divide_by_pow10_info<2> {
                     static constexpr uint_fast32_t magic_number = 656;
                     static constexpr int shift_amount = 16;
-                };
-
-                template <>
-                struct divide_by_pow10_info<2, uint16_t> {
-                    static constexpr uint_fast32_t magic_number = 41;
-                    static constexpr int shift_amount = 12;
                 };
 
                 template <int N, class UInt>
@@ -1420,12 +1402,11 @@ static constexpr uint128 cache64[619] = {
                     static_assert(N + 1 <= floor_log10_pow2(value_bits<UInt>), "");
                     assert(n <= compute_power<N + 1>(UInt(10)));
 
-                    using info = divide_by_pow10_info<N, UInt>;
-                    using intermediate_type = decltype(info::magic_number);
-                    auto const prod = intermediate_type(n * info::magic_number);
+                    using info = divide_by_pow10_info<N>;
+                    auto const prod = uint_fast32_t(n * info::magic_number);
 
                     constexpr auto mask =
-                        intermediate_type((intermediate_type(1) << info::shift_amount) - 1);
+                        uint_fast32_t((uint_fast32_t(1) << info::shift_amount) - 1);
                     bool const result = ((prod & mask) < info::magic_number);
 
                     n = UInt(prod >> info::shift_amount);
@@ -1440,8 +1421,8 @@ static constexpr uint128 cache64[619] = {
                     static_assert(N + 1 <= floor_log10_pow2(value_bits<UInt>), "");
                     assert(n <= compute_power<N + 1>(UInt(10)));
 
-                    return UInt((n * divide_by_pow10_info<N, UInt>::magic_number) >>
-                                divide_by_pow10_info<N, UInt>::shift_amount);
+                    return UInt((n * divide_by_pow10_info<N>::magic_number) >>
+                                divide_by_pow10_info<N>::shift_amount);
                 }
 
         struct interval {
