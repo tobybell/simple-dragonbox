@@ -89,63 +89,63 @@ static bool verify_divide_by_pow10() {
 int main() {
     bool success = true;
 
-    std::cout << "[Verifying divisibility check and division by 10^1 for std::uint_least8_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint_least8_t>();
+    std::cout << "[Verifying divisibility check and division by 10^1 for std::uint8_t...]\n";
+    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint8_t>();
     std::cout << "Done.\n\n\n";
 
-    std::cout << "[Verifying divisibility check and division by 10^1 for std::uint_least16_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint_least16_t>();
+    std::cout << "[Verifying divisibility check and division by 10^1 for std::uint16_t...]\n";
+    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint16_t>();
     std::cout << "Done.\n\n\n";
 
-    std::cout << "[Verifying divisibility check and division by 10^1 for std::uint_least32_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint_least32_t>();
+    std::cout << "[Verifying divisibility check and division by 10^1 for std::uint32_t...]\n";
+    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint32_t>();
     std::cout << "Done.\n\n\n";
 
-    std::cout << "[Verifying divisibility check and division by 10^1 for std::uint_least64_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint_least64_t>();
-    std::cout << "Done.\n\n\n";
-
-
-    std::cout << "[Verifying divisibility check and division by 10^2 for std::uint_least16_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<2, std::uint_least16_t>();
-    std::cout << "Done.\n\n\n";
-
-    std::cout << "[Verifying divisibility check and division by 10^2 for std::uint_least32_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<2, std::uint_least32_t>();
-    std::cout << "Done.\n\n\n";
-
-    std::cout << "[Verifying divisibility check and division by 10^2 for std::uint_least64_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<2, std::uint_least64_t>();
+    std::cout << "[Verifying divisibility check and division by 10^1 for std::uint64_t...]\n";
+    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint64_t>();
     std::cout << "Done.\n\n\n";
 
 
-    std::cout << "[Verifying division by 10^1 for std::uint_least8_t...]\n";
-    success &= verify_divide_by_pow10<1, std::uint_least8_t>();
+    std::cout << "[Verifying divisibility check and division by 10^2 for std::uint16_t...]\n";
+    success &= verify_check_divisibility_and_divide_by_pow10<2, std::uint16_t>();
     std::cout << "Done.\n\n\n";
 
-    std::cout << "[Verifying division by 10^1 for std::uint_least16_t...]\n";
-    success &= verify_divide_by_pow10<1, std::uint_least16_t>();
+    std::cout << "[Verifying divisibility check and division by 10^2 for std::uint32_t...]\n";
+    success &= verify_check_divisibility_and_divide_by_pow10<2, std::uint32_t>();
     std::cout << "Done.\n\n\n";
 
-    std::cout << "[Verifying division by 10^1 for std::uint_least32_t...]\n";
-    success &= verify_divide_by_pow10<1, std::uint_least32_t>();
-    std::cout << "Done.\n\n\n";
-
-    std::cout << "[Verifying division by 10^1 for std::uint_least64_t...]\n";
-    success &= verify_divide_by_pow10<1, std::uint_least64_t>();
+    std::cout << "[Verifying divisibility check and division by 10^2 for std::uint64_t...]\n";
+    success &= verify_check_divisibility_and_divide_by_pow10<2, std::uint64_t>();
     std::cout << "Done.\n\n\n";
 
 
-    std::cout << "[Verifying division by 10^2 for std::uint_least16_t...]\n";
-    success &= verify_divide_by_pow10<2, std::uint_least16_t>();
+    std::cout << "[Verifying division by 10^1 for std::uint8_t...]\n";
+    success &= verify_divide_by_pow10<1, std::uint8_t>();
     std::cout << "Done.\n\n\n";
 
-    std::cout << "[Verifying division by 10^2 for std::uint_least32_t...]\n";
-    success &= verify_divide_by_pow10<2, std::uint_least32_t>();
+    std::cout << "[Verifying division by 10^1 for std::uint16_t...]\n";
+    success &= verify_divide_by_pow10<1, std::uint16_t>();
     std::cout << "Done.\n\n\n";
 
-    std::cout << "[Verifying division by 10^2 for std::uint_least64_t...]\n";
-    success &= verify_divide_by_pow10<2, std::uint_least64_t>();
+    std::cout << "[Verifying division by 10^1 for std::uint32_t...]\n";
+    success &= verify_divide_by_pow10<1, std::uint32_t>();
+    std::cout << "Done.\n\n\n";
+
+    std::cout << "[Verifying division by 10^1 for std::uint64_t...]\n";
+    success &= verify_divide_by_pow10<1, std::uint64_t>();
+    std::cout << "Done.\n\n\n";
+
+
+    std::cout << "[Verifying division by 10^2 for std::uint16_t...]\n";
+    success &= verify_divide_by_pow10<2, std::uint16_t>();
+    std::cout << "Done.\n\n\n";
+
+    std::cout << "[Verifying division by 10^2 for std::uint32_t...]\n";
+    success &= verify_divide_by_pow10<2, std::uint32_t>();
+    std::cout << "Done.\n\n\n";
+
+    std::cout << "[Verifying division by 10^2 for std::uint64_t...]\n";
+    success &= verify_divide_by_pow10<2, std::uint64_t>();
     std::cout << "Done.\n\n\n";
 
     if (!success) {

@@ -12,26 +12,14 @@
     #include <immintrin.h>
 #endif
 
-
 namespace jkj {
     namespace dragonbox {
-            // <cassert>
-            // We need assert() macro, but it is not namespaced anyway, so nothing to do here.
 
-            // <cstdint>
-            using std::int_least8_t;
-            using std::int_least16_t;
-            using std::int_least32_t;
-            using std::int_fast8_t;
-            using std::int_fast16_t;
-            using std::int_fast32_t;
-            using std::uint_least8_t;
-            using std::uint_least16_t;
-            using std::uint_least32_t;
-            using std::uint_least64_t;
-            using std::uint_fast8_t;
-            using std::uint_fast16_t;
-            using std::uint_fast32_t;
+            using std::uint8_t;
+            using std::uint16_t;
+            using std::uint32_t;
+            using std::uint64_t;
+
             // We need INT32_C, UINT32_C and UINT64_C macros too, but again there is nothing to do
             // here.
 
@@ -42,23 +30,24 @@ namespace jkj {
             template <class T>
             using numeric_limits = std::numeric_limits<T>;
 
-            // <type_traits>
-            template <class T1, class T2>
-            using is_same = std::is_same<T1, T2>;
+template <class T, class S>
+struct is_same_t { enum { value = 0 }; };
 
-            ////////////////////////////////////////////////////////////////////////////////////////
-            // Some basic features for encoding/decoding IEEE-754 formats.
-            ////////////////////////////////////////////////////////////////////////////////////////
+template <class T>
+struct is_same_t<T, T> { enum { value = 1 }; };
+
+template <class T, class S>
+static constexpr bool is_same = is_same_t<T, S>::value;
 
             template <class T>
             static constexpr unsigned value_bits = 8 * sizeof(T);
 
-            constexpr uint_least32_t rotr32(uint_least32_t n, unsigned r) noexcept {
+            constexpr uint32_t rotr32(uint32_t n, unsigned r) noexcept {
                 r &= 31;
                 return (n >> r) | (n << ((32 - r) & 31));
             }
 
-            constexpr uint_least64_t rotr64(uint_least64_t n, unsigned r) noexcept {
+            constexpr uint64_t rotr64(uint64_t n, unsigned r) noexcept {
                 r &= 63;
                 return (n >> r) | (n << ((64 - r) & 63));
             }
@@ -130,32 +119,32 @@ namespace jkj {
             // clang-format on
 
             struct uint128 {
-                uint_least64_t high;
-                uint_least64_t low;
+                uint64_t high;
+                uint64_t low;
 
-                void operator+=(uint_least64_t n) noexcept {
+                void operator+=(uint64_t n) noexcept {
                     auto const sum = (low + n) & UINT64_C(0xffffffffffffffff);
                     high += (sum < low ? 1 : 0);
                     low = sum;
                 }
             };
 
-            constexpr uint_least64_t umul64(uint_least32_t x,
-                                                               uint_least32_t y) noexcept {
+            constexpr uint64_t umul64(uint32_t x,
+                                                               uint32_t y) noexcept {
 #if defined(_MSC_VER) && defined(_M_IX86)
                 JKJ_IF_NOT_CONSTEVAL { return __emulu(x, y); }
 #endif
-                return x * uint_least64_t(y);
+                return x * uint64_t(y);
             }
 
             // Get 128-bit result of multiplication of two 64-bit unsigned integers.
             constexpr uint128
-            umul128(uint_least64_t x, uint_least64_t y) noexcept {
+            umul128(uint64_t x, uint64_t y) noexcept {
                 auto const generic_impl = [=]() -> uint128 {
-                    auto const a = uint_least32_t(x >> 32);
-                    auto const b = uint_least32_t(x);
-                    auto const c = uint_least32_t(y >> 32);
-                    auto const d = uint_least32_t(y);
+                    auto const a = uint32_t(x >> 32);
+                    auto const b = uint32_t(x);
+                    auto const c = uint32_t(y >> 32);
+                    auto const d = uint32_t(y);
 
                     auto const ac = umul64(a, c);
                     auto const bc = umul64(b, c);
@@ -163,17 +152,17 @@ namespace jkj {
                     auto const bd = umul64(b, d);
 
                     auto const intermediate =
-                        (bd >> 32) + uint_least32_t(ad) + uint_least32_t(bc);
+                        (bd >> 32) + uint32_t(ad) + uint32_t(bc);
 
                     return {ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32),
-                            (intermediate << 32) + uint_least32_t(bd)};
+                            (intermediate << 32) + uint32_t(bd)};
                 };
                 // To silence warning.
                 static_cast<void>(generic_impl);
 
 #if defined(__SIZEOF_INT128__)
                 auto const result = builtin_uint128_t(x) * builtin_uint128_t(y);
-                return {uint_least64_t(result >> 64), uint_least64_t(result)};
+                return {uint64_t(result >> 64), uint64_t(result)};
 #elif defined(_MSC_VER) && defined(_M_X64)
                 JKJ_IF_CONSTEVAL {
                     // This redundant variable is to workaround MSVC's codegen bug caused by the
@@ -195,13 +184,13 @@ namespace jkj {
 
             // Get high half of the 128-bit result of multiplication of two 64-bit unsigned
             // integers.
-            constexpr uint_least64_t
-            umul128_upper64(uint_least64_t x, uint_least64_t y) noexcept {
-                auto const generic_impl = [=]() -> uint_least64_t {
-                    auto const a = uint_least32_t(x >> 32);
-                    auto const b = uint_least32_t(x);
-                    auto const c = uint_least32_t(y >> 32);
-                    auto const d = uint_least32_t(y);
+            constexpr uint64_t
+            umul128_upper64(uint64_t x, uint64_t y) noexcept {
+                auto const generic_impl = [=]() -> uint64_t {
+                    auto const a = uint32_t(x >> 32);
+                    auto const b = uint32_t(x);
+                    auto const c = uint32_t(y >> 32);
+                    auto const d = uint32_t(y);
 
                     auto const ac = umul64(a, c);
                     auto const bc = umul64(b, c);
@@ -209,7 +198,7 @@ namespace jkj {
                     auto const bd = umul64(b, d);
 
                     auto const intermediate =
-                        (bd >> 32) + uint_least32_t(ad) + uint_least32_t(bc);
+                        (bd >> 32) + uint32_t(ad) + uint32_t(bc);
 
                     return ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32);
                 };
@@ -218,7 +207,7 @@ namespace jkj {
 
 #if defined(__SIZEOF_INT128__)
                 auto const result = builtin_uint128_t(x) * builtin_uint128_t(y);
-                return uint_least64_t(result >> 64);
+                return uint64_t(result >> 64);
 #elif defined(_MSC_VER) && defined(_M_X64)
                 JKJ_IF_CONSTEVAL {
                     // This redundant variable is to workaround MSVC's codegen bug caused by the
@@ -226,7 +215,7 @@ namespace jkj {
                     auto const result = generic_impl();
                     return result;
                 }
-                uint_least64_t result;
+                uint64_t result;
 #if defined(__AVX2__)
                 _mulx_u64(x, y, &result);
 #else
@@ -240,7 +229,7 @@ namespace jkj {
 
             // Get upper 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
             // unsigned integer.
-            constexpr uint128 umul192_upper128(uint_least64_t x,
+            constexpr uint128 umul192_upper128(uint64_t x,
                                                                             uint128 y) noexcept {
                 auto r = umul128(x, y.high);
                 r += umul128_upper64(x, y.low);
@@ -249,13 +238,13 @@ namespace jkj {
 
             // Get upper 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit
             // unsigned integer.
-            constexpr uint_least64_t
-            umul96_upper64(uint_least32_t x, uint_least64_t y) noexcept {
+            constexpr uint64_t
+            umul96_upper64(uint32_t x, uint64_t y) noexcept {
 #if defined(__SIZEOF_INT128__) || (defined(_MSC_VER) && defined(_M_X64))
-                return umul128_upper64(uint_least64_t(x) << 32, y);
+                return umul128_upper64(uint64_t(x) << 32, y);
 #else
-                auto const yh = uint_least32_t(y >> 32);
-                auto const yl = uint_least32_t(y);
+                auto const yh = uint32_t(y >> 32);
+                auto const yl = uint32_t(y);
 
                 auto const xyh = umul64(x, yh);
                 auto const xyl = umul64(x, yl);
@@ -266,7 +255,7 @@ namespace jkj {
 
             // Get lower 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
             // unsigned integer.
-            constexpr uint128 umul192_lower128(uint_least64_t x,
+            constexpr uint128 umul192_lower128(uint64_t x,
                                                                             uint128 y) noexcept {
                 auto const high = x * y.high;
                 auto const high_low = umul128(x, y.low);
@@ -275,9 +264,23 @@ namespace jkj {
 
             // Get lower 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit
             // unsigned integer.
-            constexpr uint_least64_t umul96_lower64(uint_least32_t x,
-                                                          uint_least64_t y) noexcept {
+            constexpr uint64_t umul96_lower64(uint32_t x,
+                                                          uint64_t y) noexcept {
                 return (x * y) & UINT64_C(0xffffffffffffffff);
+            }
+
+            template <int k, class Int>
+            constexpr Int compute_power(Int a) noexcept {
+                static_assert(k >= 0);
+                int e = k;
+                Int p = 1;
+                while (e) {
+                  if (e % 2)
+                    p *= a;
+                  e /= 2;
+                  a *= a;
+                }
+                return p;
             }
 
         template <class Integer>
@@ -299,7 +302,7 @@ namespace jkj {
 
         template <>
         struct float_format<float> {
-            using carrier_uint = uint_least32_t;
+            using carrier_uint = uint32_t;
             enum {
               total_bits = 32,
               significand_bits = 23,
@@ -340,16 +343,16 @@ namespace jkj {
                 exponent += s;
             }
 
-            static compute_mul_result<carrier_uint> compute_mul(carrier_uint u, uint_least64_t cache) noexcept {
+            static compute_mul_result<carrier_uint> compute_mul(carrier_uint u, uint64_t cache) noexcept {
                 auto const r = umul96_upper64(u, cache);
                 return {carrier_uint(r >> 32), carrier_uint(r) == 0};
             }
 
-            static carrier_uint compute_delta(uint_least64_t cache, int beta) noexcept {
+            static carrier_uint compute_delta(uint64_t cache, int beta) noexcept {
                 return static_cast<carrier_uint>(cache >> (cache_bits - 1 - beta));
             }
 
-            static compute_mul_parity_result compute_mul_parity(carrier_uint two_f, uint_least64_t cache, int beta) noexcept {
+            static compute_mul_parity_result compute_mul_parity(carrier_uint two_f, uint64_t cache, int beta) noexcept {
                 assert(beta >= 1);
                 assert(beta <= 32);
                 auto const r = umul96_lower64(two_f, cache);
@@ -368,11 +371,35 @@ namespace jkj {
             static carrier_uint compute_round_up_for_shorter_interval_case(uint64_t cache, int beta) noexcept {
                 return (carrier_uint(cache >> (cache_bits - significand_bits - 2 - beta)) + 1) / 2;
             }
+
+            template <int N, uint32_t n_max>
+            static uint32_t divide_by_pow10(uint32_t n) noexcept {
+                static_assert(N >= 0, "");
+
+                // Specialize for 32-bit division by 10.
+                // Without the bound on n_max (which compilers these days never leverage), the
+                // minimum needed amount of shift is larger than 32. Hence, this may generate better
+                // code for 32-bit or smaller architectures. Even for 64-bit architectures, it seems
+                // compilers tend to generate mov + mul instead of a single imul for an unknown
+                // reason if we just write n / 10.
+                if constexpr (N == 1 && n_max <= UINT32_C(1073741828)) {
+                    return uint32_t(umul64(n, UINT32_C(429496730)) >> 32);
+                }
+                // Specialize for 32-bit division by 100.
+                // It seems compilers tend to generate mov + mul instead of a single imul for an
+                // unknown reason if we just write n / 100.
+                else if constexpr (N == 2) {
+                    return uint32_t(umul64(n, UINT32_C(1374389535)) >> 37);
+                } else {
+                    constexpr auto divisor = compute_power<N>(uint32_t(10));
+                    return n / divisor;
+                }
+            }
         };
 
         template <>
         struct float_format<double> {
-            using carrier_uint = uint_least64_t;
+            using carrier_uint = uint64_t;
             enum {
               total_bits = 64,
               significand_bits = 52,
@@ -450,9 +477,30 @@ namespace jkj {
             static carrier_uint compute_round_up_for_shorter_interval_case(uint128 cache, int beta) noexcept {
                 return ((cache.high >> (total_bits - significand_bits - 2 - beta)) + 1) / 2;
             }
+
+            template <int N, uint64_t n_max>
+            static uint64_t divide_by_pow10(uint64_t n) noexcept {
+                static_assert(N >= 0, "");
+
+                // Specialize for 64-bit division by 10.
+                // Without the bound on n_max (which compilers these days never leverage), the
+                // minimum needed amount of shift is larger than 64.
+                if constexpr (N == 1 && n_max <= UINT64_C(4611686018427387908)) {
+                    return umul128_upper64(n, UINT64_C(1844674407370955162));
+                }
+                // Specialize for 64-bit division by 1000.
+                // Without the bound on n_max (which compilers these days never leverage), the
+                // smallest magic number for this computation does not fit into 64-bits.
+                else if constexpr (N == 3 && n_max <= UINT64_C(15534100272597517998)) {
+                    return umul128_upper64(n, UINT64_C(4722366482869645214)) >> 8;
+                } else {
+                    constexpr auto divisor = compute_power<N>(uint64_t(10));
+                    return n / divisor;
+                }
+            }
         };
 
-static constexpr uint_least64_t cache32[78] {
+static constexpr uint64_t cache32[78] {
   UINT64_C(0x81ceb32c4b43fcf5), UINT64_C(0xa2425ff75e14fc32),
   UINT64_C(0xcad2f7f5359a3b3f), UINT64_C(0xfd87b5f28300ca0e),
   UINT64_C(0x9e74d1b791e07e49), UINT64_C(0xc612062576589ddb),
@@ -1126,7 +1174,7 @@ static constexpr uint128 cache64[619] = {
         struct cache_holder<float, cache_policy::full> {
             using format = float_format<float>;
 
-            constexpr uint_least64_t get_cache(int k) const noexcept {
+            constexpr uint64_t get_cache(int k) const noexcept {
               assert(k >= format::min_k && k <= format::max_k);
               return cache32[k - format::min_k];
             }
@@ -1144,21 +1192,21 @@ static constexpr uint128 cache64[619] = {
               pow5_table_size = (compression_ratio + 1) / 2,
             };
 
-            uint_least64_t cache[compressed_table_size] {};
-            uint_least16_t pow5_table[pow5_table_size] {};
+            uint64_t cache[compressed_table_size] {};
+            uint16_t pow5_table[pow5_table_size] {};
 
             constexpr cache_holder() {
               for (size_t i = 0; i < compressed_table_size; ++i) {
                   cache[i] = cache32[i * compression_ratio];
               }
-              uint_least16_t p = 1;
+              uint16_t p = 1;
               for (size_t i = 0; i < pow5_table_size; ++i) {
                   pow5_table[i] = p;
                   p *= 5;
               }
             }
 
-            constexpr uint_least64_t get_cache(int k) const noexcept {
+            constexpr uint64_t get_cache(int k) const noexcept {
               assert(k >= min_k && k <= max_k);
 
               // Compute the base index.
@@ -1190,7 +1238,7 @@ static constexpr uint128 cache64[619] = {
                           : uint_fast32_t(pow5_table[offset]);
                   auto mul_result = umul128(base_cache, pow5);
                   auto const recovered_cache =
-                      uint_least64_t((((mul_result.high << int(64 - alpha)) |
+                      uint64_t((((mul_result.high << int(64 - alpha)) |
                                          (mul_result.low >> alpha)) +
                                         1) &
                                        UINT64_C(0xffffffffffffffff));
@@ -1224,13 +1272,13 @@ static constexpr uint128 cache64[619] = {
             };
 
             uint128 cache[compressed_table_size] {};
-            uint_least64_t pow5_table[pow5_table_size] {};
+            uint64_t pow5_table[pow5_table_size] {};
 
             constexpr cache_holder() {
                 for (size_t i = 0; i < compressed_table_size; ++i) {
                     cache[i] = cache64[i * compression_ratio];
                 }
-                uint_least64_t p = 1;
+                uint64_t p = 1;
                 for (size_t i = 0; i < pow5_table_size; ++i) {
                     pow5_table[i] = p;
                     p *= 5;
@@ -1271,10 +1319,10 @@ static constexpr uint128 cache64[619] = {
 
                     recovered_cache += middle_low.high;
 
-                    auto const high_to_middle = uint_least64_t(
+                    auto const high_to_middle = uint64_t(
                         (recovered_cache.high << (64 - alpha)) &
                         UINT64_C(0xffffffffffffffff));
-                    auto const middle_to_low = uint_least64_t(
+                    auto const middle_to_low = uint64_t(
                         (recovered_cache.low << (64 - alpha)) &
                         UINT64_C(0xffffffffffffffff));
 
@@ -1283,7 +1331,7 @@ static constexpr uint128 cache64[619] = {
 
                     assert(recovered_cache.low != UINT64_C(0xffffffffffffffff));
                     recovered_cache = {recovered_cache.high,
-                                       uint_least64_t(recovered_cache.low + 1)};
+                                       uint64_t(recovered_cache.low + 1)};
 
                     return recovered_cache;
                 }
@@ -1328,20 +1376,6 @@ static constexpr uint128 cache64[619] = {
             // Some simple utilities for constexpr computation.
             ////////////////////////////////////////////////////////////////////////////////////////
 
-            template <int k, class Int>
-            constexpr Int compute_power(Int a) noexcept {
-                static_assert(k >= 0);
-                int e = k;
-                Int p = 1;
-                while (e) {
-                  if (e % 2)
-                    p *= a;
-                  e /= 2;
-                  a *= a;
-                }
-                return p;
-            }
-
             template <int a, class UInt>
             constexpr int count_factors(UInt n) noexcept {
                 static_assert(a > 1);
@@ -1371,13 +1405,13 @@ static constexpr uint128 cache64[619] = {
                 };
 
                 template <>
-                struct divide_by_pow10_info<1, uint_least8_t> {
+                struct divide_by_pow10_info<1, uint8_t> {
                     static constexpr uint_fast16_t magic_number = 103;
                     static constexpr int shift_amount = 10;
                 };
 
                 template <>
-                struct divide_by_pow10_info<1, uint_least16_t> {
+                struct divide_by_pow10_info<1, uint16_t> {
                     static constexpr uint_fast16_t magic_number = 103;
                     static constexpr int shift_amount = 10;
                 };
@@ -1389,7 +1423,7 @@ static constexpr uint128 cache64[619] = {
                 };
 
                 template <>
-                struct divide_by_pow10_info<2, uint_least16_t> {
+                struct divide_by_pow10_info<2, uint16_t> {
                     static constexpr uint_fast32_t magic_number = 41;
                     static constexpr int shift_amount = 12;
                 };
@@ -1422,47 +1456,6 @@ static constexpr uint128 cache64[619] = {
 
                     return UInt((n * divide_by_pow10_info<N, UInt>::magic_number) >>
                                 divide_by_pow10_info<N, UInt>::shift_amount);
-                }
-
-                // Compute floor(n / 10^N) for small N.
-                // Precondition: n <= n_max
-                template <int N, class UInt, UInt n_max>
-                constexpr UInt divide_by_pow10(UInt n) noexcept {
-                    static_assert(N >= 0, "");
-
-                    // Specialize for 32-bit division by 10.
-                    // Without the bound on n_max (which compilers these days never leverage), the
-                    // minimum needed amount of shift is larger than 32. Hence, this may generate better
-                    // code for 32-bit or smaller architectures. Even for 64-bit architectures, it seems
-                    // compilers tend to generate mov + mul instead of a single imul for an unknown
-                    // reason if we just write n / 10.
-                    if constexpr (is_same<UInt, uint_least32_t>::value && N == 1 &&
-                                     n_max <= UINT32_C(1073741828)) {
-                        return UInt(umul64(n, UINT32_C(429496730)) >> 32);
-                    }
-                    // Specialize for 64-bit division by 10.
-                    // Without the bound on n_max (which compilers these days never leverage), the
-                    // minimum needed amount of shift is larger than 64.
-                    else if constexpr (is_same<UInt, uint_least64_t>::value && N == 1 &&
-                                          n_max <= UINT64_C(4611686018427387908)) {
-                        return UInt(umul128_upper64(n, UINT64_C(1844674407370955162)));
-                    }
-                    // Specialize for 32-bit division by 100.
-                    // It seems compilers tend to generate mov + mul instead of a single imul for an
-                    // unknown reason if we just write n / 100.
-                    else if constexpr (is_same<UInt, uint_least32_t>::value && N == 2) {
-                        return UInt(umul64(n, UINT32_C(1374389535)) >> 37);
-                    }
-                    // Specialize for 64-bit division by 1000.
-                    // Without the bound on n_max (which compilers these days never leverage), the
-                    // smallest magic number for this computation does not fit into 64-bits.
-                    else if constexpr (is_same<UInt, uint_least64_t>::value && N == 3 &&
-                                          n_max <= UINT64_C(15534100272597517998)) {
-                        return UInt(umul128_upper64(n, UINT64_C(4722366482869645214)) >> 8);
-                    } else {
-                        constexpr auto divisor = compute_power<N>(UInt(10));
-                        return n / divisor;
-                    }
                 }
 
         struct interval {
@@ -1743,11 +1736,8 @@ static constexpr uint128 cache64[619] = {
                         // Substituting f_c = 2^p and k0 = -floor(log10(3 * 2^(e-2))), we get
                         // zi <= floor((2^(p+1) + 1) * 20/3) <= ceil((2^(p+1) + 1)/3) * 20.
                         // This computation does not overflow for any of the formats I care about.
-                        carrier_uint decimal_significand = divide_by_pow10<
-                            1, carrier_uint,
-                            carrier_uint(
-                                ((((carrier_uint(1) << (significand_bits + 1)) + 1) / 3) + 1) *
-                                20)>(zi);
+                        carrier_uint decimal_significand = format::template divide_by_pow10<
+                            1, (((carrier_uint(2) << significand_bits) + 1) / 3 + 1) * 20>(zi);
 
                         // If succeed, remove trailing zeros if necessary and return.
                         if (decimal_significand * 10 >= xi) {
@@ -1804,7 +1794,6 @@ static constexpr uint128 cache64[619] = {
                 auto const z_result =
                     format::compute_mul(carrier_uint((two_fc | 1) << beta), cache);
 
-
                 //////////////////////////////////////////////////////////////////////
                 // Step 2: Try larger divisor; remove trailing zeros if necessary.
                 //////////////////////////////////////////////////////////////////////
@@ -1814,9 +1803,8 @@ static constexpr uint128 cache64[619] = {
 
                 // Using an upper bound on zi, we might be able to optimize the division
                 // better than the compiler; we are computing zi / big_divisor here.
-                carrier_uint decimal_significand = divide_by_pow10<
-                    kappa + 1, carrier_uint,
-                    carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
+                carrier_uint decimal_significand = format::template divide_by_pow10<
+                    kappa + 1, (carrier_uint(2) << significand_bits) * big_divisor - 1>(
                     z_result.integer_part);
                 auto r = carrier_uint(z_result.integer_part - big_divisor * decimal_significand);
 
@@ -1967,9 +1955,9 @@ static constexpr uint128 cache64[619] = {
 
                 // Using an upper bound on xi, we might be able to optimize the division
                 // better than the compiler; we are computing xi / big_divisor here.
-                carrier_uint decimal_significand = divide_by_pow10<
-                    kappa + 1, carrier_uint,
-                    carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
+                carrier_uint decimal_significand = format::template divide_by_pow10<
+                    kappa + 1,
+                    (carrier_uint(2) << significand_bits) * big_divisor - 1>(
                     x_result.integer_part);
                 auto r = carrier_uint(x_result.integer_part - big_divisor * decimal_significand);
 
@@ -2065,9 +2053,8 @@ static constexpr uint128 cache64[619] = {
 
                 // Using an upper bound on zi, we might be able to optimize the division better
                 // than the compiler; we are computing zi / big_divisor here.
-                carrier_uint decimal_significand = divide_by_pow10<
-                    kappa + 1, carrier_uint,
-                    carrier_uint((carrier_uint(1) << (significand_bits + 1)) * big_divisor - 1)>(
+                carrier_uint decimal_significand = format::template divide_by_pow10<
+                    kappa + 1, (carrier_uint(2) << significand_bits) * big_divisor - 1>(
                     zi);
                 auto const r = carrier_uint(zi - big_divisor * decimal_significand);
 

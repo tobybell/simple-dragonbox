@@ -140,10 +140,10 @@ int main() {
 
         if (verify_compressed_cache<float>(
                 [](int k) {
-                    return recovered_cache_t<uint_least64_t>{
+                    return recovered_cache_t<uint64_t>{
                         cache_.get_cache(k), true};
                 },
-                [](uint_least64_t value) { return jkj::big_uint{value}; }, 7)) {
+                [](uint64_t value) { return jkj::big_uint{value}; }, 7)) {
             std::cout << "Verification succeeded. No error detected.\n\n";
         }
         else {
@@ -160,7 +160,7 @@ int main() {
         if (verify_compressed_cache<double>(
                 [](int k) {
                     // Compute the base index.
-                    auto const cache_index = int(std::uint_least32_t(k - cache_.min_k) /
+                    auto const cache_index = int(std::uint32_t(k - cache_.min_k) /
                                                  cache_.compression_ratio);
                     auto const kb =
                         cache_index * cache_.compression_ratio + cache_.min_k;
@@ -185,15 +185,15 @@ int main() {
 
                         recovered_cache += middle_low.high;
 
-                        auto const high_to_middle = std::uint_least64_t(
+                        auto const high_to_middle = std::uint64_t(
                             (recovered_cache.high << (64 - alpha)) & UINT64_C(0xffffffffffffffff));
-                        auto const middle_to_low = std::uint_least64_t(
+                        auto const middle_to_low = std::uint64_t(
                             (recovered_cache.low << (64 - alpha)) & UINT64_C(0xffffffffffffffff));
 
                         recovered_cache = {(recovered_cache.low >> alpha) | high_to_middle,
                                            ((middle_low.low >> alpha) | middle_to_low)};
                         recovered_cache = {recovered_cache.high,
-                                           std::uint_least64_t(recovered_cache.low + 1)};
+                                           std::uint64_t(recovered_cache.low + 1)};
 
                         if (recovered_cache.low == 0) {
                             std::cout
