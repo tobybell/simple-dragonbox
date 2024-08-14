@@ -3,8 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
-#include <limits>
-#include <type_traits>
+#include <limits.h>
 
 #if defined(_MSC_VER)
     #include <intrin.h>
@@ -25,10 +24,6 @@ namespace jkj {
 
             // <cstring>
             using std::size_t;
-
-            // <limits>
-            template <class T>
-            using numeric_limits = std::numeric_limits<T>;
 
             template <class T>
             static constexpr unsigned value_bits = 8 * sizeof(T);
@@ -1203,7 +1198,7 @@ static constexpr uint128 cache64[619] = {
               // Compute the base index.
               // Supposed to compute (k - min_k) / compression_ratio.
               static_assert(max_k - min_k <= 89 && compression_ratio == 13, "");
-              static_assert(max_k - min_k <= numeric_limits<int>::max(), "");
+              static_assert(max_k - min_k <= INT_MAX, "");
               auto const cache_index =
                   int(uint_fast16_t(int(k - min_k) * int_fast16_t(79)) >> 10);
               auto const kb = int(cache_index * compression_ratio + min_k);
@@ -1282,7 +1277,7 @@ static constexpr uint128 cache64[619] = {
                 // Compute the base index.
                 // Supposed to compute (k - min_k) / compression_ratio.
                 static_assert(max_k - min_k <= 619 && compression_ratio == 27, "");
-                static_assert(max_k - min_k <= numeric_limits<int>::max(),
+                static_assert(max_k - min_k <= INT_MAX,
                               "");
                 auto const cache_index =
                     int(uint_fast32_t(int(k - min_k) *
@@ -1487,9 +1482,7 @@ static constexpr uint128 cache64[619] = {
             // numeric_limits<Float>::is_iec559 may report false even if the internal representation is
             // IEEE-754 compatible. In such a case, the user can specialize this traits template and
             // remove this static sanity check in order to make Dragonbox work for Float.
-            static_assert(numeric_limits<Float>::is_iec559 &&
-                          numeric_limits<Float>::radix == 2 &&
-                          (sizeof(Float) == 4 || sizeof(Float) == 8),
+            static_assert(sizeof(Float) == 4 || sizeof(Float) == 8,
                           "jkj::dragonbox: Float may not be of IEEE-754 binary32/binary64");
 
             using format = float_format<Float>;
