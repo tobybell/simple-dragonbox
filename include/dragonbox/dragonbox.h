@@ -38,8 +38,7 @@ static_assert((int_fast32_t(-1) >> 1) == int_fast32_t(-1) &&
 
 // For constexpr computation.
 // Returns -1 when n = 0.
-template <class UInt>
-constexpr int floor_log2(UInt n) noexcept {
+constexpr int floor_log2(uint64_t n) noexcept {
     int count = -1;
     while (n != 0) {
         ++count;
