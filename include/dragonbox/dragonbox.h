@@ -88,22 +88,6 @@ namespace jkj {
             // Utilities for wide unsigned integer arithmetic.
             ////////////////////////////////////////////////////////////////////////////////////////
 
-            // Compilers might support built-in 128-bit integer types. However, it seems that
-            // emulating them with a pair of 64-bit integers actually produces a better code,
-            // so we avoid using those built-ins. That said, they are still useful for
-            // implementing 64-bit x 64-bit -> 128-bit multiplication.
-
-            // clang-format off
-#if defined(__SIZEOF_INT128__)
-		// To silence "error: ISO C++ does not support '__int128' for 'type name'
-		// [-Wpedantic]"
-#if defined(__GNUC__)
-			__extension__
-#endif
-			using builtin_uint128_t = unsigned __int128;
-#endif
-            // clang-format on
-
             struct uint128 {
                 uint64_t high;
                 uint64_t low;
@@ -120,92 +104,40 @@ namespace jkj {
             }
 
             // Get 128-bit result of multiplication of two 64-bit unsigned integers.
-            constexpr uint128
-            umul128(uint64_t x, uint64_t y) noexcept {
-                auto const generic_impl = [=]() -> uint128 {
-                    auto const a = uint32_t(x >> 32);
-                    auto const b = uint32_t(x);
-                    auto const c = uint32_t(y >> 32);
-                    auto const d = uint32_t(y);
+            constexpr uint128 umul128(uint64_t x, uint64_t y) noexcept {
+                auto const a = uint32_t(x >> 32);
+                auto const b = uint32_t(x);
+                auto const c = uint32_t(y >> 32);
+                auto const d = uint32_t(y);
 
-                    auto const ac = umul64(a, c);
-                    auto const bc = umul64(b, c);
-                    auto const ad = umul64(a, d);
-                    auto const bd = umul64(b, d);
+                auto const ac = umul64(a, c);
+                auto const bc = umul64(b, c);
+                auto const ad = umul64(a, d);
+                auto const bd = umul64(b, d);
 
-                    auto const intermediate =
-                        (bd >> 32) + uint32_t(ad) + uint32_t(bc);
+                auto const intermediate =
+                    (bd >> 32) + uint32_t(ad) + uint32_t(bc);
 
-                    return {ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32),
-                            (intermediate << 32) + uint32_t(bd)};
-                };
-                // To silence warning.
-                static_cast<void>(generic_impl);
-
-#if defined(__SIZEOF_INT128__)
-                auto const result = builtin_uint128_t(x) * builtin_uint128_t(y);
-                return {uint64_t(result >> 64), uint64_t(result)};
-#elif defined(_MSC_VER) && defined(_M_X64)
-                JKJ_IF_CONSTEVAL {
-                    // This redundant variable is to workaround MSVC's codegen bug caused by the
-                    // interaction of NRVO and intrinsics.
-                    auto const result = generic_impl();
-                    return result;
-                }
-                uint128 result;
-#if defined(__AVX2__)
-                result.low = _mulx_u64(x, y, &result.high);
-#else
-                result.low = _umul128(x, y, &result.high);
-#endif
-                return result;
-#else
-                return generic_impl();
-#endif
+                return {ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32), (intermediate << 32) + uint32_t(bd)};
             }
 
             // Get high half of the 128-bit result of multiplication of two 64-bit unsigned
             // integers.
             constexpr uint64_t umul128_upper64(uint64_t x, uint64_t y) noexcept {
-                auto const generic_impl = [=]() -> uint64_t {
-                    auto const a = uint32_t(x >> 32);
-                    auto const b = uint32_t(x);
-                    auto const c = uint32_t(y >> 32);
-                    auto const d = uint32_t(y);
+                auto const a = uint32_t(x >> 32);
+                auto const b = uint32_t(x);
+                auto const c = uint32_t(y >> 32);
+                auto const d = uint32_t(y);
 
-                    auto const ac = umul64(a, c);
-                    auto const bc = umul64(b, c);
-                    auto const ad = umul64(a, d);
-                    auto const bd = umul64(b, d);
+                auto const ac = umul64(a, c);
+                auto const bc = umul64(b, c);
+                auto const ad = umul64(a, d);
+                auto const bd = umul64(b, d);
 
-                    auto const intermediate =
-                        (bd >> 32) + uint32_t(ad) + uint32_t(bc);
+                auto const intermediate =
+                    (bd >> 32) + uint32_t(ad) + uint32_t(bc);
 
-                    return ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32);
-                };
-                // To silence warning.
-                static_cast<void>(generic_impl);
-
-#if defined(__SIZEOF_INT128__)
-                auto const result = builtin_uint128_t(x) * builtin_uint128_t(y);
-                return uint64_t(result >> 64);
-#elif defined(_MSC_VER) && defined(_M_X64)
-                JKJ_IF_CONSTEVAL {
-                    // This redundant variable is to workaround MSVC's codegen bug caused by the
-                    // interaction of NRVO and intrinsics.
-                    auto const result = generic_impl();
-                    return result;
-                }
-                uint64_t result;
-#if defined(__AVX2__)
-                _mulx_u64(x, y, &result);
-#else
-                result = __umulh(x, y);
-#endif
-                return result;
-#else
-                return generic_impl();
-#endif
+                return ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32);
             }
 
             // Get upper 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
@@ -219,9 +151,6 @@ namespace jkj {
             // Get upper 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit
             // unsigned integer.
             constexpr uint64_t umul96_upper64(uint32_t x, uint64_t y) noexcept {
-#if defined(__SIZEOF_INT128__) || (defined(_MSC_VER) && defined(_M_X64))
-                return umul128_upper64(uint64_t(x) << 32, y);
-#else
                 auto const yh = uint32_t(y >> 32);
                 auto const yl = uint32_t(y);
 
@@ -229,7 +158,6 @@ namespace jkj {
                 auto const xyl = umul64(x, yl);
 
                 return xyh + (xyl >> 32);
-#endif
             }
 
             // Get lower 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
@@ -1303,12 +1231,10 @@ static constexpr uint128 cache64[619] = {
                         (recovered_cache.low << (64 - alpha)) &
                         UINT64_C(0xffffffffffffffff));
 
-                    recovered_cache = {(recovered_cache.low >> alpha) | high_to_middle,
-                                       ((middle_low.low >> alpha) | middle_to_low)};
+                    recovered_cache = {(recovered_cache.low >> alpha) | high_to_middle, ((middle_low.low >> alpha) | middle_to_low)};
 
                     assert(recovered_cache.low != UINT64_C(0xffffffffffffffff));
-                    recovered_cache = {recovered_cache.high,
-                                       uint64_t(recovered_cache.low + 1)};
+                    recovered_cache = {recovered_cache.high, uint64_t(recovered_cache.low + 1)};
 
                     return recovered_cache;
                 }
