@@ -59,16 +59,18 @@ static bool verify_check_divisibility_and_divide_by_pow10() {
     return success;
 }
 
-template <int N, class UInt>
+template <int N, class Float>
 static bool verify_divide_by_pow10() {
     using namespace jkj::dragonbox;
+    using impl = jkj::dragonbox::to_decimal_impl<Float>;
+    using UInt = typename impl::carrier_uint;
 
     constexpr auto max_n = compute_power<N + 1>(UInt(10));
     constexpr auto divisor = compute_power<N>(UInt(10));
 
     bool success = true;
     for (UInt n = 0; n <= max_n; ++n) {
-        auto computed_quotient = small_division_by_pow10<N>(n);
+        auto computed_quotient = impl::template small_division_by_pow10<N>(n);
 
         if (computed_quotient != (n / divisor)) {
             std::cout << "Dividing n = " << n << " by " << divisor
@@ -108,33 +110,20 @@ int main() {
     std::cout << "Done.\n\n\n";
 
 
-    std::cout << "[Verifying division by 10^1 for std::uint8_t...]\n";
-    success &= verify_divide_by_pow10<1, std::uint8_t>();
-    std::cout << "Done.\n\n\n";
-
-    std::cout << "[Verifying division by 10^1 for std::uint16_t...]\n";
-    success &= verify_divide_by_pow10<1, std::uint16_t>();
-    std::cout << "Done.\n\n\n";
-
     std::cout << "[Verifying division by 10^1 for std::uint32_t...]\n";
-    success &= verify_divide_by_pow10<1, std::uint32_t>();
+    success &= verify_divide_by_pow10<1, float>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying division by 10^1 for std::uint64_t...]\n";
-    success &= verify_divide_by_pow10<1, std::uint64_t>();
-    std::cout << "Done.\n\n\n";
-
-
-    std::cout << "[Verifying division by 10^2 for std::uint16_t...]\n";
-    success &= verify_divide_by_pow10<2, std::uint16_t>();
+    success &= verify_divide_by_pow10<1, double>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying division by 10^2 for std::uint32_t...]\n";
-    success &= verify_divide_by_pow10<2, std::uint32_t>();
+    success &= verify_divide_by_pow10<2, float>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying division by 10^2 for std::uint64_t...]\n";
-    success &= verify_divide_by_pow10<2, std::uint64_t>();
+    success &= verify_divide_by_pow10<2, double>();
     std::cout << "Done.\n\n\n";
 
     if (!success) {

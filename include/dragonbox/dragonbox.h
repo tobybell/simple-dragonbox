@@ -1284,36 +1284,7 @@ constexpr int count_factors(UInt n) noexcept {
 // Utilities for fast divisibility tests.
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// Replace n by floor(n / 10^N).
-// Returns true if and only if n is divisible by 10^N.
-// Precondition: n <= 10^(N+1)
-// !!It takes an in-out parameter!!
-template <int N>
-struct divide_by_pow10_info;
-
-template <>
-struct divide_by_pow10_info<1> {
-    static constexpr uint_fast32_t magic_number = 6554;
-    static constexpr int shift_amount = 16;
-};
-
-template <>
-struct divide_by_pow10_info<2> {
-    static constexpr uint_fast32_t magic_number = 656;
-    static constexpr int shift_amount = 16;
-};
-
-// Compute floor(n / 10^N) for small n and N.
-// Precondition: n <= 10^(N+1)
-template <int N, class UInt>
-constexpr UInt small_division_by_pow10(UInt n) noexcept {
-    // Make sure the computation for max_n does not overflow.
-    static_assert(N + 1 <= floor_log10_pow2(value_bits<UInt>), "");
-    assert(n <= compute_power<N + 1>(UInt(10)));
-
-    return UInt((n * divide_by_pow10_info<N>::magic_number) >>
-                divide_by_pow10_info<N>::shift_amount);
-}
+constexpr uint_fast32_t divide_magic_number[2] {6554, 656};
 
 struct interval {
   bool include_left_endpoint;
@@ -1438,15 +1409,25 @@ struct to_decimal_impl {
         static_assert(N + 1 <= floor_log10_pow2(carrier_bits), "");
         assert(n <= compute_power<N + 1>(carrier_uint(10)));
 
-        using info = divide_by_pow10_info<N>;
-        auto const prod = uint_fast32_t(n * info::magic_number);
+        static constexpr auto magic_number = divide_magic_number[N - 1];
+        auto const prod = uint_fast32_t(n * magic_number);
 
         constexpr auto mask =
-            uint_fast32_t((uint_fast32_t(1) << info::shift_amount) - 1);
-        bool const result = ((prod & mask) < info::magic_number);
+            uint_fast32_t((uint_fast32_t(1) << 16) - 1);
+        bool const result = ((prod & mask) < magic_number);
 
-        n = carrier_uint(prod >> info::shift_amount);
+        n = carrier_uint(prod >> 16);
         return result;
+    }
+
+    // Compute floor(n / 10^N) for small n and N.
+    // Precondition: n <= 10^(N+1)
+    template <int N>
+    static carrier_uint small_division_by_pow10(carrier_uint n) noexcept {
+        // Make sure the computation for max_n does not overflow.
+        static_assert(N + 1 <= floor_log10_pow2(carrier_bits), "");
+        assert(n <= compute_power<N + 1>(carrier_uint(10)));
+        return carrier_uint((n * divide_magic_number[N - 1]) >> 16);
     }
 
     carrier_uint significand;
