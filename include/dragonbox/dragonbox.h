@@ -115,11 +115,7 @@ namespace jkj {
                 }
             };
 
-            constexpr uint64_t umul64(uint32_t x,
-                                                               uint32_t y) noexcept {
-#if defined(_MSC_VER) && defined(_M_IX86)
-                JKJ_IF_NOT_CONSTEVAL { return __emulu(x, y); }
-#endif
+            constexpr uint64_t umul64(uint32_t x, uint32_t y) noexcept {
                 return x * uint64_t(y);
             }
 
@@ -170,8 +166,7 @@ namespace jkj {
 
             // Get high half of the 128-bit result of multiplication of two 64-bit unsigned
             // integers.
-            constexpr uint64_t
-            umul128_upper64(uint64_t x, uint64_t y) noexcept {
+            constexpr uint64_t umul128_upper64(uint64_t x, uint64_t y) noexcept {
                 auto const generic_impl = [=]() -> uint64_t {
                     auto const a = uint32_t(x >> 32);
                     auto const b = uint32_t(x);
@@ -215,8 +210,7 @@ namespace jkj {
 
             // Get upper 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
             // unsigned integer.
-            constexpr uint128 umul192_upper128(uint64_t x,
-                                                                            uint128 y) noexcept {
+            constexpr uint128 umul192_upper128(uint64_t x, uint128 y) noexcept {
                 auto r = umul128(x, y.high);
                 r += umul128_upper64(x, y.low);
                 return r;
@@ -224,8 +218,7 @@ namespace jkj {
 
             // Get upper 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit
             // unsigned integer.
-            constexpr uint64_t
-            umul96_upper64(uint32_t x, uint64_t y) noexcept {
+            constexpr uint64_t umul96_upper64(uint32_t x, uint64_t y) noexcept {
 #if defined(__SIZEOF_INT128__) || (defined(_MSC_VER) && defined(_M_X64))
                 return umul128_upper64(uint64_t(x) << 32, y);
 #else
@@ -241,8 +234,7 @@ namespace jkj {
 
             // Get lower 128-bits of multiplication of a 64-bit unsigned integer and a 128-bit
             // unsigned integer.
-            constexpr uint128 umul192_lower128(uint64_t x,
-                                                                            uint128 y) noexcept {
+            constexpr uint128 umul192_lower128(uint64_t x, uint128 y) noexcept {
                 auto const high = x * y.high;
                 auto const high_low = umul128(x, y.low);
                 return {(high + high_low.high) & UINT64_C(0xffffffffffffffff), high_low.low};
@@ -250,8 +242,7 @@ namespace jkj {
 
             // Get lower 64-bits of multiplication of a 32-bit unsigned integer and a 64-bit
             // unsigned integer.
-            constexpr uint64_t umul96_lower64(uint32_t x,
-                                                          uint64_t y) noexcept {
+            constexpr uint64_t umul96_lower64(uint32_t x, uint64_t y) noexcept {
                 return (x * y) & UINT64_C(0xffffffffffffffff);
             }
 
@@ -303,25 +294,25 @@ namespace jkj {
               max_k = 46,
             };
 
-            static void remove_trailing_zeros(carrier_uint& significand, int& exponent) noexcept {
+            static void remove_trailing_zeros(uint32_t& significand, int& exponent) noexcept {
                 // See https://github.com/jk-jeon/rtz_benchmark.
                 // The idea of branchless search below is by reddit users r/pigeon768 and
                 // r/TheoreticalDumbass.
 
                 auto r = rotr32(
-                    carrier_uint(significand * UINT32_C(184254097)), 4);
+                    uint32_t(significand * UINT32_C(184254097)), 4);
                 auto b = r < UINT32_C(429497);
                 auto s = size_t(b);
                 significand = b ? r : significand;
 
                 r = rotr32(
-                    carrier_uint(significand * UINT32_C(42949673)), 2);
+                    uint32_t(significand * UINT32_C(42949673)), 2);
                 b = r < UINT32_C(42949673);
                 s = s * 2 + b;
                 significand = b ? r : significand;
 
                 r = rotr32(
-                    carrier_uint(significand * UINT32_C(1288490189)), 1);
+                    uint32_t(significand * UINT32_C(1288490189)), 1);
                 b = r < UINT32_C(429496730);
                 s = s * 2 + b;
                 significand = b ? r : significand;
@@ -329,16 +320,16 @@ namespace jkj {
                 exponent += s;
             }
 
-            static compute_mul_result<carrier_uint> compute_mul(carrier_uint u, uint64_t cache) noexcept {
+            static compute_mul_result<uint32_t> compute_mul(uint32_t u, uint64_t cache) noexcept {
                 auto const r = umul96_upper64(u, cache);
-                return {carrier_uint(r >> 32), carrier_uint(r) == 0};
+                return {uint32_t(r >> 32), uint32_t(r) == 0};
             }
 
-            static carrier_uint compute_delta(uint64_t cache, int beta) noexcept {
-                return static_cast<carrier_uint>(cache >> (cache_bits - 1 - beta));
+            static uint32_t compute_delta(uint64_t cache, int beta) noexcept {
+                return uint32_t(cache >> (cache_bits - 1 - beta));
             }
 
-            static compute_mul_parity_result compute_mul_parity(carrier_uint two_f, uint64_t cache, int beta) noexcept {
+            static compute_mul_parity_result compute_mul_parity(uint32_t two_f, uint64_t cache, int beta) noexcept {
                 assert(beta >= 1);
                 assert(beta <= 32);
                 auto const r = umul96_lower64(two_f, cache);
@@ -346,16 +337,16 @@ namespace jkj {
                         (UINT32_C(0xffffffff) & (r >> (32 - beta))) == 0};
             }
 
-            static carrier_uint compute_left_endpoint_for_shorter_interval_case(uint64_t cache, int beta) noexcept {
+            static uint32_t compute_left_endpoint_for_shorter_interval_case(uint64_t cache, int beta) noexcept {
                 return (cache - (cache >> (significand_bits + 2))) >> (cache_bits - significand_bits - 1 - beta);
             }
 
-            static carrier_uint compute_right_endpoint_for_shorter_interval_case(uint64_t cache, int beta) noexcept {
+            static uint32_t compute_right_endpoint_for_shorter_interval_case(uint64_t cache, int beta) noexcept {
                 return (cache + (cache >> (significand_bits + 1))) >> (cache_bits - significand_bits - 1 - beta);
             }
 
-            static carrier_uint compute_round_up_for_shorter_interval_case(uint64_t cache, int beta) noexcept {
-                return (carrier_uint(cache >> (cache_bits - significand_bits - 2 - beta)) + 1) / 2;
+            static uint32_t compute_round_up_for_shorter_interval_case(uint64_t cache, int beta) noexcept {
+                return (uint32_t(cache >> (cache_bits - significand_bits - 2 - beta)) + 1) / 2;
             }
 
             template <int N, uint32_t n_max>
@@ -400,31 +391,31 @@ namespace jkj {
               max_k = 326,
             };
 
-            static void remove_trailing_zeros(carrier_uint& significand, int& exponent) noexcept {
+            static void remove_trailing_zeros(uint64_t& significand, int& exponent) noexcept {
                 // See https://github.com/jk-jeon/rtz_benchmark.
                 // The idea of branchless search below is by reddit users r/pigeon768 and
                 // r/TheoreticalDumbass.
 
                 auto r = rotr64(
-                    carrier_uint(significand * UINT64_C(28999941890838049)), 8);
+                    uint64_t(significand * UINT64_C(28999941890838049)), 8);
                 auto b = r < UINT64_C(184467440738);
                 auto s = size_t(b);
                 significand = b ? r : significand;
 
                 r = rotr64(
-                    carrier_uint(significand * UINT64_C(182622766329724561)), 4);
+                    uint64_t(significand * UINT64_C(182622766329724561)), 4);
                 b = r < UINT64_C(1844674407370956);
                 s = s * 2 + b;
                 significand = b ? r : significand;
 
                 r = rotr64(
-                    carrier_uint(significand * UINT64_C(10330176681277348905)), 2);
+                    uint64_t(significand * UINT64_C(10330176681277348905)), 2);
                 b = r < UINT64_C(184467440737095517);
                 s = s * 2 + b;
                 significand = b ? r : significand;
 
                 r = rotr64(
-                    carrier_uint(significand * UINT64_C(14757395258967641293)), 1);
+                    uint64_t(significand * UINT64_C(14757395258967641293)), 1);
                 b = r < UINT64_C(1844674407370955162);
                 s = s * 2 + b;
                 significand = b ? r : significand;
@@ -432,16 +423,16 @@ namespace jkj {
                 exponent += s;
             }
 
-            static compute_mul_result<carrier_uint> compute_mul(carrier_uint u, uint128 cache) noexcept {
+            static compute_mul_result<uint64_t> compute_mul(uint64_t u, uint128 cache) noexcept {
                 auto const r = umul192_upper128(u, cache);
                 return {r.high, r.low == 0};
             }
 
-            static carrier_uint compute_delta(uint128 cache, int beta) noexcept {
+            static uint64_t compute_delta(uint128 cache, int beta) noexcept {
                 return cache.high >> (total_bits - 1 - beta);
             }
 
-            static compute_mul_parity_result compute_mul_parity(carrier_uint two_f, uint128 cache, int beta) noexcept {
+            static compute_mul_parity_result compute_mul_parity(uint64_t two_f, uint128 cache, int beta) noexcept {
                 assert(beta >= 1);
                 assert(beta < 64);
                 auto const r = umul192_lower128(two_f, cache);
@@ -450,17 +441,17 @@ namespace jkj {
                          (r.low >> (64 - beta))) == 0};
             }
 
-            static carrier_uint compute_left_endpoint_for_shorter_interval_case(uint128 cache, int beta) noexcept {
+            static uint64_t compute_left_endpoint_for_shorter_interval_case(uint128 cache, int beta) noexcept {
                 return (cache.high - (cache.high >> (significand_bits + 2))) >>
                        (total_bits - significand_bits - 1 - beta);
             }
 
-            static carrier_uint compute_right_endpoint_for_shorter_interval_case(uint128 cache, int beta) noexcept {
+            static uint64_t compute_right_endpoint_for_shorter_interval_case(uint128 cache, int beta) noexcept {
                 return (cache.high + (cache.high >> (significand_bits + 1))) >>
                        (total_bits - significand_bits - 1 - beta);
             }
 
-            static carrier_uint compute_round_up_for_shorter_interval_case(uint128 cache, int beta) noexcept {
+            static uint64_t compute_round_up_for_shorter_interval_case(uint128 cache, int beta) noexcept {
                 return ((cache.high >> (total_bits - significand_bits - 2 - beta)) + 1) / 2;
             }
 
