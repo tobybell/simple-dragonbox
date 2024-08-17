@@ -15,9 +15,6 @@ using std::uint64_t;
 
 using std::size_t;
 
-template <class T>
-static constexpr unsigned value_bits = 8 * sizeof(T);
-
 constexpr uint32_t rotr32(uint32_t n, unsigned r) noexcept {
     r &= 31;
     return (n >> r) | (n << ((32 - r) & 31));
@@ -1279,10 +1276,6 @@ constexpr int count_factors(UInt n) noexcept {
     return c;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
-// Utilities for fast divisibility tests.
-////////////////////////////////////////////////////////////////////////////////////////
-
 constexpr uint_fast32_t divide_magic_number[2] {6554, 656};
 
 struct interval {
@@ -1315,21 +1308,18 @@ enum class decimal_round_policy {
   dont_care,
 };
 
-template <class Float>
-struct impl {
-    // Guards against types that have different internal representations than IEEE-754
-    // binary32/64. I don't know if there is a truly reliable way of detecting IEEE-754 binary
-    // formats. I just did my best here. Note that in some cases
-    // numeric_limits<Float>::is_iec559 may report false even if the internal representation is
-    // IEEE-754 compatible. In such a case, the user can specialize this traits template and
-    // remove this static sanity check in order to make Dragonbox work for Float.
-    static_assert(sizeof(Float) == 4 || sizeof(Float) == 8,
-                  "jkj::dragonbox: Float may not be of IEEE-754 binary32/binary64");
+static_assert(sizeof(float) == 4);
+static_assert(sizeof(double) == 8);
 
+template <class Float,
+          binary_round_policy BinaryRoundPolicy = binary_round_policy(),
+          decimal_round_policy DecimalRoundPolicy = decimal_round_policy(),
+          cache_policy CachePolicy = cache_policy()>
+struct impl {
     using format = float_format<Float>;
     using carrier_uint = typename format::carrier_uint;
     static_assert(sizeof(carrier_uint) == sizeof(Float));
-
+    
     static constexpr int min(int x, int y) noexcept { return x < y ? x : y; }
     static constexpr int max(int x, int y) noexcept { return x > y ? x : y; }
 
@@ -1337,8 +1327,7 @@ struct impl {
       min_exponent = format::min_exponent,
       max_exponent = format::max_exponent,
       significand_bits = format::significand_bits,
-      carrier_bits = value_bits<carrier_uint>,
-
+      carrier_bits = 8 * sizeof(carrier_uint),
       kappa = floor_log10_pow2(carrier_bits - significand_bits - 2) - 1,
 
       min_k = min(-floor_log10_pow2_minus_log10_4_over_3(max_exponent - significand_bits),
@@ -1372,36 +1361,6 @@ struct impl {
     static_assert(carrier_bits >= significand_bits + 2 + floor_log2_pow10(kappa + 1));
     static_assert(min_k >= format::min_k && max_k <= format::max_k);
 
-    static constexpr Float carrier_to_float(carrier_uint u) noexcept {
-      Float x;
-      std::memcpy(&x, &u, sizeof(u));
-      return x;
-    }
-};
-
-template <class Float,
-          binary_round_policy BinaryRoundPolicy = binary_round_policy(),
-          decimal_round_policy DecimalRoundPolicy = decimal_round_policy(),
-          cache_policy CachePolicy = cache_policy()>
-struct to_decimal_impl {
-    using impl = dragonbox::impl<Float>;
-    using format = float_format<Float>;
-    using carrier_uint = typename format::carrier_uint;
-    
-    enum {
-      min_exponent = format::min_exponent,
-      max_exponent = format::max_exponent,
-      significand_bits = format::significand_bits,
-      carrier_bits = impl::carrier_bits,
-      kappa = impl::kappa,
-      shorter_interval_tie_lower_threshold = impl::shorter_interval_tie_lower_threshold,
-      shorter_interval_tie_upper_threshold = impl::shorter_interval_tie_upper_threshold,
-      case_shorter_interval_left_endpoint_lower_threshold = impl::case_shorter_interval_left_endpoint_lower_threshold,
-      case_shorter_interval_left_endpoint_upper_threshold = impl::case_shorter_interval_left_endpoint_upper_threshold,
-      case_shorter_interval_right_endpoint_lower_threshold = impl::case_shorter_interval_right_endpoint_lower_threshold,
-      case_shorter_interval_right_endpoint_upper_threshold = impl::case_shorter_interval_right_endpoint_upper_threshold,
-    };
-
     template <int N>
     static bool check_divisibility_and_divide_by_pow10(carrier_uint& n) noexcept {
         // Make sure the computation for max_n does not overflow.
@@ -1427,6 +1386,12 @@ struct to_decimal_impl {
         static_assert(N + 1 <= floor_log10_pow2(carrier_bits), "");
         assert(n <= compute_power<N + 1>(carrier_uint(10)));
         return carrier_uint((n * divide_magic_number[N - 1]) >> 16);
+    }
+
+    static constexpr Float carrier_to_float(carrier_uint u) noexcept {
+      Float x;
+      std::memcpy(&x, &u, sizeof(u));
+      return x;
     }
 
     carrier_uint significand;
@@ -2008,9 +1973,9 @@ struct get_policy<T, First, Rest...>: get_policy<T, Rest...> {};
 
 template <class Float, class... Policies>
 constexpr auto to_decimal_ex(bool sign, int exponent, typename float_format<Float>::carrier_uint significand) noexcept {
-    return to_decimal_impl<Float, get_policy<binary_round_policy, Policies...>::value,
-                                  get_policy<decimal_round_policy, Policies...>::value,
-                                  get_policy<cache_policy, Policies...>::value> {significand, exponent, sign}.to_decimal();
+    return impl<Float, get_policy<binary_round_policy, Policies...>::value,
+                       get_policy<decimal_round_policy, Policies...>::value,
+                       get_policy<cache_policy, Policies...>::value> {significand, exponent, sign}.to_decimal();
 }
 
 template <class Float, class... Policies>

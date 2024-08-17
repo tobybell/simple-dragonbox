@@ -23,7 +23,7 @@
 template <int N, class Float>
 static bool verify_check_divisibility_and_divide_by_pow10() {
     using namespace jkj::dragonbox;
-    using impl = jkj::dragonbox::to_decimal_impl<Float>;
+    using impl = jkj::dragonbox::impl<Float>;
     using UInt = typename impl::carrier_uint;
 
     constexpr auto max_n = compute_power<N + 1>(UInt(10));
@@ -62,7 +62,7 @@ static bool verify_check_divisibility_and_divide_by_pow10() {
 template <int N, class Float>
 static bool verify_divide_by_pow10() {
     using namespace jkj::dragonbox;
-    using impl = jkj::dragonbox::to_decimal_impl<Float>;
+    using impl = jkj::dragonbox::impl<Float>;
     using UInt = typename impl::carrier_uint;
 
     constexpr auto max_n = compute_power<N + 1>(UInt(10));
