@@ -1396,23 +1396,6 @@ static constexpr uint128 cache64[619] = {
                     static constexpr int shift_amount = 16;
                 };
 
-                template <int N, class UInt>
-                constexpr bool check_divisibility_and_divide_by_pow10(UInt& n) noexcept {
-                    // Make sure the computation for max_n does not overflow.
-                    static_assert(N + 1 <= floor_log10_pow2(value_bits<UInt>), "");
-                    assert(n <= compute_power<N + 1>(UInt(10)));
-
-                    using info = divide_by_pow10_info<N>;
-                    auto const prod = uint_fast32_t(n * info::magic_number);
-
-                    constexpr auto mask =
-                        uint_fast32_t((uint_fast32_t(1) << info::shift_amount) - 1);
-                    bool const result = ((prod & mask) < info::magic_number);
-
-                    n = UInt(prod >> info::shift_amount);
-                    return result;
-                }
-
                 // Compute floor(n / 10^N) for small n and N.
                 // Precondition: n <= 10^(N+1)
                 template <int N, class UInt>
@@ -1520,9 +1503,9 @@ static constexpr uint128 cache64[619] = {
         };
 
         template <class Float,
-                  binary_round_policy BinaryRoundPolicy,
-                  decimal_round_policy DecimalRoundPolicy,
-                  cache_policy CachePolicy>
+                  binary_round_policy BinaryRoundPolicy = binary_round_policy(),
+                  decimal_round_policy DecimalRoundPolicy = decimal_round_policy(),
+                  cache_policy CachePolicy = cache_policy()>
         struct to_decimal_impl {
             using impl = dragonbox::impl<Float>;
             using format = float_format<Float>;
@@ -1541,6 +1524,23 @@ static constexpr uint128 cache64[619] = {
               case_shorter_interval_right_endpoint_lower_threshold = impl::case_shorter_interval_right_endpoint_lower_threshold,
               case_shorter_interval_right_endpoint_upper_threshold = impl::case_shorter_interval_right_endpoint_upper_threshold,
             };
+
+            template <int N>
+            static bool check_divisibility_and_divide_by_pow10(carrier_uint& n) noexcept {
+                // Make sure the computation for max_n does not overflow.
+                static_assert(N + 1 <= floor_log10_pow2(carrier_bits), "");
+                assert(n <= compute_power<N + 1>(carrier_uint(10)));
+
+                using info = divide_by_pow10_info<N>;
+                auto const prod = uint_fast32_t(n * info::magic_number);
+
+                constexpr auto mask =
+                    uint_fast32_t((uint_fast32_t(1) << info::shift_amount) - 1);
+                bool const result = ((prod & mask) < info::magic_number);
+
+                n = carrier_uint(prod >> info::shift_amount);
+                return result;
+            }
 
             carrier_uint significand;
             int exponent_bits;

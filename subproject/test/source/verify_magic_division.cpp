@@ -20,9 +20,11 @@
 #include <iostream>
 #include <iomanip>
 
-template <int N, class UInt>
+template <int N, class Float>
 static bool verify_check_divisibility_and_divide_by_pow10() {
     using namespace jkj::dragonbox;
+    using impl = jkj::dragonbox::to_decimal_impl<Float>;
+    using UInt = typename impl::carrier_uint;
 
     constexpr auto max_n = compute_power<N + 1>(UInt(10));
     constexpr auto divisor = compute_power<N>(UInt(10));
@@ -31,7 +33,7 @@ static bool verify_check_divisibility_and_divide_by_pow10() {
     for (UInt n = 0; n <= max_n; ++n) {
         UInt computed_quotient = n;
         auto computed_divisibility =
-            check_divisibility_and_divide_by_pow10<N>(computed_quotient);
+            impl::template check_divisibility_and_divide_by_pow10<N>(computed_quotient);
 
         if (computed_quotient != (n / divisor)) {
             std::cout << "Dividing n = " << n << " by " << divisor
@@ -89,33 +91,20 @@ static bool verify_divide_by_pow10() {
 int main() {
     bool success = true;
 
-    std::cout << "[Verifying divisibility check and division by 10^1 for std::uint8_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint8_t>();
-    std::cout << "Done.\n\n\n";
-
-    std::cout << "[Verifying divisibility check and division by 10^1 for std::uint16_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint16_t>();
-    std::cout << "Done.\n\n\n";
-
     std::cout << "[Verifying divisibility check and division by 10^1 for std::uint32_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint32_t>();
+    success &= verify_check_divisibility_and_divide_by_pow10<1, float>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying divisibility check and division by 10^1 for std::uint64_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<1, std::uint64_t>();
-    std::cout << "Done.\n\n\n";
-
-
-    std::cout << "[Verifying divisibility check and division by 10^2 for std::uint16_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<2, std::uint16_t>();
+    success &= verify_check_divisibility_and_divide_by_pow10<1, double>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying divisibility check and division by 10^2 for std::uint32_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<2, std::uint32_t>();
+    success &= verify_check_divisibility_and_divide_by_pow10<2, float>();
     std::cout << "Done.\n\n\n";
 
     std::cout << "[Verifying divisibility check and division by 10^2 for std::uint64_t...]\n";
-    success &= verify_check_divisibility_and_divide_by_pow10<2, std::uint64_t>();
+    success &= verify_check_divisibility_and_divide_by_pow10<2, double>();
     std::cout << "Done.\n\n\n";
 
 
