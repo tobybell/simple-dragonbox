@@ -25,10 +25,6 @@ constexpr uint64_t rotr64(uint64_t n, unsigned r) noexcept {
     return (n >> r) | (n << ((64 - r) & 63));
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
-// Utilities for fast/constexpr log computation.
-////////////////////////////////////////////////////////////////////////////////////////
-
 static_assert((int_fast32_t(-1) >> 1) == int_fast32_t(-1) &&
               (int_fast16_t(-1) >> 1) == int_fast16_t(-1),
               "jkj::dragonbox: right-shift for signed integers must be arithmetic");
@@ -69,10 +65,6 @@ constexpr int floor_log5_pow2_minus_log5_3(int e) noexcept {
     assert(-3543 <= e && e <= 2427);
     return (e * 451597 - 715764) >> 20;
 }
-
-////////////////////////////////////////////////////////////////////////////////////////
-// Utilities for wide unsigned integer arithmetic.
-////////////////////////////////////////////////////////////////////////////////////////
 
 struct uint128 {
     uint64_t high;
@@ -1252,12 +1244,6 @@ struct float_bits {
   constexpr int binary_exponent() noexcept {
     return exponent == 0 ? format::min_exponent
                          : exponent + format::exponent_bias;
-  }
-
-  constexpr carrier_uint binary_significand() noexcept {
-    return exponent == 0
-      ? significand
-      : significand | (carrier_uint(1) << format::significand_bits);
   }
 };
 

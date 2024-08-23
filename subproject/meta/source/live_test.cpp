@@ -27,6 +27,13 @@ void reference_implementation(float x, char* buffer) { f2s_buffered(x, buffer); 
 void reference_implementation(double x, char* buffer) { d2s_buffered(x, buffer); }
 
 template <class Float>
+constexpr typename jkj::dragonbox::float_format<Float>::carrier_uint binary_significand(jkj::dragonbox::float_bits<Float> bits) noexcept {
+  return bits.exponent == 0
+    ? bits.significand
+    : bits.significand | (typename jkj::dragonbox::float_bits<Float>::carrier_uint(1) << jkj::dragonbox::float_format<Float>::significand_bits);
+}
+
+template <class Float>
 static void live_test(std::streamsize hex_width) {
     char buffer1[41];
     char buffer2[41];
@@ -54,7 +61,7 @@ static void live_test(std::streamsize hex_width) {
         std::cout << "  significand bits: "
                   << "0x" << std::hex << std::setfill('0');
         std::cout << std::setw(hex_width);
-        std::cout << xx.significand << " (value: 0x" << xx.binary_significand()
+        std::cout << xx.significand << " (value: 0x" << binary_significand(xx)
                   << ")\n"
                   << std::dec;
 
