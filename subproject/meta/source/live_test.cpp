@@ -15,7 +15,7 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#include "dragonbox/dragonbox_to_chars.h"
+#include "dragonbox/dragonbox.h"
 #include "random_float.h"
 #include "ryu/ryu.h"
 
@@ -25,13 +25,6 @@
 
 void reference_implementation(float x, char* buffer) { f2s_buffered(x, buffer); }
 void reference_implementation(double x, char* buffer) { d2s_buffered(x, buffer); }
-
-template <class Float>
-constexpr typename jkj::dragonbox::float_format<Float>::carrier_uint binary_significand(jkj::dragonbox::float_bits<Float> bits) noexcept {
-  return bits.exponent == 0
-    ? bits.significand
-    : bits.significand | (typename jkj::dragonbox::float_bits<Float>::carrier_uint(1) << jkj::dragonbox::float_format<Float>::significand_bits);
-}
 
 template <class Float>
 static void live_test(std::streamsize hex_width) {
@@ -53,15 +46,20 @@ static void live_test(std::streamsize hex_width) {
             break;
         }
 
-        auto xx = jkj::dragonbox::float_bits(x);
+        using format = jkj::dragonbox::float_format<Float>;
+        auto xx = jkj::dragonbox::impl(x);
+        auto binary_significand = xx.exponent
+            ? xx.significand | (typename format::carrier_uint(1) << xx.significand_bits)
+            : xx.significand;
+        auto binary_exponent = xx.exponent ? xx.exponent + format::exponent_bias : format::min_exponent;
         std::cout << "              sign: " << (xx.sign ? "-" : "+") << std::endl;
         std::cout << "     exponent bits: "
                   << "0x" << std::hex << std::setfill('0') << xx.exponent << std::dec
-                  << " (value: " << xx.binary_exponent() << ")\n";
+                  << " (value: " << binary_exponent << ")\n";
         std::cout << "  significand bits: "
                   << "0x" << std::hex << std::setfill('0');
         std::cout << std::setw(hex_width);
-        std::cout << xx.significand << " (value: 0x" << binary_significand(xx)
+        std::cout << xx.significand << " (value: 0x" << binary_significand
                   << ")\n"
                   << std::dec;
 

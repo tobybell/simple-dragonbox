@@ -17,7 +17,6 @@
 
 #include "benchmark.h"
 #include "random_float.h"
-#include "dragonbox/dragonbox_to_chars.h"
 #include <array>
 #include <chrono>
 #include <cstring>

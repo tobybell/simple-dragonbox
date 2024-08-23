@@ -15,8 +15,8 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
+#include "dragonbox/dragonbox.h"
 #include "benchmark.h"
-#include "dragonbox/dragonbox_to_chars.h"
 
 namespace {
     void dragonbox_float_to_chars(float x, char* buffer) { jkj::dragonbox::to_chars(x, buffer); }

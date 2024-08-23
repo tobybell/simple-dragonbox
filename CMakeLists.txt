@@ -31,35 +31,14 @@ target_include_directories(dragonbox
 
 target_compile_features(dragonbox INTERFACE cxx_std_17)
 
-# ---- Declare library (dragonbox_to_chars) ----
-
-set(dragonbox_to_chars_headers
-        ${dragonbox_headers}
-        include/dragonbox/dragonbox_to_chars.h)
-
-add_library(dragonbox_to_chars INTERFACE
-        ${dragonbox_to_chars_headers})
-add_library(dragonbox::dragonbox_to_chars ALIAS dragonbox_to_chars)
-
-target_include_directories(dragonbox_to_chars
-        ${dragonbox_warning_guard}
-        INTERFACE
-        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>")
-
-target_compile_features(dragonbox_to_chars INTERFACE cxx_std_17)
-
 # ---- Install ----
-
-option(DRAGONBOX_INSTALL_TO_CHARS
-        "When invoked with --install, dragonbox_to_chars.h/.cpp are installed along with dragonbox.h"
-        On)
 
 set(dragonbox_directory "dragonbox-${PROJECT_VERSION}")
 set(dragonbox_include_directory "${CMAKE_INSTALL_INCLUDEDIR}/${dragonbox_directory}")
 set(dragonbox_install_targets "dragonbox")
 
 if (DRAGONBOX_INSTALL_TO_CHARS)
-  set(dragonbox_install_targets ${dragonbox_install_targets} dragonbox_to_chars)
+  set(dragonbox_install_targets ${dragonbox_install_targets})
 endif()
 
 install(TARGETS ${dragonbox_install_targets}
@@ -87,13 +66,8 @@ install(FILES
         "${PROJECT_BINARY_DIR}/dragonboxConfigVersion.cmake"
         DESTINATION "${dragonbox_install_cmakedir}")
 
-if (DRAGONBOX_INSTALL_TO_CHARS)
-  install(FILES ${dragonbox_to_chars_headers}
-          DESTINATION "${dragonbox_include_directory}/dragonbox")
-else()
-  install(FILES ${dragonbox_headers}
-          DESTINATION "${dragonbox_include_directory}/dragonbox")
-endif()
+install(FILES ${dragonbox_headers}
+        DESTINATION "${dragonbox_include_directory}/dragonbox")
 
 # ---- Subproject ----
 
@@ -113,8 +87,4 @@ if (MSVC)
     target_compile_options(dragonbox INTERFACE
               /Zi /permissive-
               $<$<NOT:$<CXX_COMPILER_ID:Clang>>:/experimental:newLambdaProcessor>)
-    target_compile_options(dragonbox_to_chars PUBLIC
-              /Zi /permissive-
-              $<$<NOT:$<CXX_COMPILER_ID:Clang>>:/experimental:newLambdaProcessor>
-              $<$<CONFIG:Release>:/GL>)
 endif()

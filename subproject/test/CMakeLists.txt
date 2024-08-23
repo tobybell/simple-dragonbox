@@ -27,11 +27,7 @@ enable_testing()
 
 function(add_test NAME)
   cmake_parse_arguments(TEST "TO_CHARS;RYU" "NAME" "" ${ARGN})
-  if(TEST_TO_CHARS)
-    set(dragonbox dragonbox::dragonbox_to_chars)
-  else()
-    set(dragonbox dragonbox::dragonbox)
-  endif()
+  set(dragonbox dragonbox::dragonbox)
 
   add_executable(${NAME} source/${NAME}.cpp)
 

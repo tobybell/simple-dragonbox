@@ -45,7 +45,6 @@ target_link_libraries(benchmark
         PRIVATE
         ryu::ryu
         dragonbox::common
-        dragonbox::dragonbox_to_chars
         grisu_exact::grisu_exact
         schubfach::schubfach)
 

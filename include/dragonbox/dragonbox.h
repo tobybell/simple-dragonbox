@@ -1219,38 +1219,6 @@ struct cache_holder<double, cache_policy::compact> {
     }
 };
 
-template <class Float>
-struct float_bits {
-  using format = float_format<Float>;
-  using carrier_uint = typename format::carrier_uint;
-
-  carrier_uint significand;
-  unsigned exponent;
-  bool sign;
-
-  constexpr explicit float_bits(Float x) {
-    carrier_uint bits;
-    static_assert(sizeof(x) == sizeof(bits));
-    std::memcpy(&bits, &x, sizeof(x));
-    significand = bits & ((carrier_uint(1) << format::significand_bits) - 1);
-    exponent = bits >> format::significand_bits & ((1u << format::exponent_bits) - 1);
-    sign = bits >> (format::significand_bits + format::exponent_bits);
-  }
-
-  constexpr bool is_finite() const noexcept {
-      return exponent != (1u << format::exponent_bits) - 1;
-  }
-
-  constexpr int binary_exponent() noexcept {
-    return exponent == 0 ? format::min_exponent
-                         : exponent + format::exponent_bias;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////////////
-// Some simple utilities for constexpr computation.
-////////////////////////////////////////////////////////////////////////////////////////
-
 template <int a, class UInt>
 constexpr int count_factors(UInt n) noexcept {
     static_assert(a > 1);
@@ -1296,6 +1264,14 @@ enum class decimal_round_policy {
 
 static_assert(sizeof(float) == 4);
 static_assert(sizeof(double) == 8);
+
+constexpr void reverse(char* begin, char* end) {
+    while (begin < --end) {
+        char tmp = *begin;
+        *begin++ = *end;
+        *end = tmp;
+    }
+}
 
 template <class Float,
           binary_round_policy BinaryRoundPolicy = binary_round_policy(),
@@ -1381,8 +1357,21 @@ struct impl {
     }
 
     carrier_uint significand;
-    int exponent_bits;
+    int exponent;
     bool sign;
+
+    constexpr impl(Float x) {
+      carrier_uint bits;
+      static_assert(sizeof(x) == sizeof(bits));
+      std::memcpy(&bits, &x, sizeof(x));
+      significand = bits & ((carrier_uint(1) << format::significand_bits) - 1);
+      exponent = bits >> format::significand_bits & ((1u << format::exponent_bits) - 1);
+      sign = bits >> (format::significand_bits + format::exponent_bits);
+    }
+
+    constexpr bool is_finite() const noexcept {
+        return exponent != (1u << format::exponent_bits) - 1;
+    }
 
     static bool prefer_round_down(carrier_uint decimal_significand) noexcept {
       using e = decimal_round_policy;
@@ -1395,56 +1384,57 @@ struct impl {
       }
     }
 
-    struct decimal_fp {
+    struct decimal_result {
       carrier_uint significand;
       int exponent;
       bool sign;
     };
 
-    decimal_fp no_trailing_zeros(carrier_uint significand, int exponent) {
+    decimal_result no_trailing_zeros(carrier_uint significand, int exponent) {
       return {significand, exponent, sign};
     }
 
-    decimal_fp may_have_trailing_zeros(carrier_uint significand, int exponent) {
+    decimal_result may_have_trailing_zeros(carrier_uint significand, int exponent) {
       format::remove_trailing_zeros(significand, exponent);
       return {significand, exponent, sign};
     }
 
-    decimal_fp nearest_to_even() {
+    auto nearest_to_even() {
         bool even = significand % 2 == 0;
         return nearest({even, even}, {true, true});
     }
 
-    decimal_fp nearest_to_odd() {
+    auto nearest_to_odd() {
         bool even = significand % 2 == 0;
         return nearest({!even, even}, {false, false});
     }
 
-    decimal_fp nearest_toward_plus_infinity() {
+    auto nearest_toward_plus_infinity() {
         return nearest({!sign, sign}, {!sign, sign});
     }
 
-    decimal_fp nearest_toward_minus_infinity() {
+    auto nearest_toward_minus_infinity() {
         return nearest({sign, !sign}, {sign, !sign});
     }
 
-    decimal_fp nearest_toward_zero() {
+    auto nearest_toward_zero() {
         return nearest({false, true}, {false, true});
     }
 
-    decimal_fp nearest_away_from_zero() {
+    auto nearest_away_from_zero() {
         return nearest({true, false}, {true, false});
     }
 
-    decimal_fp nearest_always_closed() {
+    auto nearest_always_closed() {
         return nearest({true, true}, {true, true});
     }
 
-    decimal_fp nearest_always_open() {
+    auto nearest_always_open() {
         return nearest({false, false}, {false, false});
     }
 
-    decimal_fp to_decimal() {
+    decimal_result to_decimal() {
+      assert(is_finite() && (significand || exponent));
       bool even = significand % 2 == 0;
       using e = binary_round_policy;
       switch (BinaryRoundPolicy) {
@@ -1469,10 +1459,10 @@ struct impl {
 
     //// The main algorithm assumes the input is a normal/subnormal finite number.
 
-    constexpr decimal_fp nearest(interval normal_interval, interval shorter_interval) noexcept {
+    constexpr auto nearest(interval normal_interval, interval shorter_interval) noexcept {
 
         carrier_uint two_fc = significand * 2;
-        auto binary_exponent = exponent_bits;
+        auto binary_exponent = exponent;
 
         // Is the input a normal number?
         if (binary_exponent != 0) {
@@ -1569,7 +1559,7 @@ struct impl {
         } else {
             // Is the input a subnormal number?
             // Normal interval case.
-            binary_exponent = format::min_exponent - format::significand_bits;
+            binary_exponent = min_exponent - format::significand_bits;
         }
 
         //////////////////////////////////////////////////////////////////////
@@ -1704,10 +1694,10 @@ struct impl {
         return no_trailing_zeros(decimal_significand, minus_k + kappa);
     }
 
-    constexpr decimal_fp left_closed_directed() noexcept {
+    constexpr auto left_closed_directed() noexcept {
 
         carrier_uint two_fc = significand * 2;
-        auto binary_exponent = exponent_bits;
+        auto binary_exponent = exponent;
 
         // Is the input a normal number?
         if (binary_exponent != 0) {
@@ -1716,7 +1706,7 @@ struct impl {
         }
         // Is the input a subnormal number?
         else {
-            binary_exponent = format::min_exponent - format::significand_bits;
+            binary_exponent = min_exponent - format::significand_bits;
         }
 
         //////////////////////////////////////////////////////////////////////
@@ -1812,10 +1802,10 @@ struct impl {
         return no_trailing_zeros(decimal_significand, minus_k + kappa);
     }
 
-    constexpr decimal_fp right_closed_directed() noexcept {
+    constexpr auto right_closed_directed() noexcept {
 
         carrier_uint two_fc = significand * 2;
-        auto binary_exponent = exponent_bits;
+        auto binary_exponent = exponent;
         bool shorter_interval = false;
 
         // Is the input a normal number?
@@ -1828,7 +1818,7 @@ struct impl {
         }
         // Is the input a subnormal number?
         else {
-            binary_exponent = format::min_exponent - format::significand_bits;
+            binary_exponent = min_exponent - format::significand_bits;
         }
 
         //////////////////////////////////////////////////////////////////////
@@ -1899,6 +1889,65 @@ struct impl {
         return binary_exponent >= case_shorter_interval_left_endpoint_lower_threshold &&
                binary_exponent <= case_shorter_interval_left_endpoint_upper_threshold;
     }
+
+    constexpr char* to_chars(char* buffer) noexcept {
+        if (!is_finite()) {
+            if (!significand) {
+                if (sign) {
+                    *buffer++ = '-';
+                }
+                std::memcpy(buffer, "Infinity", 8);
+                return buffer + 8;
+            }
+            else {
+                buffer[0] = 'N';
+                buffer[1] = 'a';
+                buffer[2] = 'N';
+                return buffer + 3;
+            }
+        }
+
+        if (sign) {
+            *buffer++ = '-';
+        }
+
+        if (!significand && !exponent) {
+            buffer[0] = '0';
+            buffer[1] = 'E';
+            buffer[2] = '0';
+            return buffer + 3;
+        }
+
+        auto [dec_sig, dec_exp, dec_sign] = to_decimal();
+
+        if (dec_sig < 10) {
+            *buffer++ = char('0' + dec_sig);
+        } else {
+            auto begin = buffer;
+            do {
+                *buffer++ = char('0' + dec_sig % 10);
+                dec_sig /= 10;
+                ++dec_exp;
+            } while (dec_sig >= 10);
+            *buffer++ = '.';
+            *buffer++ = char('0' + dec_sig);
+            reverse(begin, buffer);
+        }
+
+        *buffer++ = 'E';
+        if (dec_exp < 0) {
+            *buffer++ = '-';
+            dec_exp = -dec_exp;
+        }
+
+        auto begin = buffer;
+        do {
+            *buffer++ = char('0' + dec_exp % 10);
+            dec_exp /= 10;
+        } while (dec_exp);
+        reverse(begin, buffer);
+        return buffer;
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -1958,18 +2007,29 @@ template <class T, class First, class... Rest>
 struct get_policy<T, First, Rest...>: get_policy<T, Rest...> {};
 
 template <class Float, class... Policies>
-constexpr auto to_decimal_ex(bool sign, int exponent, typename float_format<Float>::carrier_uint significand) noexcept {
-    return impl<Float, get_policy<binary_round_policy, Policies...>::value,
-                       get_policy<decimal_round_policy, Policies...>::value,
-                       get_policy<cache_policy, Policies...>::value> {significand, exponent, sign}.to_decimal();
-}
+using make_impl = impl<Float, get_policy<binary_round_policy, Policies...>::value,
+                              get_policy<decimal_round_policy, Policies...>::value,
+                              get_policy<cache_policy, Policies...>::value>;
 
 template <class Float, class... Policies>
 constexpr auto to_decimal(Float x, Policies...) noexcept {
-    auto const bits = float_bits(x);
-    assert(bits.is_finite() && (bits.significand || bits.exponent));
-    return to_decimal_ex<Float, Policies...>(bits.sign, bits.exponent, bits.significand);
+    return make_impl<Float, Policies...>(x).to_decimal();
 }
+
+// Null-terminate and bypass the return value of fp_to_chars_n
+template <class Float, class... Policies>
+constexpr char* to_chars(Float x, char* buffer, Policies... policies) noexcept {
+    auto ptr = make_impl<Float, Policies...>(x).to_chars(buffer);
+    *ptr = '\0';
+    return ptr;
+}
+
+// Maximum required buffer size (excluding null-terminator)
+template <class FloatFormat>
+inline constexpr size_t max_output_string_length =
+    // sign(1) + significand + decimal_point(1) + exp_marker(1) + exp_sign(1) + exp
+    1 + FloatFormat::decimal_significand_digits + 1 + 1 + 1 +
+    FloatFormat::decimal_exponent_digits;
 
 }
 }
